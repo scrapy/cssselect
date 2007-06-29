@@ -232,7 +232,7 @@ class Pseudo(object):
         return xpath
 
     def _xpath_empty(self, xpath):
-        xpath.add_condition("count(./children::*) = 0 and string(.) = ''")
+        xpath.add_condition("count(./child::*) = 0 and normalize-space(.) = ''")
         return xpath
 
 class Attrib(object):
@@ -454,11 +454,13 @@ def run_css(doc, css):
 
 class XPath(object):
 
-    def __init__(self, prefix=None, path=None, element='*', condition=None):
+    def __init__(self, prefix=None, path=None, element='*', condition=None,
+                 star_prefix=False):
         self.prefix = prefix
         self.path = path
         self.element = element
         self.condition = condition
+        self.star_prefix = star_prefix
 
     def __str__(self):
         path = ''
@@ -502,15 +504,24 @@ class XPath(object):
         self.element = '*'
 
     def add_star_prefix(self):
+        """
+        Adds a /* prefix if there is no prefix.  This is when you need
+        to keep context's constrained to a single parent.
+        """
         if self.path:
             self.path += '*/'
         else:
             self.path = '*/'
+        self.star_prefix = True
 
     def join(self, combiner, other):
         prefix = str(self)
         prefix += combiner
         path = (other.prefix or '') + (other.path or '')
+        # We don't need a star prefix if we are joining to this other
+        # prefix; so we'll get rid of it
+        if other.star_prefix and path == '*/':
+            path = ''
         self.prefix = prefix
         self.path = path
         self.element = other.element
