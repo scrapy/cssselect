@@ -88,60 +88,52 @@ class Function(object):
         method = getattr(self, method)
         return method(sel_path, self.expr)
 
-    def _xpath_nth_child(self, xpath, expr, last=False):
-        if isinstance(expr, int):
-            return self._xpath_nth_child_simple(xpath, expr, last)
-        if not isinstance(expr, int):
-            a, b = parse_series(expr)
-            if not a:
-                # a=0 means nothing is returned...
-                xpath.add_condition('false()')
-                return xpath
-            if a == 1:
-                return self._xpath_nth_child_simple(xpath, expr, last)
-            if b > 0:
-                b_neg = str(-b)
-            else:
-                b_neg = '+%s' % (-b)
-            expr = '(position() %s) mod %s = 0' % (b_neg, a)
-            if b >= 0:
-                expr += ' and position() >= %s' % b
-            xpath.add_condition(expr)
+    def _xpath_nth_child(self, xpath, expr, last=False,
+                         add_name_test=True):
+        a, b = parse_series(expr)
+        if not a:
+            # a=0 means nothing is returned...
+            xpath.add_condition('false() and position() = 0')
             return xpath
-            # FIXME: handle an+b, odd, even
-            # an+b means every-a, plus b, e.g., 2n+1 means odd
-            # 0n+b means b
-            # n+0 means a=1, i.e., all elements
-            # an means every a elements, i.e., 2n means even
-            # -n means -1n
-            # -1n+6 means elements 6 and previous
-
-    def _xpath_nth_child_simple(self, xpath, expr, last=False):
-        if isinstance(expr, int):
-            expr -= 1
+        if add_name_test:
+            xpath.add_name_test()
+        xpath.add_star_prefix()
+        if a == 1:
             if last:
-                expr = 'last() - %s' % expr
-            xpath = XPath('*/%s' % xpath)
-            xpath.add_index(expr)
+                b = 'last() - %s' % b
+            xpath.add_condition('position() = %s' % b)
             return xpath
+        if last:
+            # FIXME: I'm not sure if this is right
+            a = -a
+            b = -b
+        if b > 0:
+            b_neg = str(-b)
+        else:
+            b_neg = '+%s' % (-b)
+        expr = '(position() %s) mod %s = 0' % (b_neg, a)
+        if b >= 0:
+            expr += ' and position() >= %s' % b
+        elif b < 0 and last:
+            expr += ' and position() < (last() %s)' % b
+        xpath.add_condition(expr)
+        return xpath
+        # FIXME: handle an+b, odd, even
+        # an+b means every-a, plus b, e.g., 2n+1 means odd
+        # 0n+b means b
+        # n+0 means a=1, i.e., all elements
+        # an means every a elements, i.e., 2n means even
+        # -n means -1n
+        # -1n+6 means elements 6 and previous
 
     def _xpath_nth_last_child(self, xpath, expr):
         return self._xpath_nth_child(xpath, expr, last=True)
 
-    def _xpath_nth_of_type(self, xpath, expr, last=False):
-        # Like nth-of-type, but only for *this* type
-        if isinstance(expr, int):
-            expr -= 1
-            if last:
-                expr = 'last() - %s' % expr
-            xpath = XPath('*/%s' % xpath)
-            xpath.add_index(expr)
-            return xpath
-        else:
-            raise NotImplementedError
+    def _xpath_nth_of_type(self, xpath, expr):
+        return self._xpath_nth_child(xpath, expr, add_name_test=False)
 
     def _xpath_nth_last_of_type(self, xpath, expr):
-        return self._xpath_nth_of_type(xpath, expr, last=True)
+        return self._xpath_nth_child(xpath, expr, last=True, add_name_test=False)
 
     def _xpath_contains(self, xpath, expr):
         # text content, minus tags, must contain expr
@@ -149,6 +141,7 @@ class Function(object):
             expr = expr._format_element()
         xpath.add_condition('contains(css:lower-case(string(.)), %s)'
                             % xpath_repr(expr.lower()))
+        # FIXME: Currently case insensitive matching doesn't seem to be happening
         return xpath
 
     def _xpath_not(self, xpath, expr):
@@ -199,7 +192,8 @@ class Pseudo(object):
         return el_xpath
 
     def _xpath_checked(self, xpath):
-        xpath.add_condition("(@selected or @checked) and (node-name(.) = 'input' or node-name(.) = 'option')")
+        # FIXME: is this really all the elements?
+        xpath.add_condition("(@selected or @checked) and (name(.) = 'input' or name(.) = 'option')")
         return xpath
 
     def _xpath_root(self, xpath):
@@ -207,35 +201,38 @@ class Pseudo(object):
         raise NotImplementedError
 
     def _xpath_first_child(self, xpath):
-        xpath = XPath('*/%s' % xpath)
-        xpath.add_condition('position() = 0')
+        xpath.add_star_prefix()
+        xpath.add_name_test()
+        xpath.add_condition('position() = 1')
         return xpath
 
     def _xpath_last_child(self, xpath):
-        xpath = XPath('*/%s' % xpath)
+        xpath.add_star_prefix()
+        xpath.add_name_test()
         xpath.add_condition('position() = last()')
         return xpath
 
     def _xpath_first_of_type(self, xpath):
-        xpath = XPath('*/%s' % xpath)
-        xpath.add_index(0)
+        xpath.add_star_prefix()
+        xpath.add_condition('position() = 1')
         return xpath
 
     def _xpath_last_of_type(self, xpath):
-        xpath.add_index('last()')
+        xpath.add_star_prefix()
+        xpath.add_condition('position() = last()')
         return xpath
 
     def _xpath_only_child(self, xpath):
-        xpath.add_condition('count(..) = 1')
+        xpath.add_name_test()
+        xpath.add_condition('last() = 1')
         return xpath
 
     def _xpath_only_of_type(self, xpath):
-        # FIXME: I doubt this is right
-        xpath.add_condition('count(../node-name(.)) = 1')
+        xpath.add_condition('last() = 1')
         return xpath
 
     def _xpath_empty(self, xpath):
-        xpath.add_condition("count(.) = 0 and string(.) = ''")
+        xpath.add_condition("count(./children::*) = 0 and string(.) = ''")
         return xpath
 
 class Attrib(object):
@@ -311,6 +308,7 @@ class Attrib(object):
             path.add_condition('substring(%s, string-length(%s)-%s) = %s'
                                % (attrib, attrib, len(value)-1, xpath_repr(value)))
         elif self.operator == '*=':
+            # FIXME: case sensitive?
             path.add_condition('contains(%s, %s)' % (
                 attrib, xpath_repr(value)))
         else:
@@ -339,9 +337,11 @@ class Element(object):
 
     def xpath(self):
         if self.namespace == '*':
-            return XPath(self.element.lower())
+            el = self.element.lower()
         else:
-            return XPath('%s:%s' % (self.namespace, self.element))
+            # FIXME: Should we lowercase here?
+            el = '%s:%s' % (self.namespace, self.element)
+        return XPath(element=el)
 
 class Hash(object):
     """
@@ -359,7 +359,7 @@ class Hash(object):
 
     def xpath(self):
         path = self.selector.xpath()
-        path.add_condition('@id=%s' % xpath_repr(self.id))
+        path.add_condition('@id = %s' % xpath_repr(self.id))
         return path
 
 class Or(object):
@@ -412,23 +412,25 @@ class CombinedSelector(object):
 
     def _xpath_descendant(self, xpath, sub):
         # when sub is a descendant in any way of xpath
-        return XPath('%s/descendant::%s' % (xpath, sub.xpath()))
-
+        xpath.join('/descendant::', sub.xpath())
+        return xpath
+    
     def _xpath_child(self, xpath, sub):
         # when sub is an immediate child of xpath
-        return XPath(str(xpath) + '/' + str(sub.xpath()))
+        xpath.join('/', sub.xpath())
+        return xpath
 
     def _xpath_direct_adjacent(self, xpath, sub):
         # when sub immediately follows xpath
-        path = self._xpath_indirect_adjacent(xpath, sub)
-        path.add_index(0)
-        return path
+        xpath.join('/following-sibling::', sub.xpath())
+        xpath.add_name_test()
+        xpath.add_condition('position() = 1')
+        return xpath
 
     def _xpath_indirect_adjacent(self, xpath, sub):
         # when sub comes somewhere after xpath as a sibling
-        return XPath('%s/following-sibling::%s' % (
-            xpath, sub.xpath()))
-
+        xpath.join('/following-sibling::', sub.xpath())
+        return xpath
 
 ##############################
 ## XPath objects:
@@ -439,11 +441,8 @@ def xpath(css_expr, prefix='descendant-or-self::'):
     expr = css_expr.xpath()
     assert expr is not None, (
         "Got None for xpath expression from %s" % repr(css_expr))
-    if isinstance(expr, XPathOr):
-        for item in expr.items:
-            item.element_path = prefix + item.element_path
-    else:
-        expr.element_path = prefix + expr.element_path
+    if prefix:
+        expr.add_prefix(prefix)
     return str(expr)
 
 def run_xpath(doc, xpath):
@@ -455,12 +454,19 @@ def run_css(doc, css):
 
 class XPath(object):
 
-    def __init__(self, element_path, condition=None):
-        self.element_path = element_path
+    def __init__(self, prefix=None, path=None, element='*', condition=None):
+        self.prefix = prefix
+        self.path = path
+        self.element = element
         self.condition = condition
 
     def __str__(self):
-        path = str(self.element_path)
+        path = ''
+        if self.prefix is not None:
+            path += str(self.prefix)
+        if self.path is not None:
+            path += str(self.path)
+        path += str(self.element)
         if self.condition:
             path += '[%s]' % self.condition
         return path
@@ -475,8 +481,40 @@ class XPath(object):
         else:
             self.condition = condition
 
-    def add_index(self, index):
-        self.element_path = '%s[%s]' % (self.element_path, index)
+    def add_path(self, part):
+        if self.path is None:
+            self.path = self.element
+        else:
+            self.path += self.element
+        self.element = part
+
+    def add_prefix(self, prefix):
+        if self.prefix:
+            self.prefix = prefix + self.prefix
+        else:
+            self.prefix = prefix
+
+    def add_name_test(self):
+        if self.element == '*':
+            # We weren't doing a test anyway
+            return
+        self.add_condition("name() = %s" % xpath_repr(self.element))
+        self.element = '*'
+
+    def add_star_prefix(self):
+        if self.path:
+            self.path += '*/'
+        else:
+            self.path = '*/'
+
+    def join(self, combiner, other):
+        prefix = str(self)
+        prefix += combiner
+        path = (other.prefix or '') + (other.path or '')
+        self.prefix = prefix
+        self.path = path
+        self.element = other.element
+        self.condition = other.condition
 
 class XPathOr(XPath):
 
@@ -485,14 +523,15 @@ class XPathOr(XPath):
     the union, it's the sum, so duplicate elements will appear.
     """
 
-    def __init__(self, items):
+    def __init__(self, items, prefix=None):
         for item in items:
             assert item is not None
         self.items = items
+        self.prefix = prefix
 
     def __str__(self):
-        return ' | '.join(map(str, self.items))
-
+        prefix = self.prefix or ''
+        return ' | '.join([prefix + str(i) for i in self.items])
 
 def xpath_repr(s):
     # FIXME: I don't think this is right
@@ -650,6 +689,9 @@ def parse_series(s):
     """
     if isinstance(s, Element):
         s = s._format_element()
+    if not s or s == '*':
+        # Happens when there's nothing, which CSS things of as *
+        return (1, 0)
     if isinstance(s, int):
         # Happens when you just get a number
         return (1, s)
@@ -657,6 +699,8 @@ def parse_series(s):
         return (2, 1)
     elif s == 'even':
         return (2, 0)
+    elif s == 'n':
+        return (1, 0)
     if 'n' not in s:
         # Just a b
         return int(s)

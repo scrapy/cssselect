@@ -107,6 +107,7 @@ def unique(s):
         
 def test_suite():
     suite = unittest.TestSuite()
-    suite.addTests([doctest.DocFileSuite('test_css.txt')])
+    for fn in 'test_css.txt', 'test_css_select.txt':
+        suite.addTests([doctest.DocFileSuite(fn)])
     suite.addTests(list(CSSTestCase.all()))
     return suite

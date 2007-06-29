@@ -69,33 +69,35 @@ Now of translation:
     e[@hreflang = 'en' or starts-with(@hreflang, 'en-')]
     >>> #xpath('E:root')
     >>> xpath('E:nth-child(1)')
-    */e[0]
+    */*[name() = 'e' and (position() = 1)]
     >>> xpath('E:nth-last-child(1)')
-    */e[last() - 0]
+    */*[name() = 'e' and (position() = last() - 1)]
+    >>> xpath('E:nth-last-child(2n+2)')
+    */*[name() = 'e' and ((position() +2) mod -2 = 0 and position() < (last() -2))]
     >>> xpath('E:nth-of-type(1)')
-    */e[0]
+    */e[position() = 1]
     >>> xpath('E:nth-last-of-type(1)')
-    */e[last() - 0]
+    */e[position() = last() - 1]
     >>> xpath('E:first-child')
-    */e[position() = 0]
+    */*[name() = 'e' and (position() = 1)]
     >>> xpath('E:last-child')
-    */e[position() = last()]
+    */*[name() = 'e' and (position() = last())]
     >>> xpath('E:first-of-type')
-    */e[0]
+    */e[position() = 1]
     >>> xpath('E:last-of-type')
-    e[last()]
+    */e[position() = last()]
     >>> xpath('E:only-child')
-    e[count(..) = 1]
+    *[name() = 'e' and (last() = 1)]
     >>> xpath('E:only-of-type')
-    e[count(../node-name(.)) = 1]
+    e[last() = 1]
     >>> xpath('E:empty')
-    e[count(.) = 0 and string(.) = '']
+    e[count(./children::*) = 0 and string(.) = '']
     >>> xpath('E:contains("foo")')
     e[contains(css:lower-case(string(.)), 'foo')]
     >>> xpath('E.warning')
     e[contains(concat(' ', normalize-space(@class), ' '), ' warning ')]
     >>> xpath('E#myid')
-    e[@id='myid']
+    e[@id = 'myid']
     >>> xpath('E:not(:contains("foo"))')
     e[not(contains(css:lower-case(string(.)), 'foo'))]
     >>> xpath('E F')
@@ -103,8 +105,11 @@ Now of translation:
     >>> xpath('E > F')
     e/f
     >>> xpath('E + F')
-    e/following-sibling::f[0]
+    e/following-sibling::*[name() = 'f' and (position() = 1)]
     >>> xpath('E ~ F')
     e/following-sibling::f
     >>> xpath('div#container p')
-    div[@id='container']/descendant::p
+    div[@id = 'container']/descendant::p
+    >>> # FIXME: This isn't right, but I don't know what *is* right
+    >>> xpath('p *:only-of-type')
+    p/descendant::*[last() = 1]
