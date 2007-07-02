@@ -148,4 +148,3 @@ Now, the tests:
     nofollow-anchor
     >>> pcss('ol#first-ol li:last-child', 'ol#first-ol *:last-child')
     seventh-li
-    

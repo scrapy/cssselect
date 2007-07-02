@@ -259,6 +259,7 @@ class Pseudo(object):
 
     def _xpath_only_child(self, xpath):
         xpath.add_name_test()
+        xpath.add_star_prefix()
         xpath.add_condition('last() = 1')
         return xpath
 

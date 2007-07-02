@@ -87,11 +87,11 @@ Now of translation:
     >>> xpath('E:last-of-type')
     */e[position() = last()]
     >>> xpath('E:only-child')
-    *[name() = 'e' and (last() = 1)]
+    */*[name() = 'e' and (last() = 1)]
     >>> xpath('E:only-of-type')
     e[last() = 1]
     >>> xpath('E:empty')
-    e[count(./child::*) = 0 and normalize-space(.) = '']
+    e[not(*) and not(normalize-space())]
     >>> xpath('E:contains("foo")')
     e[contains(css:lower-case(string(.)), 'foo')]
     >>> xpath('E.warning')
