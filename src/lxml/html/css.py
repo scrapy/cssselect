@@ -110,7 +110,7 @@ class Function(object):
     def _xpath_nth_child(self, xpath, expr, last=False,
                          add_name_test=True):
         a, b = parse_series(expr)
-        if not a and not b:
+        if not a and not b and not last:
             # a=0 means nothing is returned...
             xpath.add_condition('false() and position() = 0')
             return xpath
@@ -270,7 +270,7 @@ class Pseudo(object):
         return xpath
 
     def _xpath_empty(self, xpath):
-        xpath.add_condition("count(./child::*) = 0 and normalize-space(.) = ''")
+        xpath.add_condition("not(*) and not(normalize-space())")
         return xpath
 
 class Attrib(object):
