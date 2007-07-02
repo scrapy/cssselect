@@ -1,11 +1,30 @@
 import re
 from lxml import etree
 
-class SelectorSyntaxError(Exception):
+__all__ = ['SelectorSyntaxError', 'ExpressionError',
+           'CSSSelector']
+
+class SelectorSyntaxError(SyntaxError):
     pass
 
-class ExpressionError(Exception):
+class ExpressionError(RuntimeError):
     pass
+
+class CSSSelector(etree.XPath):
+
+    def __init__(self, css):
+        path = css_to_xpath(css)
+        etree.XPath.__init__(self, path)
+        self.css = css
+
+    def __repr__(self):
+        return '<%s %s for %r>' % (
+            self.__class__.__name__,
+            hex(abs(id(self)))[2:],
+            self.css)
+
+##############################
+## Token objects:
 
 class _UniToken(unicode):
     def __new__(cls, contents, pos):
@@ -91,14 +110,14 @@ class Function(object):
     def _xpath_nth_child(self, xpath, expr, last=False,
                          add_name_test=True):
         a, b = parse_series(expr)
-        if not a:
+        if not a and not b:
             # a=0 means nothing is returned...
             xpath.add_condition('false() and position() = 0')
             return xpath
         if add_name_test:
             xpath.add_name_test()
         xpath.add_star_prefix()
-        if a == 1:
+        if a == 0:
             if last:
                 b = 'last() - %s' % b
             xpath.add_condition('position() = %s' % b)
@@ -111,12 +130,17 @@ class Function(object):
             b_neg = str(-b)
         else:
             b_neg = '+%s' % (-b)
-        expr = '(position() %s) mod %s = 0' % (b_neg, a)
+        if a != 1:
+            expr = ['(position() %s) mod %s = 0' % (b_neg, a)]
+        else:
+            expr = []
         if b >= 0:
-            expr += ' and position() >= %s' % b
+            expr.append('position() >= %s' % b)
         elif b < 0 and last:
-            expr += ' and position() < (last() %s)' % b
-        xpath.add_condition(expr)
+            expr.append('position() < (last() %s)' % b)
+        expr = ' and '.join(expr)
+        if expr:
+            xpath.add_condition(expr)
         return xpath
         # FIXME: handle an+b, odd, even
         # an+b means every-a, plus b, e.g., 2n+1 means odd
@@ -130,6 +154,9 @@ class Function(object):
         return self._xpath_nth_child(xpath, expr, last=True)
 
     def _xpath_nth_of_type(self, xpath, expr):
+        if xpath.element == '*':
+            raise NotImplementedError(
+                "*:nth-of-type() is not implemented")
         return self._xpath_nth_child(xpath, expr, add_name_test=False)
 
     def _xpath_nth_last_of_type(self, xpath, expr):
@@ -215,11 +242,17 @@ class Pseudo(object):
         return xpath
 
     def _xpath_first_of_type(self, xpath):
+        if xpath.element == '*':
+            raise NotImplementedError(
+                "*:first-of-type is not implemented")
         xpath.add_star_prefix()
         xpath.add_condition('position() = 1')
         return xpath
 
     def _xpath_last_of_type(self, xpath):
+        if xpath.element == '*':
+            raise NotImplementedError(
+                "*:last-of-type is not implemented")
         xpath.add_star_prefix()
         xpath.add_condition('position() = last()')
         return xpath
@@ -230,6 +263,9 @@ class Pseudo(object):
         return xpath
 
     def _xpath_only_of_type(self, xpath):
+        if xpath.element == '*':
+            raise NotImplementedError(
+                "*:only-of-type is not implemented")
         xpath.add_condition('last() = 1')
         return xpath
 
@@ -343,7 +379,7 @@ class Element(object):
         else:
             # FIXME: Should we lowercase here?
             el = '%s:%s' % (self.namespace, self.element)
-        return XPath(element=el)
+        return XPathExpr(element=el)
 
 class Hash(object):
     """
@@ -375,7 +411,7 @@ class Or(object):
 
     def xpath(self):
         paths = [item.xpath() for item in self.items]
-        return XPathOr(paths)
+        return XPathExprOr(paths)
 
 class CombinedSelector(object):
 
@@ -435,9 +471,9 @@ class CombinedSelector(object):
         return xpath
 
 ##############################
-## XPath objects:
+## XPathExpr objects:
 
-def xpath(css_expr, prefix='descendant-or-self::'):
+def css_to_xpath(css_expr, prefix='descendant-or-self::'):
     if isinstance(css_expr, basestring):
         css_expr = parse(css_expr)
     expr = css_expr.xpath()
@@ -447,14 +483,7 @@ def xpath(css_expr, prefix='descendant-or-self::'):
         expr.add_prefix(prefix)
     return str(expr)
 
-def run_xpath(doc, xpath):
-    return [el for el in doc.xpath(xpath)
-            if isinstance(el, etree.ElementBase)]
-
-def run_css(doc, css):
-    return run_xpath(doc, xpath(css))
-
-class XPath(object):
+class XPathExpr(object):
 
     def __init__(self, prefix=None, path=None, element='*', condition=None,
                  star_prefix=False):
@@ -529,7 +558,7 @@ class XPath(object):
         self.element = other.element
         self.condition = other.condition
 
-class XPathOr(XPath):
+class XPathExprOr(XPathExpr):
 
     """
     Represents on |'d expressions.  Note that unfortunately it isn't
@@ -547,7 +576,9 @@ class XPathOr(XPath):
         return ' | '.join([prefix + str(i) for i in self.items])
 
 def xpath_repr(s):
-    # FIXME: I don't think this is right
+    # FIXME: I don't think this is right, but lacking any reasonable
+    # specification on what XPath literals look like (which doesn't seem
+    # to be in the XPath specification) it is hard to do 'right'
     if isinstance(s, Element):
         # This is probably a symbol that looks like an expression...
         s = s._format_element()
@@ -703,11 +734,11 @@ def parse_series(s):
     if isinstance(s, Element):
         s = s._format_element()
     if not s or s == '*':
-        # Happens when there's nothing, which CSS things of as *
-        return (1, 0)
+        # Happens when there's nothing, which the CSS parser thinks of as *
+        return (0, 0)
     if isinstance(s, int):
         # Happens when you just get a number
-        return (1, s)
+        return (0, s)
     if s == 'odd':
         return (2, 1)
     elif s == 'even':
@@ -716,7 +747,7 @@ def parse_series(s):
         return (1, 0)
     if 'n' not in s:
         # Just a b
-        return int(s)
+        return (0, int(s))
     a, b = s.split('n', 1)
     if not a:
         a = 1

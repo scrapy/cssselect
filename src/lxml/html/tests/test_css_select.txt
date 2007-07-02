@@ -1,7 +1,7 @@
 This is a test of CSS selectors.  We setup a document we'll use for
 all our selections, and a function make querying simpler:
 
-    >>> from lxml.html.css import run_css, xpath
+    >>> from lxml.html.css import CSSSelector
     >>> from lxml.html import HTML
     >>> doc = HTML('''
     ... <html><head></head><body>
@@ -35,10 +35,10 @@ all our selections, and a function make querying simpler:
     >>> for count, el in enumerate(doc.getiterator()):
     ...     order[el] = count
     >>> def select_ids(selector):
-    ...     items = run_css(doc, selector)
+    ...     items = CSSSelector(selector)(doc)
     ...     if not items:
     ...         return 'empty'
-    ...     items = run_css(doc, selector)
+    ...     items = CSSSelector(selector)(doc)
     ...     items.sort(key=lambda el: order[el])
     ...     return ', '.join([el.get('id', 'nil') for el in items])
     >>> def pcss(main, *selectors):
@@ -114,7 +114,9 @@ Now, the tests:
     >>> pcss('div *:only-child')
     foobar-span
     >>> pcss('p *:only-of-type')
-    p-em
+    Traceback (most recent call last):
+        ...
+    NotImplementedError: *:only-of-type is not implemented
     >>> pcss('p:only-of-type')
     paragraph
     >>> pcss('a:empty')

@@ -69,7 +69,7 @@ class CSSTestCase(unittest.TestCase):
         body = doc.xpath('//body')[0]
         bad = []
         selector, count = self.selectors[self.index]
-        xpath = css.xpath(css.parse(selector))
+        xpath = css.css_to_xpath(css.parse(selector))
         try:
             results = body.xpath(xpath)
         except Exception, e:
