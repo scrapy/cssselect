@@ -155,7 +155,9 @@ class Function(object):
 def _make_lower_case(context, s):
     return s.lower()
 
-etree.FunctionNamespace("css")['lower-case'] = _make_lower_case
+ns = etree.FunctionNamespace('http://codespeak.net/lxml/css/')
+ns.prefix = 'css'
+ns['lower-case'] = _make_lower_case
 
 class Pseudo(object):
     """
