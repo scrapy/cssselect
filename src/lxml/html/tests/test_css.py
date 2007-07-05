@@ -1,7 +1,7 @@
 import unittest
 from lxml.tests.common_imports import doctest
 from lxml import html
-from lxml.html import css
+from lxml import cssselect
 import os
 
 doc_fn = os.path.join(os.path.dirname(__file__),
@@ -74,7 +74,7 @@ class CSSTestCase(unittest.TestCase):
         body = doc.xpath('//body')[0]
         bad = []
         selector, count = self.selectors[self.index]
-        xpath = css.css_to_xpath(css.parse(selector))
+        xpath = cssselect.css_to_xpath(cssselect.parse(selector))
         try:
             results = body.xpath(xpath)
         except Exception, e:
