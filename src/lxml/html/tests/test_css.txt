@@ -1,6 +1,6 @@
 A quick test of tokenizing:
 
-    >>> from lxml.html.css import tokenize, parse
+    >>> from lxml.cssselect import tokenize, parse
     >>> def ptok(s):
     ...     for item in tokenize(s):
     ...         print repr(item)
@@ -117,7 +117,7 @@ Now of translation:
 
 Then of parse_series:
 
-    >>> from lxml.html.css import parse_series
+    >>> from lxml.cssselect import parse_series
     >>> parse_series('1n+3')
     (1, 3)
     >>> parse_series('n-5')
