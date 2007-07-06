@@ -29,6 +29,8 @@ expression as input::
     >>> sel = CSSSelector('div.content')
     >>> sel
     <CSSSelector ... for 'div.content'>
+    >>> sel.css
+    'div.content'
 
 The selector actually compiles to XPath, and you can see the
 expression by inspecting the object::
