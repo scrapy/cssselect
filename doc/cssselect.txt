@@ -5,7 +5,7 @@ lxml.cssselect
 lxml supports a number of interesting languages for tree traversal and element
 selection.  The most important is obviously XPath_, but there is also
 ObjectPath_ in the `lxml.objectify`_ module.  The newest child of this family
-is CSS selection, which is implemented in the new ``cssselect`` module.
+is CSS selection, which is implemented in the new ``lxml.cssselect`` module.
 
 .. _XPath: xpathxslt.html#xpath
 .. _ObjectPath: objectify.html#objectpath
@@ -13,7 +13,11 @@ is CSS selection, which is implemented in the new ``cssselect`` module.
 
 .. contents::
 ..
-   1  Finding nodes
+   1  The CSSSelector class
+   2  CSS Selectors
+     2.1  Namespaces
+   3  Limitations
+
 
 The CSSSelector class
 =====================
@@ -43,6 +47,7 @@ object::
     >>> [e.get('id') for e in sel(h)]
     ['inner']
 
+
 CSS Selectors
 =============
 
@@ -63,6 +68,7 @@ Also, none of the psuedo-elements apply, because the selector only
 returns elements and psuedo-elements select portions of text, like
 ``::first-line``.
 
+
 Namespaces
 ----------
 
@@ -70,6 +76,7 @@ In CSS you can use ``namespace-prefix|element``, similar to
 ``namespace-prefix:element`` in an XPath expression.  In fact, it maps
 one-to-one, and the same rules are used to map namespace prefixes to
 namespace URIs.
+
 
 Limitations
 ===========
