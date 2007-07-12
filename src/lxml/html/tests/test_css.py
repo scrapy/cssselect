@@ -70,7 +70,7 @@ class CSSTestCase(unittest.TestCase):
         f = open(doc_fn, 'rb')
         c = f.read()
         f.close()
-        doc = html.HTML(c)
+        doc = html.document_fromstring(c)
         body = doc.xpath('//body')[0]
         bad = []
         selector, count = self.selectors[self.index]
