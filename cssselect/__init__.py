@@ -1,38 +1,14 @@
-# Copyright (c) 2004 Ian Bicking. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are
-# met:
-#
-# 1. Redistributions of source code must retain the above copyright
-# notice, this list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright
-# notice, this list of conditions and the following disclaimer in
-# the documentation and/or other materials provided with the
-# distribution.
-#
-# 3. Neither the name of Ian Bicking nor the names of its contributors may
-# be used to endorse or promote products derived from this software
-# without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL IAN BICKING OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-# LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+"""
+    CSS Selectors based on XPath
+    ============================
 
+    This module supports selecting XML/HTML elements based on CSS selectors.
+    See the `CSSSelector` class for details.
 
-"""CSS Selectors based on XPath.
+    :copyright: (c) 2007-2012 Ian Bicking and contributors.
+                See AUTHORS for more details.
+    :license: BSD, see LICENSE for more details.
 
-This module supports selecting XML/HTML tags based on CSS selectors.
-See the `CSSSelector` class for details.
 """
 
 import re
@@ -63,10 +39,10 @@ class CSSSelector(etree.XPath):
         >>> root = etree.XML("<a><b><c/><tag><child>TEXT</child></tag></b></a>")
         >>> [ el.tag for el in select(root) ]
         ['child']
-    
+
     To use CSS namespaces, you need to pass a prefix-to-namespace
     mapping as ``namespaces`` keyword argument::
-    
+
         >>> rdfns = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
         >>> select_ns = cssselect.CSSSelector('root > rdf|Description',
         ...                                   namespaces={'rdf': rdfns})
@@ -105,7 +81,7 @@ class _UniToken(_unicode):
         obj = _unicode.__new__(cls, contents)
         obj.pos = pos
         return obj
-        
+
     def __repr__(self):
         return '%s(%s, %r)' % (
             self.__class__.__name__,
@@ -483,7 +459,7 @@ class Or(object):
     def __repr__(self):
         return '%s(%r)' % (
             self.__class__.__name__,
-            self.items)    
+            self.items)
 
     def xpath(self):
         paths = [item.xpath() for item in self.items]
@@ -528,7 +504,7 @@ class CombinedSelector(object):
         # when sub is a descendant in any way of xpath
         xpath.join('/descendant-or-self::*/', sub.xpath())
         return xpath
-    
+
     def _xpath_child(self, xpath, sub):
         # when sub is an immediate child of xpath
         xpath.join('/', sub.xpath())
@@ -884,7 +860,7 @@ def parse_series(s):
     else:
         b = int(b)
     return (a, b)
-    
+
 
 ############################################################
 ## Tokenizing
@@ -980,7 +956,7 @@ def tokenize_escaped_string(s, pos):
         if '\\' in result:
             result = unescape_string_literal(result)
         return result, next+1
-    
+
 _illegal_symbol = re.compile(r'[^\w\\-]', re.UNICODE)
 
 def tokenize_symbol(s, pos):
