@@ -1,7 +1,7 @@
 This is a test of CSS selectors.  We setup a document we'll use for
 all our selections, and a function make querying simpler:
 
-    >>> from lxml.cssselect import CSSSelector
+    >>> from cssselect import CSSSelector
     >>> from lxml.etree import HTML
     >>> doc = HTML('''
     ... <html id="html"><head></head><body>

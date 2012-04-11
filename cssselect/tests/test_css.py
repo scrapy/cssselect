@@ -1,11 +1,15 @@
-import unittest, sys
-from lxml.tests.common_imports import doctest, make_doctest, HelperTestCase
-from lxml import html
-from lxml import cssselect
 import os
+import sys
+import unittest
+import doctest
 
-doc_fn = os.path.join(os.path.dirname(__file__),
-                      'css_shakespear.html')
+from lxml import html
+
+import cssselect
+from cssselect.tests.common_imports import make_doctest
+
+
+doc_fn = os.path.join(os.path.dirname(__file__), 'css_shakespear.html')
 
 try:
     basestring
@@ -14,8 +18,8 @@ except NameError:
 
 # Data borrowed from http://mootools.net/slickspeed/
 
-class CSSTestCase(HelperTestCase):
-    
+class CSSTestCase(unittest.TestCase):
+
     selectors = [
         ## Changed from original; probably because I'm only searching the body
         #('*', 252),
@@ -72,7 +76,7 @@ class CSSTestCase(HelperTestCase):
 
     def __init__(self, index):
         self.index = index
-        super(HelperTestCase, self).__init__()
+        super(CSSTestCase, self).__init__()
 
     def all(cls):
         for i in range(len(cls.selectors)):
@@ -114,16 +118,7 @@ class CSSTestCase(HelperTestCase):
     def shortDescription(self):
         return self.selectors[self.index][0]
 
-def unique(s):
-    found = {}
-    result = []
-    for item in s:
-        if item in found:
-            continue
-        found[item] = None
-        result.append(s)
-    return result
-        
+
 def test_suite():
     suite = unittest.TestSuite()
     if sys.version_info >= (2,4):
