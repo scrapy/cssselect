@@ -3,7 +3,7 @@
     Tests for cssselect
     ===================
 
-    These tests can be run either by py.test or by the standard library’s
+    These tests can be run either by py.test or by the standard library's
     unittest. They use plain ``assert`` statements and do little reporting
     themselves in case of failure.
 
@@ -52,7 +52,7 @@ class TestCssselect(unittest.TestCase):
             result = repr(parse(first))
             for other in others:
                 assert repr(parse(other)) == result
-            return result
+            return result.replace("(u'", "('")
 
         assert parse_many(
             'div>.foo',
