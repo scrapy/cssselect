@@ -1,0 +1,38 @@
+Version 0.2
+===========
+
+**Planned:**
+
+* Make cssselect usable without lxml. (Hey, this is the whole point of
+  extracting it.) The tests will still require lxml, though.
+  This probably implies removing the CSSSelector class.
+  (Will it stay in lxml?)
+* Separate the XPath translation from the parsed objects into its own
+  class, so that it can be overrided through inheritance.
+* Give the docs some love
+
+
+Version 0.1
+===========
+
+Extract lxml.cssselect from the rest of lxml and make it a stand-alone project.
+
+The 'master' branch from lxml’s git repository was taken on 2012-04-11
+(commit ea53ceaf7e44ba4fbb5c818ae31370932f47774e). This is somewhere
+between versions 2.3.4 and 2.4.
+
+The commit history has been rewritten to:
+
+* Remove lxml files unrelated to cssselect
+* Import the early history from the 'html' branch in the old SVN repository
+* Fix author names in commits from SVN
+
+This project has its own import name, tests and documentation. But the
+code itself is unchanged and still depends on lxml.
+
+
+Earlier history
+===============
+
+Search for *cssselect* in `lxml’s changelog
+<https://github.com/lxml/lxml/blob/master/CHANGES.txt>`_
