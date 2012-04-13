@@ -1,16 +1,18 @@
-==============
-lxml.cssselect
-==============
+=========
+cssselect
+=========
 
-lxml supports a number of interesting languages for tree traversal and element
-selection.  The most important is obviously XPath_, but there is also
-ObjectPath_ in the `lxml.objectify`_ module.  The newest child of this family
-is `CSS selection`_, which is implemented in the new ``lxml.cssselect`` module.
+`cssselect` is a parser for `CSS Selectors` Level 3 that can also translate
+selectors to `XPath 1.0`_ queries. Such queries can be used in lxml_ to find
+the matching elements in an XML or HTML document.
 
-.. _XPath: xpathxslt.html#xpath
-.. _ObjectPath: objectify.html#objectpath
-.. _`lxml.objectify`: objectify.html
-.. _`CSS selection`: http://www.w3.org/TR/CSS21/selector.html
+This module used to live inside of lxml as ``lxml.cssselect`` before it was
+extracted as a stand-alone project.
+
+.. _CSS Selectors: http://www.w3.org/TR/selectors/
+.. _XPath 1.0: http://www.w3.org/TR/xpath/
+.. _lxml: http://lxml.de/
+
 
 .. contents::
 ..
@@ -24,12 +26,14 @@ The CSSSelector class
 =====================
 
 The most important class in the ``cssselect`` module is ``CSSSelector``.  It
-provides the same interface as the XPath_ class, but accepts a CSS selector
+provides the same interface as lxml’s XPath_ class, but accepts a CSS selector
 expression as input:
+
+.. _XPath: http://lxml.de/xpathxslt.html#xpath
 
 .. sourcecode:: pycon
 
-    >>> from lxml.cssselect import CSSSelector
+    >>> from cssselect import CSSSelector
     >>> sel = CSSSelector('div.content')
     >>> sel  #doctest: +ELLIPSIS
     <CSSSelector ... for 'div.content'>
