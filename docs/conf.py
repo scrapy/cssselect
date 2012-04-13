@@ -50,7 +50,7 @@ copyright = '2012, Simon Sapin'
 # built documents.
 #
 # The full version, including alpha/beta/rc tags.
-release = '0.1dev'
+release = '0.1'
 # The short X.Y version.
 version = release.rstrip('dev')
 
