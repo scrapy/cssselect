@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from distutils.core import setup
 
 setup(
     name='cssselect',
@@ -6,7 +6,6 @@ setup(
     url='http://packages.python.org/cssselect/',
     license='BSD',
     install_requires='lxml',
-    packages=find_packages(),
-    package_data={'cssselect.tests': ['*.html', '*.txt']},
-    test_suite='cssselect.tests.test_suite',
+    py_modules = ['cssselect', 'test_cssselect'],  # XXX include the tests?
+    test_suite='test_cssselect',
 )
