@@ -351,61 +351,6 @@ class TestCssselect(unittest.TestCase):
             'name-anchor', 'first-li', 'li-div', 'p-b']
 
     def test_select_shakespeare(self):
-        # Data borrowed from http://mootools.net/slickspeed/
-        selectors = [
-            ## Changed from original; probably because I'm only
-            ## searching the body.
-            #('*', 252),
-            ('*', 246),
-            ('div:only-child', 22), # ?
-            ## Changed from original, because the original doesn't make sense.
-            ## There really aren't that many occurrances of 'celia'
-            #('div:contains(CELIA)', 243),
-            ('div:contains(CELIA)', 30),
-            ('div:nth-child(even)', 106),
-            ('div:nth-child(2n)', 106),
-            ('div:nth-child(odd)', 137),
-            ('div:nth-child(2n+1)', 137),
-            ('div:nth-child(n)', 243),
-            ('div:last-child', 53),
-            ('div:first-child', 51),
-            ('div > div', 242),
-            ('div + div', 190),
-            ('div ~ div', 190),
-            ('body', 1),
-            ('body div', 243),
-            ('div', 243),
-            ('div div', 242),
-            ('div div div', 241),
-            ('div, div, div', 243),
-            ('div, a, span', 243),
-            ('.dialog', 51),
-            ('div.dialog', 51),
-            ('div .dialog', 51),
-            ('div.character, div.dialog', 99),
-            ('div.direction.dialog', 0),
-            ('div.dialog.direction', 0),
-            ('div.dialog.scene', 1),
-            ('div.scene.scene', 1),
-            ('div.scene .scene', 0),
-            ('div.direction .dialog ', 0),
-            ('div .dialog .direction', 4),
-            ('div.dialog .dialog .direction', 4),
-            ('#speech5', 1),
-            ('div#speech5', 1),
-            ('div #speech5', 1),
-            ('div.scene div.dialog', 49),
-            ('div#scene1 div.dialog div', 142),
-            ('#scene1 #speech1', 1),
-            ('div[class]', 103),
-            ('div[class=dialog]', 50),
-            ('div[class^=dia]', 51),
-            ('div[class$=log]', 50),
-            ('div[class*=sce]', 1),
-            ('div[class|=dialog]', 50), # ? Seems right
-            ('div[class!=madeup]', 243), # ? Seems right
-            ('div[class~=dialog]', 51), # ? Seems right
-        ]
         document = html.document_fromstring(HTML_SHAKESPEARE)
         body = document.xpath('//body')[0]
 
@@ -414,7 +359,7 @@ class TestCssselect(unittest.TestCase):
         except NameError:
             basestring_ = (str, bytes)
 
-        for selector, count in selectors:
+        def count(selector):
             xpath = css_to_xpath(selector)
             results = body.xpath(xpath)
             assert not isinstance(results, basestring_)
@@ -423,8 +368,62 @@ class TestCssselect(unittest.TestCase):
                 assert item not in found
                 found.add(item)
                 assert not isinstance(item, basestring_)
-            assert len(results) == count
+            return len(results)
 
+        # Data borrowed from http://mootools.net/slickspeed/
+
+        ## Changed from original; probably because I'm only
+        ## searching the body.
+        #assert count('*') == 252
+        assert count('*') == 246
+        assert count('div:only-child') == 22 # ?
+        ## Changed from original, because the original doesn't make sense.
+        ## There really aren't that many occurrances of 'celia'
+        #assert count('div:contains(CELIA)') == 243
+        assert count('div:contains(CELIA)') == 30
+        assert count('div:nth-child(even)') == 106
+        assert count('div:nth-child(2n)') == 106
+        assert count('div:nth-child(odd)') == 137
+        assert count('div:nth-child(2n+1)') == 137
+        assert count('div:nth-child(n)') == 243
+        assert count('div:last-child') == 53
+        assert count('div:first-child') == 51
+        assert count('div > div') == 242
+        assert count('div + div') == 190
+        assert count('div ~ div') == 190
+        assert count('body') == 1
+        assert count('body div') == 243
+        assert count('div') == 243
+        assert count('div div') == 242
+        assert count('div div div') == 241
+        assert count('div, div, div') == 243
+        assert count('div, a, span') == 243
+        assert count('.dialog') == 51
+        assert count('div.dialog') == 51
+        assert count('div .dialog') == 51
+        assert count('div.character, div.dialog') == 99
+        assert count('div.direction.dialog') == 0
+        assert count('div.dialog.direction') == 0
+        assert count('div.dialog.scene') == 1
+        assert count('div.scene.scene') == 1
+        assert count('div.scene .scene') == 0
+        assert count('div.direction .dialog ') == 0
+        assert count('div .dialog .direction') == 4
+        assert count('div.dialog .dialog .direction') == 4
+        assert count('#speech5') == 1
+        assert count('div#speech5') == 1
+        assert count('div #speech5') == 1
+        assert count('div.scene div.dialog') == 49
+        assert count('div#scene1 div.dialog div') == 142
+        assert count('#scene1 #speech1') == 1
+        assert count('div[class]') == 103
+        assert count('div[class=dialog]') == 50
+        assert count('div[class^=dia]') == 51
+        assert count('div[class$=log]') == 50
+        assert count('div[class*=sce]') == 1
+        assert count('div[class|=dialog]') == 50 # ? Seems right
+        assert count('div[class!=madeup]') == 243 # ? Seems right
+        assert count('div[class~=dialog]') == 51 # ? Seems right
 
 HTML_IDS = '''
 <html id="html"><head></head><body>
