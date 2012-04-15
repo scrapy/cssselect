@@ -12,10 +12,19 @@
 """
 
 import re
-from cssselect.parser import Element, _unicode, ExpressionError, parse_series
+from cssselect.parser import parse, parse_series, ExpressionError, Element
 
 
-#### Helpers
+try:
+    _basestring = basestring
+    _unicode = unicode
+except NameError:
+    # Python 3
+    _basestring = str
+    _unicode = str
+
+
+#### XPath Helpers
 
 class XPathExpr(object):
 
@@ -133,6 +142,11 @@ def xpath_literal(s):
 
 #### Translation
 
+_el_re = re.compile(r'^\w+\s*$', re.UNICODE)
+_id_re = re.compile(r'^(\w*)#(\w+)\s*$', re.UNICODE)
+_class_re = re.compile(r'^(\w*)\.(\w+)\s*$', re.UNICODE)
+
+
 class Translator(object):
     combinator_mapping = {
         ' ': 'descendant',
@@ -152,12 +166,35 @@ class Translator(object):
         '!=': 'different',  # XXX Not in Level 3 but meh
     }
 
-    def xpath(self, parsed_selector):
+    def css_to_xpath(self, css, prefix='descendant-or-self::'):
+        if isinstance(css, _basestring):
+            # Fast path for simple cases
+            match = _el_re.match(css)
+            if match:
+                return '%s%s' % (prefix, match.group(0).strip())
+            match = _id_re.match(css)
+            if match is not None:
+                return "%s%s[@id = '%s']" % (
+                    prefix, match.group(1) or '*', match.group(2))
+            match = _class_re.match(css)
+            if match is not None:
+                return ("%s%s[@class and contains(concat("
+                        "' ', normalize-space(@class), ' '), ' %s ')]"
+                        % (prefix, match.group(1) or '*', match.group(2)))
+
+            selector = parse(css)
+        else:
+            selector = css  # assume it is already parsed
+        xpath = self.xpath(selector)
+        xpath.add_prefix(prefix or '')
+        return _unicode(xpath)
+
+    def xpath(self, parsed_selector, prefix=None):
         """Translate any parsed selector object."""
         type_name = type(parsed_selector).__name__
         method = getattr(self, 'xpath_%s' % type_name.lower(), None)
         if not method:
-            raise TypeError('Expected a parsed selector, got type_name')
+            raise TypeError('Expected a parsed selector, got %s' % type_name)
         return method(parsed_selector)
 
 
