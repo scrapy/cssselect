@@ -1,8 +1,6 @@
 Planned for future versions
 ===========================
 
-* Separate the XPath translation from the parsed objects into its own
-  class, so that it can be overridden through inheritance.
 * Give the docs some love
 
 
@@ -23,7 +21,15 @@ The removed parts are expected to stay in lxml for backward-compatibility.
 <http://www.w3.org/TR/2001/CR-css3-selectors-20011113/#content-selectors>`_
 of the Selectors specification, and was removed before Level 3 stabilized.
 Internally, it used a custom XPath extension function which can be
-diffuclt to express outside of lxml.
+difficult to express outside of lxml.
+
+
+* Separate the XPath translation from the parsed objects into a new
+  Translator class.
+* Make css_to_xpath() accept a Translator instance as a parameter.
+
+Subclasses of Translator can be made to change the way that some selector
+(eg. a pseudo-class) is implemented.
 
 
 Version 0.1

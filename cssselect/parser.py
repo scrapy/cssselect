@@ -46,106 +46,23 @@ class Class(object):
             self.selector,
             self.class_name)
 
-    def xpath(self):
-        sel_xpath = self.selector.xpath()
-        sel_xpath.add_condition(
-            "@class and contains(concat(' ', normalize-space(@class), ' '), %s)" % xpath_literal(' '+self.class_name+' '))
-        return sel_xpath
 
 class Function(object):
     """
     Represents selector:name(expr)
     """
 
-    unsupported = [
-        'target', 'lang', 'enabled', 'disabled',]
-
-    def __init__(self, selector, type, name, expr):
+    def __init__(self, selector, type, name, arguments):
         self.selector = selector
-        self.type = type
+        self.type = type  # TODO: is this needed?
         self.name = name
-        self.expr = expr
+        self.arguments = arguments
 
     def __repr__(self):
         return '%s[%r%s%s(%r)]' % (
             self.__class__.__name__,
             self.selector,
-            self.type, self.name, self.expr)
-
-    def xpath(self):
-        sel_path = self.selector.xpath()
-        if self.name in self.unsupported:
-            raise ExpressionError(
-                "The pseudo-class %r is not supported" % self.name)
-        method = '_xpath_' + self.name.replace('-', '_')
-        if not hasattr(self, method):
-            raise ExpressionError(
-                "The pseudo-class %r is unknown" % self.name)
-        method = getattr(self, method)
-        return method(sel_path, self.expr)
-
-    def _xpath_nth_child(self, xpath, expr, last=False,
-                         add_name_test=True):
-        a, b = parse_series(expr)
-        if not a and not b and not last:
-            # a=0 means nothing is returned...
-            xpath.add_condition('false() and position() = 0')
-            return xpath
-        if add_name_test:
-            xpath.add_name_test()
-        xpath.add_star_prefix()
-        if a == 0:
-            if last:
-                b = 'last() - %s' % b
-            xpath.add_condition('position() = %s' % b)
-            return xpath
-        if last:
-            # FIXME: I'm not sure if this is right
-            a = -a
-            b = -b
-        if b > 0:
-            b_neg = str(-b)
-        else:
-            b_neg = '+%s' % (-b)
-        if a != 1:
-            expr = ['(position() %s) mod %s = 0' % (b_neg, a)]
-        else:
-            expr = []
-        if b >= 0:
-            expr.append('position() >= %s' % b)
-        elif b < 0 and last:
-            expr.append('position() < (last() %s)' % b)
-        expr = ' and '.join(expr)
-        if expr:
-            xpath.add_condition(expr)
-        return xpath
-        # FIXME: handle an+b, odd, even
-        # an+b means every-a, plus b, e.g., 2n+1 means odd
-        # 0n+b means b
-        # n+0 means a=1, i.e., all elements
-        # an means every a elements, i.e., 2n means even
-        # -n means -1n
-        # -1n+6 means elements 6 and previous
-
-    def _xpath_nth_last_child(self, xpath, expr):
-        return self._xpath_nth_child(xpath, expr, last=True)
-
-    def _xpath_nth_of_type(self, xpath, expr):
-        if xpath.element == '*':
-            raise NotImplementedError(
-                "*:nth-of-type() is not implemented")
-        return self._xpath_nth_child(xpath, expr, add_name_test=False)
-
-    def _xpath_nth_last_of_type(self, xpath, expr):
-        return self._xpath_nth_child(xpath, expr, last=True, add_name_test=False)
-
-    def _xpath_not(self, xpath, expr):
-        # everything for which not expr applies
-        expr = expr.xpath()
-        cond = expr.condition
-        # FIXME: should I do something about element_path?
-        xpath.add_condition('not(%s)' % cond)
-        return xpath
+            self.type, self.name, self.arguments)
 
 
 class Pseudo(object):
@@ -153,12 +70,8 @@ class Pseudo(object):
     Represents selector:ident
     """
 
-    unsupported = ['indeterminate', 'first-line', 'first-letter',
-                   'selection', 'before', 'after', 'link', 'visited',
-                   'active', 'focus', 'hover']
-
-    def __init__(self, element, type, ident):
-        self.element = element
+    def __init__(self, selector, type, ident):
+        self.selector = selector
         assert type in (':', '::')
         self.type = type
         self.ident = ident
@@ -166,75 +79,9 @@ class Pseudo(object):
     def __repr__(self):
         return '%s[%r%s%s]' % (
             self.__class__.__name__,
-            self.element,
+            self.selector,
             self.type, self.ident)
 
-    def xpath(self):
-        el_xpath = self.element.xpath()
-        if self.ident in self.unsupported:
-            raise ExpressionError(
-                "The pseudo-class %r is unsupported" % self.ident)
-        method = '_xpath_' + self.ident.replace('-', '_')
-        if not hasattr(self, method):
-            raise ExpressionError(
-                "The pseudo-class %r is unknown" % self.ident)
-        method = getattr(self, method)
-        el_xpath = method(el_xpath)
-        return el_xpath
-
-    def _xpath_checked(self, xpath):
-        # FIXME: is this really all the elements?
-        xpath.add_condition("(@selected or @checked) and (name(.) = 'input' or name(.) = 'option')")
-        return xpath
-
-    def _xpath_root(self, xpath):
-        xpath.add_condition("not(parent::*)")
-        return xpath
-
-    def _xpath_first_child(self, xpath):
-        xpath.add_star_prefix()
-        xpath.add_name_test()
-        xpath.add_condition('position() = 1')
-        return xpath
-
-    def _xpath_last_child(self, xpath):
-        xpath.add_star_prefix()
-        xpath.add_name_test()
-        xpath.add_condition('position() = last()')
-        return xpath
-
-    def _xpath_first_of_type(self, xpath):
-        if xpath.element == '*':
-            raise NotImplementedError(
-                "*:first-of-type is not implemented")
-        xpath.add_star_prefix()
-        xpath.add_condition('position() = 1')
-        return xpath
-
-    def _xpath_last_of_type(self, xpath):
-        if xpath.element == '*':
-            raise NotImplementedError(
-                "*:last-of-type is not implemented")
-        xpath.add_star_prefix()
-        xpath.add_condition('position() = last()')
-        return xpath
-
-    def _xpath_only_child(self, xpath):
-        xpath.add_name_test()
-        xpath.add_star_prefix()
-        xpath.add_condition('last() = 1')
-        return xpath
-
-    def _xpath_only_of_type(self, xpath):
-        if xpath.element == '*':
-            raise NotImplementedError(
-                "*:only-of-type is not implemented")
-        xpath.add_condition('last() = 1')
-        return xpath
-
-    def _xpath_empty(self, xpath):
-        xpath.add_condition("not(*) and not(normalize-space())")
-        return xpath
 
 class Attrib(object):
     """
@@ -268,54 +115,6 @@ class Attrib(object):
         else:
             return '%s|%s' % (self.namespace, self.attrib)
 
-    def _xpath_attrib(self):
-        # FIXME: if attrib is *?
-        if self.namespace == '*':
-            return '@' + self.attrib
-        else:
-            return '@%s:%s' % (self.namespace, self.attrib)
-
-    def xpath(self):
-        path = self.selector.xpath()
-        attrib = self._xpath_attrib()
-        value = self.value
-        if self.operator == 'exists':
-            assert not value
-            path.add_condition(attrib)
-        elif self.operator == '=':
-            path.add_condition('%s = %s' % (attrib,
-                                            xpath_literal(value)))
-        elif self.operator == '!=':
-            # FIXME: this seems like a weird hack...
-            if value:
-                path.add_condition('not(%s) or %s != %s'
-                                   % (attrib, attrib, xpath_literal(value)))
-            else:
-                path.add_condition('%s != %s'
-                                   % (attrib, xpath_literal(value)))
-            #path.add_condition('%s != %s' % (attrib, xpath_literal(value)))
-        elif self.operator == '~=':
-            path.add_condition("%s and contains(concat(' ', normalize-space(%s), ' '), %s)" % (attrib, attrib, xpath_literal(' '+value+' ')))
-        elif self.operator == '|=':
-            # Weird, but true...
-            path.add_condition('%s and (%s = %s or starts-with(%s, %s))' % (
-                attrib,
-                attrib, xpath_literal(value),
-                attrib, xpath_literal(value + '-')))
-        elif self.operator == '^=':
-            path.add_condition('%s and starts-with(%s, %s)' % (
-                attrib, attrib, xpath_literal(value)))
-        elif self.operator == '$=':
-            # Oddly there is a starts-with in XPath 1.0, but not ends-with
-            path.add_condition('%s and substring(%s, string-length(%s)-%s) = %s'
-                               % (attrib, attrib, attrib, len(value)-1, xpath_literal(value)))
-        elif self.operator == '*=':
-            # Attribute selectors are case sensitive
-            path.add_condition('%s and contains(%s, %s)' % (
-                attrib, attrib, xpath_literal(value)))
-        else:
-            assert 0, ("Unknown operator: %r" % self.operator)
-        return path
 
 class Element(object):
     """
@@ -337,13 +136,6 @@ class Element(object):
         else:
             return '%s|%s' % (self.namespace, self.element)
 
-    def xpath(self):
-        if self.namespace == '*':
-            el = self.element.lower()
-        else:
-            # FIXME: Should we lowercase here?
-            el = '%s:%s' % (self.namespace, self.element)
-        return XPathExpr(element=el)
 
 class Hash(object):
     """
@@ -359,10 +151,6 @@ class Hash(object):
             self.__class__.__name__,
             self.selector, self.id)
 
-    def xpath(self):
-        path = self.selector.xpath()
-        path.add_condition('@id = %s' % xpath_literal(self.id))
-        return path
 
 class Or(object):
 
@@ -373,18 +161,8 @@ class Or(object):
             self.__class__.__name__,
             self.items)
 
-    def xpath(self):
-        paths = [item.xpath() for item in self.items]
-        return XPathExprOr(paths)
 
 class CombinedSelector(object):
-
-    _method_mapping = {
-        ' ': 'descendant',
-        '>': 'child',
-        '+': 'direct_adjacent',
-        '~': 'indirect_adjacent',
-        }
 
     def __init__(self, selector, combinator, subselector):
         assert selector is not None
@@ -403,40 +181,8 @@ class CombinedSelector(object):
             comb,
             self.subselector)
 
-    def xpath(self):
-        if self.combinator not in self._method_mapping:
-            raise ExpressionError(
-                "Unknown combinator: %r" % self.combinator)
-        method = '_xpath_' + self._method_mapping[self.combinator]
-        method = getattr(self, method)
-        path = self.selector.xpath()
-        return method(path, self.subselector)
-
-    def _xpath_descendant(self, xpath, sub):
-        # when sub is a descendant in any way of xpath
-        xpath.join('/descendant-or-self::*/', sub.xpath())
-        return xpath
-
-    def _xpath_child(self, xpath, sub):
-        # when sub is an immediate child of xpath
-        xpath.join('/', sub.xpath())
-        return xpath
-
-    def _xpath_direct_adjacent(self, xpath, sub):
-        # when sub immediately follows xpath
-        xpath.join('/following-sibling::', sub.xpath())
-        xpath.add_name_test()
-        xpath.add_condition('position() = 1')
-        return xpath
-
-    def _xpath_indirect_adjacent(self, xpath, sub):
-        # when sub comes somewhere after xpath as a sibling
-        xpath.join('/following-sibling::', sub.xpath())
-        return xpath
-
 
 #### Parser
-
 
 def parse(string):
     stream = TokenStream(tokenize(string))
@@ -454,6 +200,7 @@ def parse(string):
         e.args = tuple([message])
         raise
 
+
 def parse_selector_group(stream):
     result = []
     while 1:
@@ -469,6 +216,7 @@ def parse_selector_group(stream):
         return result[0]
     else:
         return Or(result)
+
 
 def parse_selector(stream):
     consumed = len(stream.used)
@@ -495,6 +243,7 @@ def parse_selector(stream):
                 "Expected selector, got '%s'" % stream.peek())
         result = CombinedSelector(result, combinator, next_selector)
     return result
+
 
 def parse_simple_selector(stream):
     peek = stream.peek()
@@ -572,6 +321,7 @@ def parse_simple_selector(stream):
         # FIXME: not sure what "negation" is
     return result
 
+
 def is_int(v):
     try:
         int(v)
@@ -579,6 +329,7 @@ def is_int(v):
         return False
     else:
         return True
+
 
 def parse_attrib(selector, stream):
     attrib = stream.next()
@@ -599,6 +350,7 @@ def parse_attrib(selector, stream):
         raise SelectorSyntaxError(
             "Expected string or symbol, got '%s'" % value)
     return Attrib(selector, namespace, attrib, op, value)
+
 
 def parse_series(s):
     """
@@ -716,6 +468,7 @@ split_at_string_escapes = re.compile(r'(\\(?:%s))'
                                      % '|'.join(['[A-Fa-f0-9]{1,6}(?:\r\n|\s)?',
                                                  '[^A-Fa-f0-9]'])).split
 
+
 def unescape_string_literal(literal):
     substrings = []
     for substring in split_at_string_escapes(literal):
@@ -733,6 +486,7 @@ def unescape_string_literal(literal):
                     % (substring.split('\\')[1], literal))
         substrings.append(substring)
     return ''.join(substrings)
+
 
 def tokenize_escaped_string(s, pos):
     quote = s[pos]
@@ -753,6 +507,7 @@ def tokenize_escaped_string(s, pos):
         if '\\' in result:
             result = unescape_string_literal(result)
         return result, next+1
+
 
 _illegal_symbol = re.compile(r'[^\w\\-]', re.UNICODE)
 
@@ -779,6 +534,7 @@ def tokenize_symbol(s, pos):
         raise SelectorSyntaxError(
             "Bad symbol %r: %s" % (result, e))
     return result, pos
+
 
 class TokenStream(object):
 
@@ -818,6 +574,3 @@ class TokenStream(object):
                 return None
             self._peeking = True
         return self.peeked
-
-# XXX
-from cssselect.xpath import XPathExpr, XPathExprOr, xpath_literal

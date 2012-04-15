@@ -22,6 +22,7 @@ import unittest
 
 from lxml import html
 from cssselect.parser import tokenize, parse, parse_series
+from cssselect.xpath import Translator
 from cssselect import css_to_xpath
 
 
@@ -136,7 +137,7 @@ class TestCssselect(unittest.TestCase):
 
     def test_translation(self):
         def xpath(css):
-            return str(parse(css).xpath())
+            return str(Translator().xpath(parse(css)))
 
         assert xpath('*') == "*"
         assert xpath('E') == "e"
@@ -204,8 +205,7 @@ class TestCssselect(unittest.TestCase):
             "e/following-sibling::f")
         assert xpath('div#container p') == (
             "div[@id = 'container']/descendant-or-self::*/p")
-        self.assertRaises(NotImplementedError,
-            lambda: parse('p *:only-of-type').xpath())
+        self.assertRaises(NotImplementedError, xpath, 'p *:only-of-type')
 
     def test_unicode(self):
         if sys.version_info[0] >= 3:

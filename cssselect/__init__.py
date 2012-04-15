@@ -15,6 +15,7 @@
 import re
 from cssselect.parser import (parse, _unicode, SelectorSyntaxError,
                               ExpressionError)
+from cssselect.xpath import Translator
 
 __all__ = ['SelectorSyntaxError', 'ExpressionError', 'css_to_xpath']
 
@@ -30,7 +31,7 @@ _el_re = re.compile(r'^\w+\s*$', re.UNICODE)
 _id_re = re.compile(r'^(\w*)#(\w+)\s*$', re.UNICODE)
 _class_re = re.compile(r'^(\w*)\.(\w+)\s*$', re.UNICODE)
 
-def css_to_xpath(css_expr, prefix='descendant-or-self::'):
+def css_to_xpath(css_expr, prefix='descendant-or-self::', translator=None):
     if isinstance(css_expr, _basestring):
         match = _el_re.search(css_expr)
         if match is not None:
@@ -41,10 +42,13 @@ def css_to_xpath(css_expr, prefix='descendant-or-self::'):
                 prefix, match.group(1) or '*', match.group(2))
         match = _class_re.search(css_expr)
         if match is not None:
-            return "%s%s[@class and contains(concat(' ', normalize-space(@class), ' '), ' %s ')]" % (
-                prefix, match.group(1) or '*', match.group(2))
+            return ("%s%s[@class and contains(concat("
+                    "' ', normalize-space(@class), ' '), ' %s ')]"
+                    % (prefix, match.group(1) or '*', match.group(2)))
         css_expr = parse(css_expr)
-    expr = css_expr.xpath()
+    if translator is None:
+        translator = Translator()
+    expr = translator.xpath(css_expr)
     assert expr is not None, (
         "Got None for xpath expression from %s" % repr(css_expr))
     if prefix:
