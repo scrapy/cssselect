@@ -1,7 +1,18 @@
-Planned for future versions
-===========================
+Planned
+=======
 
 * Give the docs some love
+* Implement :target, :hover, :focus and :active as never matching
+* Make a new HTML-specific Translator subclass. There, implement :enabled,
+  :disabled, :link and :visited (with all links "not visited").
+* Move :checked to the new HTMLTranslator, make it unsupported for
+  "generic" XML.
+* Add some support for pseudo-elements by separating them from the
+  rest of the selector.
+* Add specificity calculation.
+
+Discussion is open if anyone is interested in implementing eg. :target or
+:visited differently, but they can always do it in a Translator subclass.
 
 
 Version 0.2
