@@ -12,7 +12,7 @@
 """
 
 import re
-from cssselect.parser import parse, parse_series, ExpressionError, Element
+from cssselect.parser import parse, parse_series, Element, SelectorError
 
 
 try:
@@ -22,6 +22,10 @@ except NameError:
     # Python 3
     _basestring = str
     _unicode = str
+
+
+class ExpressionError(SelectorError, RuntimeError):
+    """Inexistent or unsupported selector (eg. pseudo-class)."""
 
 
 #### XPath Helpers
@@ -207,7 +211,7 @@ class Translator(object):
         method = getattr(self, method, None)
         if not method:
             raise ExpressionError(
-                "The pseudo-class %r is unknown" % function.name)
+                "The pseudo-class :%r is unknown" % function.name)
         return method(self.xpath(function.selector), function)
 
     def xpath_pseudo(self, pseudo):
@@ -216,7 +220,7 @@ class Translator(object):
         method = getattr(self, method, None)
         if not method:
             raise ExpressionError(
-                "The pseudo-class %r is unknown" % pseudo.ident)
+                "The pseudo-class :%r is unknown" % pseudo.ident)
         return method(self.xpath(pseudo.selector))
 
 
@@ -333,14 +337,14 @@ class Translator(object):
 
     def xpath_nth_of_type_function(self, xpath, function):
         if xpath.element == '*':
-            raise NotImplementedError(
+            raise ExpressionError(
                 "*:nth-of-type() is not implemented")
         return self.xpath_nth_child_function(xpath, function,
                                              add_name_test=False)
 
     def xpath_nth_last_of_type_function(self, xpath, function):
         if xpath.element == '*':
-            raise NotImplementedError(
+            raise ExpressionError(
                 "*:nth-of-type() is not implemented")
         return self.xpath_nth_child_function(xpath, function, last=True,
                                              add_name_test=False)
@@ -378,7 +382,7 @@ class Translator(object):
 
     def xpath_first_of_type_pseudo(self, xpath):
         if xpath.element == '*':
-            raise NotImplementedError(
+            raise ExpressionError(
                 "*:first-of-type is not implemented")
         xpath.add_star_prefix()
         xpath.add_condition('position() = 1')
@@ -386,7 +390,7 @@ class Translator(object):
 
     def xpath_last_of_type_pseudo(self, xpath):
         if xpath.element == '*':
-            raise NotImplementedError(
+            raise ExpressionError(
                 "*:last-of-type is not implemented")
         xpath.add_star_prefix()
         xpath.add_condition('position() = last()')
@@ -400,7 +404,7 @@ class Translator(object):
 
     def xpath_only_of_type_pseudo(self, xpath):
         if xpath.element == '*':
-            raise NotImplementedError(
+            raise ExpressionError(
                 "*:only-of-type is not implemented")
         xpath.add_condition('last() = 1')
         return xpath

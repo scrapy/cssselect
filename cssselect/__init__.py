@@ -12,11 +12,10 @@
 
 """
 
-import re
-from cssselect.parser import SelectorSyntaxError, ExpressionError
+from cssselect.parser import SelectorError
 from cssselect.xpath import Translator
 
-__all__ = ['SelectorSyntaxError', 'ExpressionError', 'css_to_xpath']
+__all__ = ['SelectorError', 'css_to_xpath']
 
 
 css_to_xpath = Translator().css_to_xpath

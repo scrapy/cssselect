@@ -22,11 +22,17 @@ except NameError:
     _unicode = str
     _unichr = chr
 
-class SelectorSyntaxError(SyntaxError):
-    pass
 
-class ExpressionError(RuntimeError):
-    pass
+class SelectorError(Exception):
+    """Invalid or unsupported selector.
+
+    Common parent class for the exceptions that are actually raised.
+    You can use it to catch any error in a selector.
+
+    """
+
+class SelectorSyntaxError(SelectorError, SyntaxError):
+    """Parsing a selector that does not match the grammar."""
 
 
 #### Parsed objects
@@ -534,8 +540,8 @@ def tokenize_symbol(s, pos):
         # Goes to end of s
         return s[start:], len(s)
     if match.start() == pos:
-        assert 0, (
-            "Unexpected symbol: %r at %s" % (s[pos], pos))
+        raise SelectorSyntaxError(
+            "Unexpected symbol: %r" % s[pos])
     if not match:
         result = s[start:]
         pos = len(s)

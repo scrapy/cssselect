@@ -21,8 +21,8 @@ import operator
 import unittest
 
 from lxml import html
-from cssselect.parser import tokenize, parse, parse_series
-from cssselect.xpath import Translator
+from cssselect.parser import tokenize, parse, parse_series, SelectorSyntaxError
+from cssselect.xpath import Translator, ExpressionError
 from cssselect import css_to_xpath
 
 
@@ -107,7 +107,8 @@ class TestCssselect(unittest.TestCase):
         def get_error(css):
             try:
                 parse(css)
-            except: # Py2, Py3, ...
+            except SelectorSyntaxError:
+                # Py2, Py3, ...
                 return str(sys.exc_info()[1]).replace("(u'", "('")
 
         assert get_error('attributes(href)/html/body/a') == (
@@ -117,7 +118,7 @@ class TestCssselect(unittest.TestCase):
             "Expected selector, got '(' at "
             "[Symbol('attributes', 0)] -> Token('(', 10)")
         assert get_error('html/body/a') == (
-            "Unexpected symbol: '/' at 4")
+            "Unexpected symbol: '/' at [Symbol('html', 0)] -> None")
         assert get_error(' ') == (
             "Expected selector, got 'None' at [] -> None")
         assert get_error('div, ') == (
@@ -205,7 +206,7 @@ class TestCssselect(unittest.TestCase):
             "e/following-sibling::f")
         assert xpath('div#container p') == (
             "div[@id = 'container']/descendant-or-self::*/p")
-        self.assertRaises(NotImplementedError, xpath, 'p *:only-of-type')
+        self.assertRaises(ExpressionError, xpath, 'p *:only-of-type')
 
     def test_unicode(self):
         if sys.version_info[0] >= 3:
@@ -310,7 +311,7 @@ class TestCssselect(unittest.TestCase):
         assert pcss('span:only-child') == ['foobar-span']
         assert pcss('li div:only-child') == ['li-div']
         assert pcss('div *:only-child') == ['li-div', 'foobar-span']
-        self.assertRaises(NotImplementedError, pcss, 'p *:only-of-type')
+        self.assertRaises(ExpressionError, pcss, 'p *:only-of-type')
         assert pcss('p:only-of-type') == ['paragraph']
         assert pcss('a:empty') == ['name-anchor']
         assert pcss('li:empty') == [
