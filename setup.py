@@ -18,7 +18,7 @@ setup(
     url='http://packages.python.org/cssselect/',
     license='BSD',
     install_requires='lxml',
-    py_modules = ['cssselect', 'test_cssselect'],  # XXX include the tests?
+    packages=['cssselect'],
     test_suite='test_cssselect',
     classifiers=[
         'Development Status :: 4 - Beta',

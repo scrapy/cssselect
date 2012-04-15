@@ -1,0 +1,3 @@
+include AUTHORS CHANGES LICENSE README tox.ini
+recursive-include docs *
+prune docs/_build
