@@ -21,7 +21,8 @@ import operator
 import unittest
 
 from lxml import html
-from cssselect import tokenize, parse, css_to_xpath, parse_series
+from cssselect.parser import tokenize, parse, parse_series
+from cssselect import css_to_xpath
 
 
 class TestCssselect(unittest.TestCase):
