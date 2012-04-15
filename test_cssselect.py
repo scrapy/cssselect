@@ -24,15 +24,6 @@ from lxml import html
 from cssselect import tokenize, parse, css_to_xpath, parse_series, CSSSelector
 
 
-def assert_raises(exception_class, function, *args, **kwargs):
-    try:
-        function(*args, **kwargs)
-    except exception_class:
-        pass
-    else:
-        assert 0, 'did not raise'
-
-
 class TestCssselect(unittest.TestCase):
     def test_tokenizer(self):
         tokens = [repr(item).replace("u'", "'")
@@ -214,8 +205,8 @@ class TestCssselect(unittest.TestCase):
             == "e/following-sibling::f")
         assert (xpath('div#container p')
             == "div[@id = 'container']/descendant-or-self::*/p")
-        assert_raises(NotImplementedError,
-                      lambda: parse('p *:only-of-type').xpath())
+        self.assertRaises(NotImplementedError,
+            lambda: parse('p *:only-of-type').xpath())
 
     def test_unicode(self):
         if sys.version_info[0] >= 3:
@@ -320,7 +311,7 @@ class TestCssselect(unittest.TestCase):
         assert pcss('span:only-child') == ['foobar-span']
         assert pcss('li div:only-child') == ['li-div']
         assert pcss('div *:only-child') == ['li-div', 'foobar-span']
-        assert_raises(NotImplementedError, pcss, 'p *:only-of-type')
+        self.assertRaises(NotImplementedError, pcss, 'p *:only-of-type')
         assert pcss('p:only-of-type') == ['paragraph']
         assert pcss('a:empty') == ['name-anchor']
         assert pcss('li:empty') == [
