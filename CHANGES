@@ -1,12 +1,8 @@
 Planned for future versions
 ===========================
 
-* Make cssselect usable without lxml. (Hey, this is the whole point of
-  extracting it.) The tests will still require lxml, though.
-  This probably implies removing the CSSSelector class.
-  (Will it stay in lxml?)
 * Separate the XPath translation from the parsed objects into its own
-  class, so that it can be overrided through inheritance.
+  class, so that it can be overridden through inheritance.
 * Give the docs some love
 
 
@@ -15,13 +11,19 @@ Version 0.2
 
 Not released yet.
 
-Remove support for the ``:contains()`` pseudo-class. It is expected to
-stay in lxml for backward-compatibility.
+* Remove the CSSSelector class. (The css_to_xpath function is now the
+  main API.)
+* Remove support for the ``:contains()`` pseudo-class.
 
-:contains() internally used a custom XPath extension function, which can be
-hard to express outside of lxml. It only existed in an `early draft
+These changes allow cssselect to be used without lxml. (Hey, this was
+the whole point of this project.) The tests still require lxml, though.
+The removed parts are expected to stay in lxml for backward-compatibility.
+
+:contains() only existed in an `early draft
 <http://www.w3.org/TR/2001/CR-css3-selectors-20011113/#content-selectors>`_
 of the Selectors specification, and was removed before Level 3 stabilized.
+Internally, it used a custom XPath extension function which can be
+diffuclt to express outside of lxml.
 
 
 Version 0.1

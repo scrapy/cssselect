@@ -12,15 +12,18 @@
 """
 
 import re
-from lxml import etree
 
-__all__ = ['SelectorSyntaxError', 'ExpressionError',
-           'CSSSelector']
+__all__ = ['SelectorSyntaxError', 'ExpressionError', 'css_to_xpath']
 
 try:
     _basestring = basestring
+    _unicode = unicode
+    _unichr = unichr
 except NameError:
+    # Python 3
     _basestring = str
+    _unicode = str
+    _unichr = chr
 
 class SelectorSyntaxError(SyntaxError):
     pass
@@ -28,53 +31,9 @@ class SelectorSyntaxError(SyntaxError):
 class ExpressionError(RuntimeError):
     pass
 
-class CSSSelector(etree.XPath):
-    """A CSS selector.
-
-    Usage::
-
-        >>> from lxml import etree, cssselect
-        >>> select = cssselect.CSSSelector("a tag > child")
-
-        >>> root = etree.XML("<a><b><c/><tag><child>TEXT</child></tag></b></a>")
-        >>> [ el.tag for el in select(root) ]
-        ['child']
-
-    To use CSS namespaces, you need to pass a prefix-to-namespace
-    mapping as ``namespaces`` keyword argument::
-
-        >>> rdfns = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
-        >>> select_ns = cssselect.CSSSelector('root > rdf|Description',
-        ...                                   namespaces={'rdf': rdfns})
-
-        >>> rdf = etree.XML((
-        ...     '<root xmlns:rdf="%s">'
-        ...       '<rdf:Description>blah</rdf:Description>'
-        ...     '</root>') % rdfns)
-        >>> [(el.tag, el.text) for el in select_ns(rdf)]
-        [('{http://www.w3.org/1999/02/22-rdf-syntax-ns#}Description', 'blah')]
-    """
-    def __init__(self, css, namespaces=None):
-        path = css_to_xpath(css)
-        etree.XPath.__init__(self, path, namespaces=namespaces)
-        self.css = css
-
-    def __repr__(self):
-        return '<%s %s for %r>' % (
-            self.__class__.__name__,
-            hex(abs(id(self)))[2:],
-            self.css)
 
 ##############################
 ## Token objects:
-
-try:
-    _unicode = unicode
-    _unichr = unichr
-except NameError:
-    # Python 3
-    _unicode = str
-    _unichr = chr
 
 class _UniToken(_unicode):
     def __new__(cls, contents, pos):
