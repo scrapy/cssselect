@@ -141,70 +141,70 @@ class TestCssselect(unittest.TestCase):
         assert xpath('E') == "e"
         assert xpath('E[foo]') == "e[@foo]"
         assert xpath('E[foo="bar"]') == "e[@foo = 'bar']"
-        assert (xpath('E[foo~="bar"]')
-            == "e[@foo and contains("
+        assert xpath('E[foo~="bar"]') == (
+            "e[@foo and contains("
                "concat(' ', normalize-space(@foo), ' '), ' bar ')]")
-        assert (xpath('E[foo^="bar"]')
-            == "e[@foo and starts-with(@foo, 'bar')]")
-        assert (xpath('E[foo$="bar"]')
-            == "e[@foo and substring(@foo, string-length(@foo)-2) = 'bar']")
-        assert (xpath('E[foo*="bar"]')
-            == "e[@foo and contains(@foo, 'bar')]")
-        assert (xpath('E[hreflang|="en"]')
-            == "e[@hreflang and ("
+        assert xpath('E[foo^="bar"]') == (
+            "e[@foo and starts-with(@foo, 'bar')]")
+        assert xpath('E[foo$="bar"]') == (
+            "e[@foo and substring(@foo, string-length(@foo)-2) = 'bar']")
+        assert xpath('E[foo*="bar"]') == (
+            "e[@foo and contains(@foo, 'bar')]")
+        assert xpath('E[hreflang|="en"]') == (
+            "e[@hreflang and ("
                "@hreflang = 'en' or starts-with(@hreflang, 'en-'))]")
-        assert (xpath('E:nth-child(1)')
-            == "*/*[name() = 'e' and (position() = 1)]")
-        assert (xpath('E:nth-last-child(1)')
-            == "*/*[name() = 'e' and (position() = last() - 1)]")
-        assert (xpath('E:nth-last-child(2n+2)')
-            == "*/*[name() = 'e' and ("
+        assert xpath('E:nth-child(1)') == (
+            "*/*[name() = 'e' and (position() = 1)]")
+        assert xpath('E:nth-last-child(1)') == (
+            "*/*[name() = 'e' and (position() = last() - 1)]")
+        assert xpath('E:nth-last-child(2n+2)') == (
+            "*/*[name() = 'e' and ("
                "(position() +2) mod -2 = 0 and position() < (last() -2))]")
-        assert (xpath('E:nth-of-type(1)')
-            == "*/e[position() = 1]")
-        assert (xpath('E:nth-last-of-type(1)')
-            == "*/e[position() = last() - 1]")
-        assert (xpath('E:nth-last-of-type(1)')
-            == "*/e[position() = last() - 1]")
-        assert (xpath('div E:nth-last-of-type(1) .aclass')
-            == "div/descendant-or-self::*/e[position() = last() - 1]"
+        assert xpath('E:nth-of-type(1)') == (
+            "*/e[position() = 1]")
+        assert xpath('E:nth-last-of-type(1)') == (
+            "*/e[position() = last() - 1]")
+        assert xpath('E:nth-last-of-type(1)') == (
+            "*/e[position() = last() - 1]")
+        assert xpath('div E:nth-last-of-type(1) .aclass') == (
+            "div/descendant-or-self::*/e[position() = last() - 1]"
                "/descendant-or-self::*/*[@class and contains("
                "concat(' ', normalize-space(@class), ' '), ' aclass ')]")
-        assert (xpath('E:first-child')
-            == "*/*[name() = 'e' and (position() = 1)]")
-        assert (xpath('E:last-child')
-            == "*/*[name() = 'e' and (position() = last())]")
-        assert (xpath('E:first-of-type')
-            == "*/e[position() = 1]")
-        assert (xpath('E:last-of-type')
-            == "*/e[position() = last()]")
-        assert (xpath('E:only-child')
-            == "*/*[name() = 'e' and (last() = 1)]")
-        assert (xpath('E:only-of-type')
-            == "e[last() = 1]")
-        assert (xpath('E:empty')
-            == "e[not(*) and not(normalize-space())]")
-        assert (xpath('E:root')
-            == "e[not(parent::*)]")
-        assert (xpath('E:contains("foo")')
-            == "e[contains(css:lower-case(string(.)), 'foo')]")
-        assert (xpath('E.warning')
-            == "e[@class and contains("
+        assert xpath('E:first-child') == (
+            "*/*[name() = 'e' and (position() = 1)]")
+        assert xpath('E:last-child') == (
+            "*/*[name() = 'e' and (position() = last())]")
+        assert xpath('E:first-of-type') == (
+            "*/e[position() = 1]")
+        assert xpath('E:last-of-type') == (
+            "*/e[position() = last()]")
+        assert xpath('E:only-child') == (
+            "*/*[name() = 'e' and (last() = 1)]")
+        assert xpath('E:only-of-type') == (
+            "e[last() = 1]")
+        assert xpath('E:empty') == (
+            "e[not(*) and not(normalize-space())]")
+        assert xpath('E:root') == (
+            "e[not(parent::*)]")
+        assert xpath('E:contains("foo")') == (
+            "e[contains(css:lower-case(string(.)), 'foo')]")
+        assert xpath('E.warning') == (
+            "e[@class and contains("
                "concat(' ', normalize-space(@class), ' '), ' warning ')]")
-        assert (xpath('E#myid')
-            == "e[@id = 'myid']")
-        assert (xpath('E:not(:contains("foo"))')
-            == "e[not(contains(css:lower-case(string(.)), 'foo'))]")
-        assert (xpath('E F')
-            == "e/descendant-or-self::*/f")
-        assert (xpath('E > F')
-            == "e/f")
-        assert (xpath('E + F')
-            == "e/following-sibling::*[name() = 'f' and (position() = 1)]")
-        assert (xpath('E ~ F')
-            == "e/following-sibling::f")
-        assert (xpath('div#container p')
-            == "div[@id = 'container']/descendant-or-self::*/p")
+        assert xpath('E#myid') == (
+            "e[@id = 'myid']")
+        assert xpath('E:not(:contains("foo"))') == (
+            "e[not(contains(css:lower-case(string(.)), 'foo'))]")
+        assert xpath('E F') == (
+            "e/descendant-or-self::*/f")
+        assert xpath('E > F') == (
+            "e/f")
+        assert xpath('E + F') == (
+            "e/following-sibling::*[name() = 'f' and (position() = 1)]")
+        assert xpath('E ~ F') == (
+            "e/following-sibling::f")
+        assert xpath('div#container p') == (
+            "div[@id = 'container']/descendant-or-self::*/p")
         self.assertRaises(NotImplementedError,
             lambda: parse('p *:only-of-type').xpath())
 
@@ -222,25 +222,25 @@ class TestCssselect(unittest.TestCase):
             "concat(' ', normalize-space(@class), ' '), ' a&#193;b ')]")
 
     def test_quoting(self):
-        assert (css_to_xpath('*[aval="\'"]')
-            == '''descendant-or-self::*[@aval = "'"]''')
-        assert (css_to_xpath('*[aval="\'\'\'"]')
-            == """descendant-or-self::*[@aval = "'''"]""")
-        assert (css_to_xpath('*[aval=\'"\']')
-            == '''descendant-or-self::*[@aval = '"']''')
-        assert (css_to_xpath('*[aval=\'"""\']')
-            == '''descendant-or-self::*[@aval = '"""']''')
+        assert css_to_xpath('*[aval="\'"]') == (
+            '''descendant-or-self::*[@aval = "'"]''')
+        assert css_to_xpath('*[aval="\'\'\'"]') == (
+            """descendant-or-self::*[@aval = "'''"]""")
+        assert css_to_xpath('*[aval=\'"\']') == (
+            '''descendant-or-self::*[@aval = '"']''')
+        assert css_to_xpath('*[aval=\'"""\']') == (
+            '''descendant-or-self::*[@aval = '"""']''')
 
     def test_unicode_escapes(self):
         # \22 == '"'  \20 == ' '
-        assert (css_to_xpath(r'*[aval="\'\22\'"]')
-            == '''descendant-or-self::*[@aval = concat("'",'"',"'")]''')
-        assert (css_to_xpath(r'*[aval="\'\22 2\'"]')
-            == '''descendant-or-self::*[@aval = concat("'",'"2',"'")]''')
-        assert (css_to_xpath(r'*[aval="\'\20  \'"]')
-            == '''descendant-or-self::*[@aval = "'  '"]''')
-        assert (css_to_xpath('*[aval="\'\\20\r\n \'"]')
-            == '''descendant-or-self::*[@aval = "'  '"]''')
+        assert css_to_xpath(r'*[aval="\'\22\'"]') == (
+            '''descendant-or-self::*[@aval = concat("'",'"',"'")]''')
+        assert css_to_xpath(r'*[aval="\'\22 2\'"]') == (
+            '''descendant-or-self::*[@aval = concat("'",'"2',"'")]''')
+        assert css_to_xpath(r'*[aval="\'\20  \'"]') == (
+            '''descendant-or-self::*[@aval = "'  '"]''')
+        assert css_to_xpath('*[aval="\'\\20\r\n \'"]') == (
+            '''descendant-or-self::*[@aval = "'  '"]''')
 
     def test_series(self):
         assert parse_series('1n+3') == (1, 3)
