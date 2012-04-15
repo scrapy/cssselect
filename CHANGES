@@ -1,7 +1,5 @@
-Version 0.2
-===========
-
-**Planned:**
+Planned for future versions
+===========================
 
 * Make cssselect usable without lxml. (Hey, this is the whole point of
   extracting it.) The tests will still require lxml, though.
@@ -12,8 +10,24 @@ Version 0.2
 * Give the docs some love
 
 
+Version 0.2
+===========
+
+Not released yet.
+
+Remove support for the ``:contains()`` pseudo-class. It is expected to
+stay in lxml for backward-compatibility.
+
+:contains() internally used a custom XPath extension function, which can be
+hard to express outside of lxml. It only existed in an `early draft
+<http://www.w3.org/TR/2001/CR-css3-selectors-20011113/#content-selectors>`_
+of the Selectors specification, and was removed before Level 3 stabilized.
+
+
 Version 0.1
 ===========
+
+Released on 2012-04-13.
 
 Extract lxml.cssselect from the rest of lxml and make it a stand-alone project.
 

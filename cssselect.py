@@ -212,15 +212,6 @@ class Function(object):
     def _xpath_nth_last_of_type(self, xpath, expr):
         return self._xpath_nth_child(xpath, expr, last=True, add_name_test=False)
 
-    def _xpath_contains(self, xpath, expr):
-        # text content, minus tags, must contain expr
-        if isinstance(expr, Element):
-            expr = expr._format_element()
-        xpath.add_condition('contains(css:lower-case(string(.)), %s)'
-                            % xpath_literal(expr.lower()))
-        # FIXME: Currently case insensitive matching doesn't seem to be happening
-        return xpath
-
     def _xpath_not(self, xpath, expr):
         # everything for which not expr applies
         expr = expr.xpath()
@@ -229,12 +220,6 @@ class Function(object):
         xpath.add_condition('not(%s)' % cond)
         return xpath
 
-def _make_lower_case(context, s):
-    return s.lower()
-
-ns = etree.FunctionNamespace('http://codespeak.net/lxml/css/')
-ns.prefix = 'css'
-ns['lower-case'] = _make_lower_case
 
 class Pseudo(object):
     """
