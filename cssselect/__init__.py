@@ -19,7 +19,4 @@ from cssselect.xpath import Translator
 __all__ = ['SelectorSyntaxError', 'ExpressionError', 'css_to_xpath']
 
 
-def css_to_xpath(css, prefix='descendant-or-self::', translator=None):
-    if translator is None:
-        translator = Translator()
-    return translator.css_to_xpath(css, prefix=prefix)
+css_to_xpath = Translator().css_to_xpath

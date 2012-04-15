@@ -184,7 +184,23 @@ class CombinedSelector(object):
 
 #### Parser
 
+_el_re = re.compile(r'^\w+\s*$', re.UNICODE)
+_id_re = re.compile(r'^(\w*)#(\w+)\s*$', re.UNICODE)
+_class_re = re.compile(r'^(\w*)\.(\w+)\s*$', re.UNICODE)
+
+
 def parse(string):
+    # Fast path for simple cases
+    match = _el_re.match(string)
+    if match:
+        return Element('*', match.group(0).strip())
+    match = _id_re.match(string)
+    if match is not None:
+        return Hash(Element('*', match.group(1) or '*'), match.group(2))
+    match = _class_re.match(string)
+    if match is not None:
+        return Class(Element('*', match.group(1) or '*'), match.group(2))
+
     stream = TokenStream(tokenize(string))
     stream.source = string
     try:

@@ -142,11 +142,6 @@ def xpath_literal(s):
 
 #### Translation
 
-_el_re = re.compile(r'^\w+\s*$', re.UNICODE)
-_id_re = re.compile(r'^(\w*)#(\w+)\s*$', re.UNICODE)
-_class_re = re.compile(r'^(\w*)\.(\w+)\s*$', re.UNICODE)
-
-
 class Translator(object):
     combinator_mapping = {
         ' ': 'descendant',
@@ -167,21 +162,13 @@ class Translator(object):
     }
 
     def css_to_xpath(self, css, prefix='descendant-or-self::'):
-        if isinstance(css, _basestring):
-            # Fast path for simple cases
-            match = _el_re.match(css)
-            if match:
-                return '%s%s' % (prefix, match.group(0).strip())
-            match = _id_re.match(css)
-            if match is not None:
-                return "%s%s[@id = '%s']" % (
-                    prefix, match.group(1) or '*', match.group(2))
-            match = _class_re.match(css)
-            if match is not None:
-                return ("%s%s[@class and contains(concat("
-                        "' ', normalize-space(@class), ' '), ' %s ')]"
-                        % (prefix, match.group(1) or '*', match.group(2)))
+        """Translate a CSS Selector to XPath.
 
+        :param css: An Unicode string or a parsed selector object.
+        :returns: An Unicode string.
+
+        """
+        if isinstance(css, _basestring):
             selector = parse(css)
         else:
             selector = css  # assume it is already parsed
