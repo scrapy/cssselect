@@ -174,9 +174,9 @@ class Translator(object):
         .. sourcecode:: pycon
 
             >>> from cssselect import css_to_xpath
-            >>> exrpession = css_to_xpath('div.content')
-            >>> exrpession
-            "descendant-or-self::div[contains(concat(' ', normalize-space(@class), ' '), ' content ')]"
+            >>> expression = css_to_xpath('div.content')
+            >>> print(expression)
+            descendant-or-self::div[@class and contains(concat(' ', normalize-space(@class), ' '), ' content ')]
 
         The resulting expression can be used with lxml's `XPath engine`_:
 
