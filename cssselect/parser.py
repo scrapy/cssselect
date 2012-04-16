@@ -277,7 +277,7 @@ def parse_simple_selector(stream):
             element = stream.next()
             if element != '*' and not isinstance(element, Symbol):
                 raise SelectorSyntaxError(
-                    "Expected symbol, got '%s'" % next)
+                    "Expected symbol, got '%s'" % element)
         else:
             namespace = '*'
             element = next
@@ -288,11 +288,11 @@ def parse_simple_selector(stream):
         peek = stream.peek()
         if peek == '#':
             stream.next()
-            result = Hash(result, stream.next())
+            result = Hash(result, stream.next_symbol())
             continue
         elif peek == '.':
             stream.next()
-            result = Class(result, stream.next())
+            result = Class(result, stream.next_symbol())
             continue
         elif peek == '[':
             stream.next()
@@ -304,10 +304,7 @@ def parse_simple_selector(stream):
             continue
         elif peek == ':' or peek == '::':
             type = stream.next()
-            ident = stream.next()
-            if not isinstance(ident, Symbol):
-                raise SelectorSyntaxError(
-                    "Expected symbol, got '%s'" % ident)
+            ident = stream.next_symbol()
             if stream.peek() == '(':
                 stream.next()
                 peek = stream.peek()
@@ -587,3 +584,10 @@ class TokenStream(object):
                 return None
             self._peeking = True
         return self.peeked
+
+    def next_symbol(self):
+        next = self.next()
+        if not isinstance(next, Symbol):
+            raise SelectorSyntaxError(
+                "Expected symbol, got '%s'" % next)
+        return next

@@ -142,6 +142,18 @@ class TestCssselect(unittest.TestCase):
             "[Symbol('div', 0), Token('>', 4)] -> None")
         assert get_error(' > div') == (
             "Expected selector, got '>' at [] -> Token('>', 1)")
+        assert get_error('foo|#bar') == (
+            "Expected symbol, got '#' at [Symbol('foo', 0), Token('|', 3), "
+            "Token('#', 4)] -> Symbol('bar', 5)")
+        assert get_error('#.foo') == (
+            "Expected symbol, got '.' at "
+            "[Token('#', 0), Token('.', 1)] -> Symbol('foo', 2)")
+        assert get_error('.#foo') == (
+            "Expected symbol, got '#' at "
+            "[Token('.', 0), Token('#', 1)] -> Symbol('foo', 2)")
+        assert get_error(':#foo') == (
+            "Expected symbol, got '#' at "
+            "[Token(':', 0), Token('#', 1)] -> Symbol('foo', 2)")
 
     def test_translation(self):
         def xpath(css):
