@@ -274,10 +274,7 @@ def parse_simple_selector(stream):
         if stream.peek() == '|':
             namespace = next
             stream.next()
-            element = stream.next()
-            if element != '*' and not isinstance(element, Symbol):
-                raise SelectorSyntaxError(
-                    "Expected symbol, got '%s'" % element)
+            element = stream.next_symbol_or_star()
         else:
             namespace = '*'
             element = next
@@ -298,7 +295,7 @@ def parse_simple_selector(stream):
             stream.next()
             result = parse_attrib(result, stream)
             next = stream.next()
-            if not next == ']':
+            if next != ']':
                 raise SelectorSyntaxError(
                     "] expected, got '%s'" % next)
             continue
@@ -342,11 +339,14 @@ def is_int(v):
 
 
 def parse_attrib(selector, stream):
-    attrib = stream.next()
+    attrib = stream.next_symbol_or_star()
+    if attrib == '*' and stream.peek() != '|':
+        raise SelectorSyntaxError(
+            "Expected '|', got '%s'" % stream.peek())
     if stream.peek() == '|':
         namespace = attrib
         stream.next()
-        attrib = stream.next()
+        attrib = stream.next_symbol()
     else:
         namespace = '*'
     if stream.peek() == ']':
@@ -590,4 +590,11 @@ class TokenStream(object):
         if not isinstance(next, Symbol):
             raise SelectorSyntaxError(
                 "Expected symbol, got '%s'" % next)
+        return next
+
+    def next_symbol_or_star(self):
+        next = self.next()
+        if next != '*' and not isinstance(next, Symbol):
+            raise SelectorSyntaxError(
+                "Expected symbol or '*', got '%s'" % next)
         return next

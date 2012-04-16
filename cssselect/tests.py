@@ -81,12 +81,14 @@ class TestCssselect(unittest.TestCase):
         assert parse_many('td ::first') == (
             'CombinedSelector[Element[td] '
                 '<followed> Pseudo[Element[*]::first]]')
-        assert parse_many('a[name]') == (
+        assert parse_many('a[name]', 'a[ name\t]') == (
             'Attrib[Element[a][name]]')
         assert parse_many('a [name]') == (
             'CombinedSelector[Element[a] <followed> Attrib[Element[*][name]]]')
         assert parse_many('a[rel="include"]') == (
             "Attrib[Element[a][rel = String('include', 6)]]")
+        assert parse_many('a[rel = include]') == (
+            "Attrib[Element[a][rel = Symbol('include', 8)]]")
         assert parse_many("a[hreflang |= 'en']") == (
             "Attrib[Element[a][hreflang |= String('en', 14)]]")
         assert parse_many('div:nth-child(10)') == (
@@ -143,7 +145,8 @@ class TestCssselect(unittest.TestCase):
         assert get_error(' > div') == (
             "Expected selector, got '>' at [] -> Token('>', 1)")
         assert get_error('foo|#bar') == (
-            "Expected symbol, got '#' at [Symbol('foo', 0), Token('|', 3), "
+            "Expected symbol or '*', got '#' at "
+            "[Symbol('foo', 0), Token('|', 3), "
             "Token('#', 4)] -> Symbol('bar', 5)")
         assert get_error('#.foo') == (
             "Expected symbol, got '.' at "
@@ -154,6 +157,20 @@ class TestCssselect(unittest.TestCase):
         assert get_error(':#foo') == (
             "Expected symbol, got '#' at "
             "[Token(':', 0), Token('#', 1)] -> Symbol('foo', 2)")
+        assert get_error('[*]') == (
+            "Expected '|', got ']' at "
+            "[Token('[', 0), Token('*', 1)] -> Token(']', 2)")
+        assert get_error('[foo|]') == (
+            "Expected symbol, got ']' at "
+            "[Token('[', 0), Symbol('foo', 1), Token('|', 4), Token(']', 5)]"
+            " -> None")
+        assert get_error('[#]') == (
+            "Expected symbol or '*', got '#' at "
+            "[Token('[', 0), Token('#', 1)] -> Token(']', 2)")
+        assert get_error('[foo=#]') == (
+            "Expected string or symbol, got '#' at "
+            "[Token('[', 0), Symbol('foo', 1), Token('=', 4), Token('#', 5)]"
+            " -> Token(']', 6)")
 
     def test_translation(self):
         def xpath(css):
