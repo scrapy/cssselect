@@ -171,6 +171,27 @@ class Translator(object):
         :param css: An Unicode string or a parsed selector object.
         :returns: An Unicode string.
 
+        .. sourcecode:: pycon
+
+            >>> from cssselect import css_to_xpath
+            >>> exrpession = css_to_xpath('div.content')
+            >>> exrpession
+            "descendant-or-self::div[contains(concat(' ', normalize-space(@class), ' '), ' content ')]"
+
+        The resulting expression can be used with lxml’s `XPath engine`_:
+
+        .. _XPath engine: http://lxml.de/xpathxslt.html#xpath
+
+        .. sourcecode:: pycon
+
+            >>> from lxml.etree import fromstring
+            >>> document = fromstring('''<div id="outer">
+            ...   <div id="inner" class="content body">
+            ...       text
+            ...   </div></div>''')
+            >>> [e.get('id') for e in document.xpath(expression)]
+            ['inner']
+
         """
         if isinstance(css, _basestring):
             selector = parse(css)

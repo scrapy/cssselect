@@ -2,7 +2,7 @@ import os.path
 from setuptools import setup
 
 
-README = open(os.path.join(os.path.dirname(__file__), 'README')).read()
+README = open(os.path.join(os.path.dirname(__file__), 'README.rst')).read()
 
 
 setup(
@@ -12,14 +12,14 @@ setup(
     author_email='ianb@colorstudy.com',
     maintainer='Simon Sapin',
     maintainer_email='simon.sapin@exyr.org',
-    description='cssselect is a parser for CSS Selectors that can translate '
-                'to XPath 1.0',
+    description=
+        'cssselect parses CSS3 Selectors and translates them to XPath 1.0',
     long_description=README,
     url='http://packages.python.org/cssselect/',
     license='BSD',
     install_requires='lxml',
     packages=['cssselect'],
-    test_suite='test_cssselect',
+    test_suite='cssselect.tests',
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
