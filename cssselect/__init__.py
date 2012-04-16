@@ -15,7 +15,8 @@
 from cssselect.parser import SelectorError
 from cssselect.xpath import Translator
 
-__all__ = ['SelectorError', 'css_to_xpath']
 
+VERSION = '0.2'
+__version__ = VERSION
 
 css_to_xpath = Translator().css_to_xpath

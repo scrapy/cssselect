@@ -12,7 +12,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
+import sys, os, re
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -50,7 +50,9 @@ copyright = '2012, Simon Sapin'
 # built documents.
 #
 # The full version, including alpha/beta/rc tags.
-release = '0.1'
+init_py = open(os.path.join(os.path.dirname(__file__),
+                            '..', 'cssselect', '__init__.py')).read()
+release = re.search("VERSION = '([^']+)'", init_py).group(1)
 # The short X.Y version.
 version = release.rstrip('dev')
 

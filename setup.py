@@ -1,13 +1,17 @@
+import re
 import os.path
 from setuptools import setup
 
 
-README = open(os.path.join(os.path.dirname(__file__), 'README.rst')).read()
+ROOT = os.path.dirname(__file__)
+README = open(os.path.join(ROOT, 'README.rst')).read()
+INIT_PY = open(os.path.join(ROOT, 'cssselect', '__init__.py')).read()
+VERSION = re.search("VERSION = '([^']+)'", INIT_PY).group(1)
 
 
 setup(
     name='cssselect',
-    version='0.1',
+    version=VERSION,
     author='Ian Bicking',
     author_email='ianb@colorstudy.com',
     maintainer='Simon Sapin',
@@ -17,7 +21,6 @@ setup(
     long_description=README,
     url='http://packages.python.org/cssselect/',
     license='BSD',
-    install_requires='lxml',
     packages=['cssselect'],
     test_suite='cssselect.tests',
     classifiers=[
