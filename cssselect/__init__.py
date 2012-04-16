@@ -12,8 +12,8 @@
 
 """
 
-from cssselect.parser import SelectorError
-from cssselect.xpath import Translator
+from cssselect.parser import SelectorError, SelectorSyntaxError
+from cssselect.xpath import Translator, ExpressionError
 
 
 VERSION = '0.2'

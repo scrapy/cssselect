@@ -178,7 +178,7 @@ class Translator(object):
             >>> exrpession
             "descendant-or-self::div[contains(concat(' ', normalize-space(@class), ' '), ' content ')]"
 
-        The resulting expression can be used with lxml’s `XPath engine`_:
+        The resulting expression can be used with lxml's `XPath engine`_:
 
         .. _XPath engine: http://lxml.de/xpathxslt.html#xpath
 
