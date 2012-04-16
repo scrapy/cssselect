@@ -312,6 +312,7 @@ class TestCssselect(unittest.TestCase):
         assert pcss('li div:only-child') == ['li-div']
         assert pcss('div *:only-child') == ['li-div', 'foobar-span']
         self.assertRaises(ExpressionError, pcss, 'p *:only-of-type')
+        self.assertRaises(ExpressionError, pcss, 'p:lang(fr)')
         assert pcss('p:only-of-type') == ['paragraph']
         assert pcss('a:empty') == ['name-anchor']
         assert pcss('li:empty') == [

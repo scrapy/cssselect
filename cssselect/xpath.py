@@ -240,6 +240,7 @@ class Translator(object):
         method = 'xpath_%s_pseudo' % pseudo.ident.replace('-', '_')
         method = getattr(self, method, None)
         if not method:
+            # TODO: better error message for pseudo-elements?
             raise ExpressionError(
                 "The pseudo-class :%r is unknown" % pseudo.ident)
         return method(self.xpath(pseudo.selector))
@@ -376,6 +377,12 @@ class Translator(object):
         xpath.add_condition('not(%s)' % condition)
         return xpath
 
+    def function_unsupported(self, xpath, pseudo):
+        raise ExpressionError(
+            "The pseudo-class :%s() is not supported" % pseudo.name)
+
+    xpath_lang_function = function_unsupported
+
 
     # Pseudo: dispatch by pseudo-class name
 
@@ -434,6 +441,18 @@ class Translator(object):
         xpath.add_condition("not(*) and not(normalize-space())")
         return xpath
 
+    def pseudo_unsupported(self, xpath, pseudo):
+        raise ExpressionError(
+            "The pseudo-class :%s is not supported" % pseudo.name)
+
+    xpath_link_pseudo = pseudo_unsupported
+    xpath_visited_pseudo = pseudo_unsupported
+    xpath_hover_pseudo = pseudo_unsupported
+    xpath_active_pseudo = pseudo_unsupported
+    xpath_focus_pseudo = pseudo_unsupported
+    xpath_target_pseudo = pseudo_unsupported
+    xpath_enabled_pseudo = pseudo_unsupported
+    xpath_disabled_pseudo = pseudo_unsupported
 
     # Attrib: dispatch by attribute operator
 
@@ -487,22 +506,3 @@ class Translator(object):
         xpath.add_condition('%s and contains(%s, %s)' % (
             name, name, xpath_literal(value)))
         return xpath
-
-
-    # Known but unsupported (functional) pseudo-classes:
-
-    def xpath_unsupported_pseudo(self, xpath, pseudo):
-        raise ExpressionError(
-            "The pseudo-class %r is not supported" % pseudo.name)
-
-unsupported = vars(Translator)['xpath_unsupported_pseudo']
-for name in [
-    # Pseudo-elements
-    'first-line', 'first-letter', 'selection', 'before', 'after',
-    # Pseudo-classes
-    'link', 'indeterminate', 'visited', 'active', 'focus', 'hover',
-    # Functional pseudo-classes
-    'target', 'lang', 'enabled', 'disabled',
-    ]:
-    setattr(Translator, name, unsupported)
-del unsupported, name
