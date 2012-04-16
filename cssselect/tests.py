@@ -47,6 +47,11 @@ class TestCssselect(unittest.TestCase):
                 assert repr(parse(other)) == result
             return result.replace("(u'", "('")
 
+        assert parse_many('*') == 'Element[*]'
+        assert parse_many('*|*') == 'Element[*]'
+        assert parse_many('*|foo') == 'Element[foo]'
+        assert parse_many('foo|*') == 'Element[foo|*]'
+        assert parse_many('foo|bar') == 'Element[foo|bar]'
         assert parse_many(
             'div>.foo',
             'div> .foo',

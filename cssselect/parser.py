@@ -269,23 +269,20 @@ def parse_selector(stream):
 
 def parse_simple_selector(stream):
     peek = stream.peek()
-    if peek != '*' and not isinstance(peek, Symbol):
-        element = namespace = '*'
-    else:
+    if peek == '*' or isinstance(peek, Symbol):
         next = stream.next()
-        if next != '*' and not isinstance(next, Symbol):
-            raise SelectorSyntaxError(
-                "Expected symbol, got '%s'" % next)
         if stream.peek() == '|':
             namespace = next
             stream.next()
             element = stream.next()
-            if element != '*' and not isinstance(next, Symbol):
+            if element != '*' and not isinstance(element, Symbol):
                 raise SelectorSyntaxError(
                     "Expected symbol, got '%s'" % next)
         else:
             namespace = '*'
             element = next
+    else:
+        element = namespace = '*'
     result = Element(namespace, element)
     has_hash = False
     while 1:
