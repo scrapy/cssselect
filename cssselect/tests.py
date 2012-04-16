@@ -52,6 +52,8 @@ class TestCssselect(unittest.TestCase):
         assert parse_many('*|foo') == 'Element[foo]'
         assert parse_many('foo|*') == 'Element[foo|*]'
         assert parse_many('foo|bar') == 'Element[foo|bar]'
+        # This will never match, but it is valid:
+        assert parse_many('#foo#bar') == 'Hash[Hash[Element[*]#foo]#bar]'
         assert parse_many(
             'div>.foo',
             'div> .foo',

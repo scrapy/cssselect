@@ -21,6 +21,12 @@ or ``:visited`` differently, but they can always do it in a ``Translator``
 subclass.
 
 
+Version 0.3
+-----------
+
+Fix some parsing bugs.
+
+
 Version 0.2
 -----------
 

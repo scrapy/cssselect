@@ -284,17 +284,11 @@ def parse_simple_selector(stream):
     else:
         element = namespace = '*'
     result = Element(namespace, element)
-    has_hash = False
     while 1:
         peek = stream.peek()
         if peek == '#':
-            if has_hash:
-                # You can't have two hashes
-                # (FIXME: is there some more general rule I'm missing?)
-                break
             stream.next()
             result = Hash(result, stream.next())
-            has_hash = True
             continue
         elif peek == '.':
             stream.next()
