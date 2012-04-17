@@ -326,7 +326,6 @@ def parse_simple_selector(stream, inside_negation=False):
         else:
             raise SelectorSyntaxError(
                 "Expected selector, got '%s'" % peek)
-        # FIXME: not sure what "negation" is
     if consumed == len(stream.used):
         raise SelectorSyntaxError(
             "Expected selector, got '%s'" % stream.peek())

@@ -258,8 +258,7 @@ class Translator(object):
             name = '@' + selector.attrib
         else:
             name = '@%s:%s' % (selector.namespace, selector.attrib)
-        return method(self.xpath(selector.selector),
-                      name, operator, selector.value)
+        return method(self.xpath(selector.selector), name, selector.value)
 
     def xpath_class(self, class_selector):
         """Translate a class selector."""
@@ -456,16 +455,16 @@ class Translator(object):
 
     # Attrib: dispatch by attribute operator
 
-    def xpath_attrib_exists(self, xpath, name, operator, value):
+    def xpath_attrib_exists(self, xpath, name, value):
         assert not value
         xpath.add_condition(name)
         return xpath
 
-    def xpath_attrib_equals(self, xpath, name, operator, value):
+    def xpath_attrib_equals(self, xpath, name, value):
         xpath.add_condition('%s = %s' % (name, xpath_literal(value)))
         return xpath
 
-    def xpath_attrib_different(self, xpath, name, operator, value):
+    def xpath_attrib_different(self, xpath, name, value):
         # FIXME: this seems like a weird hack...
         if value:
             xpath.add_condition('not(%s) or %s != %s'
@@ -475,13 +474,13 @@ class Translator(object):
                                 % (name, xpath_literal(value)))
         return xpath
 
-    def xpath_attrib_includes(self, xpath, name, operator, value):
+    def xpath_attrib_includes(self, xpath, name, value):
         xpath.add_condition(
             "%s and contains(concat(' ', normalize-space(%s), ' '), %s)"
             % (name, name, xpath_literal(' '+value+' ')))
         return xpath
 
-    def xpath_attrib_dashmatch(self, xpath, name, operator, value):
+    def xpath_attrib_dashmatch(self, xpath, name, value):
         # Weird, but true...
         xpath.add_condition('%s and (%s = %s or starts-with(%s, %s))' % (
             name,
@@ -489,19 +488,19 @@ class Translator(object):
             name, xpath_literal(value + '-')))
         return xpath
 
-    def xpath_attrib_prefixmatch(self, xpath, name, operator, value):
+    def xpath_attrib_prefixmatch(self, xpath, name, value):
         xpath.add_condition('%s and starts-with(%s, %s)' % (
             name, name, xpath_literal(value)))
         return xpath
 
-    def xpath_attrib_suffixmatch(self, xpath, name, operator, value):
+    def xpath_attrib_suffixmatch(self, xpath, name, value):
         # Oddly there is a starts-with in XPath 1.0, but not ends-with
         xpath.add_condition(
             '%s and substring(%s, string-length(%s)-%s) = %s'
             % (name, name, name, len(value)-1, xpath_literal(value)))
         return xpath
 
-    def xpath_attrib_substringmatch(self, xpath, name, operator, value):
+    def xpath_attrib_substringmatch(self, xpath, name, value):
         # Attribute selectors are case sensitive
         xpath.add_condition('%s and contains(%s, %s)' % (
             name, name, xpath_literal(value)))
