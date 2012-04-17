@@ -362,7 +362,8 @@ class TestCssselect(unittest.TestCase):
         assert pcss('ol:nth-last-of-type(1)') == ['first-ol']
         assert pcss('span:only-child') == ['foobar-span']
         assert pcss('li div:only-child') == ['li-div']
-        assert pcss('div *:only-child') == ['li-div', 'foobar-span']
+        assert pcss('div *:only-child') == [
+            'li-div', 'checkbox-disabled', 'foobar-span']
         self.assertRaises(ExpressionError, pcss, 'p *:only-of-type')
         self.assertRaises(ExpressionError, pcss, 'p:lang(fr)')
         assert pcss('p:only-of-type') == ['paragraph']
@@ -387,12 +388,19 @@ class TestCssselect(unittest.TestCase):
         assert pcss('ol#first-ol *:last-child') == ['li-div', 'seventh-li']
         assert pcss('#outer-div:first-child') == ['outer-div']
         assert pcss('#outer-div :first-child') == [
-            'name-anchor', 'first-li', 'li-div', 'p-b']
+            'name-anchor', 'first-li', 'li-div', 'p-b', 'checkbox-disabled']
+        assert pcss('a[href]') == ['tag-anchor', 'nofollow-anchor']
+        assert pcss(':link', html_only=True) == pcss('a[href]')
         assert pcss(':checked', html_only=True) == ['checkbox-checked']
+        assert pcss(':disabled', html_only=True) == [
+            'fieldset', 'checkbox-disabled']
+        assert pcss(':enabled', html_only=True) == [
+            'checkbox-unchecked', 'checkbox-checked']
 
     def test_select_shakespeare(self):
         document = html.document_fromstring(HTML_SHAKESPEARE)
         body = document.xpath('//body')[0]
+        css_to_xpath = GenericTranslator().css_to_xpath
 
         try:
             basestring_ = basestring
@@ -486,6 +494,9 @@ c"></li>
    <b id="p-b2">guy</b>
    <input type="checkbox" id="checkbox-unchecked">
    <input type="checkbox" id="checkbox-checked" checked="checked">
+   <fieldset id="fieldset" disabled="disabled">
+     <input type="checkbox" id="checkbox-disabled">
+   </fieldset>
  </p>
  <ol id="second-ol">
  </ol>

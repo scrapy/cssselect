@@ -527,7 +527,15 @@ class HTMLTranslator(GenericTranslator):
     """
     Translator for HTML documents.
 
-    It adds proper support for the ``:checked`` pseudo-class.
+    It adds proper support for these pseudo-classes:
+
+    * ``:enabled``
+    * ``:disabled``
+    * ``:checked``
+    * ``:link``
+    * ``:visited``
+
+    Although all links are considered "not visited", so :visited never matches.
 
     """
     def xpath_checked_pseudo(self, xpath):
@@ -535,4 +543,68 @@ class HTMLTranslator(GenericTranslator):
         xpath.add_condition(
             "(@selected and name(.) = 'option') or "
             "(@checked and name(.) = 'input')")
+        return xpath
+
+    def xpath_link_pseudo(self, xpath):
+        xpath.add_condition("@href and name(.) = 'a'")
+        return xpath
+
+    # Links are never visited, the implementation for :visited is the same
+    # as in GenericTranslator
+
+    def xpath_disabled_pseudo(self, xpath):
+        # http://www.w3.org/TR/html5/section-index.html#attributes-1
+        xpath.add_condition('''
+        (
+            @disabled and
+            (
+                name(.) = 'input' or
+                name(.) = 'button' or
+                name(.) = 'select' or
+                name(.) = 'textarea' or
+                name(.) = 'keygen' or
+                name(.) = 'command' or
+                name(.) = 'fieldset' or
+                name(.) = 'optgroup' or
+                name(.) = 'option'
+            )
+        ) or (
+            (
+                name(.) = 'input' or
+                name(.) = 'button' or
+                name(.) = 'select' or
+                name(.) = 'textarea' or
+                name(.) = 'keygen'
+            )
+            and ancestor::fieldset[@disabled]
+        )
+        ''')
+        # FIXME: in the second half, add "and is not a descendant of that
+        # fieldset element's first legend element child, if any."
+        return xpath
+
+    def xpath_enabled_pseudo(self, xpath):
+        # http://www.w3.org/TR/html5/section-index.html#attributes-1
+        xpath.add_condition('''
+        (
+            (
+                name(.) = 'command' or
+                name(.) = 'fieldset' or
+                name(.) = 'optgroup' or
+                name(.) = 'option'
+            )
+            and not(@disabled)
+        ) or (
+            (
+                name(.) = 'input' or
+                name(.) = 'button' or
+                name(.) = 'select' or
+                name(.) = 'textarea' or
+                name(.) = 'keygen'
+            )
+            and not (@disabled or ancestor::fieldset[@disabled])
+        )
+        ''')
+        # FIXME: in the second half, add "and is not a descendant of that
+        # fieldset element's first legend element child, if any."
         return xpath
