@@ -4,27 +4,30 @@ Changelog
 Planned changes
 ---------------
 
-* Implement ``:target``, ``:hover``, ``:focus`` and ``:active``
-  as never matching
-* Make a new HTML-specific ``Translator`` subclass. There, implement
-  ``:enabled``, ``:disabled``, ``:link`` and ``:visited``
-  (with all links  "not visited"). Move ``:checked`` to this new
-  ``HTMLTranslator``
-* Make all of these never match for "generic" XML. (Unless otherwise specified,
-  there is no link, checkbox, etc.)
 * Add some support for pseudo-elements by separating them from the
   rest of the selector.
 * Add specificity calculation.
-
-Discussion is open if anyone is interested in implementing eg. ``:target``
-or ``:visited`` differently, but they can always do it in a ``Translator``
-subclass.
 
 
 Version 0.3
 -----------
 
-Fix many parsing bugs.
+Not released yet.
+
+* Fix many parsing bugs.
+* Rename the :class:`Translator` class to :class:`GenericTranslator`
+* There, implement ``:target``, ``:hover``, ``:focus``, ``:active``
+  ``:checked``, ``:enabled``, ``:disabled``, ``:link`` and ``:visited``
+  as never matching.
+* Make a new HTML-specific ``HTMLTranslator`` subclass. There, implement
+  ``:checked``, ``:enabled``, ``:disabled``, ``:link`` and ``:visited``
+  as appropriate for HTML, with all links  "not visited".
+* Remove the :func:`css_to_xpath` function. The translator classes
+  are the new API.
+
+Discussion is open if anyone is interested in implementing eg. ``:target``
+or ``:visited`` differently, but they can always do it in a ``Translator``
+subclass.
 
 
 Version 0.2

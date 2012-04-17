@@ -149,26 +149,6 @@ def xpath_literal(s):
 class GenericTranslator(object):
     """
     Translator for "generic" XML documents.
-
-    It makes no assumption about the element or attribute names
-    (except for the 'class' and 'id' attributes.)
-
-    No element type is considered special: there is no link, checkbox, etc.
-    There is not interactivity either.
-
-    In other words, unless otherwise specified by a sub-class,
-    these pseudo-classes are implemented but never match:
-
-    * ``:link``
-    * ``:visited``
-    * ``:hover``
-    * ``:active``
-    * ``:focus``
-    * ``:target``
-    * ``:enabled``
-    * ``:disabled``
-    * ``:checked``
-
     """
     combinator_mapping = {
         ' ': 'descendant',
@@ -526,17 +506,6 @@ class GenericTranslator(object):
 class HTMLTranslator(GenericTranslator):
     """
     Translator for HTML documents.
-
-    It adds proper support for these pseudo-classes:
-
-    * ``:enabled``
-    * ``:disabled``
-    * ``:checked``
-    * ``:link``
-    * ``:visited``
-
-    Although all links are considered "not visited", so :visited never matches.
-
     """
     def xpath_checked_pseudo(self, xpath):
         # FIXME: is this really all the elements?
