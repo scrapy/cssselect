@@ -196,8 +196,8 @@ class GenericTranslator(object):
 
         .. sourcecode:: pycon
 
-            >>> from cssselect import css_to_xpath
-            >>> expression = css_to_xpath('div.content')
+            >>> from cssselect import GenericTranslator
+            >>> expression = GenericTranslator().css_to_xpath('div.content')
             >>> print(expression)
             descendant-or-self::div[@class and contains(concat(' ', normalize-space(@class), ' '), ' content ')]
 

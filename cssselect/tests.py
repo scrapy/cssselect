@@ -22,8 +22,7 @@ import unittest
 
 from lxml import html
 from cssselect.parser import tokenize, parse, parse_series, SelectorSyntaxError
-from cssselect.xpath import GenericTranslator, ExpressionError
-from cssselect import css_to_xpath
+from cssselect.xpath import GenericTranslator, HTMLTranslator, ExpressionError
 
 
 class TestCssselect(unittest.TestCase):
@@ -263,7 +262,7 @@ class TestCssselect(unittest.TestCase):
         else:
             css = '.a\xc1b'.decode('ISO-8859-1')
 
-        xpath = css_to_xpath(css)
+        xpath = GenericTranslator().css_to_xpath(css)
         assert css[1:] in xpath
         xpath = xpath.encode('ascii', 'xmlcharrefreplace').decode('ASCII')
         assert xpath == (
@@ -271,6 +270,7 @@ class TestCssselect(unittest.TestCase):
             "concat(' ', normalize-space(@class), ' '), ' a&#193;b ')]")
 
     def test_quoting(self):
+        css_to_xpath = GenericTranslator().css_to_xpath
         assert css_to_xpath('*[aval="\'"]') == (
             '''descendant-or-self::*[@aval = "'"]''')
         assert css_to_xpath('*[aval="\'\'\'"]') == (
@@ -282,6 +282,7 @@ class TestCssselect(unittest.TestCase):
 
     def test_unicode_escapes(self):
         # \22 == '"'  \20 == ' '
+        css_to_xpath = GenericTranslator().css_to_xpath
         assert css_to_xpath(r'*[aval="\'\22\'"]') == (
             '''descendant-or-self::*[@aval = concat("'",'"',"'")]''')
         assert css_to_xpath(r'*[aval="\'\22 2\'"]') == (
@@ -305,13 +306,15 @@ class TestCssselect(unittest.TestCase):
         sort_key = dict(
             (el, count) for count, el in enumerate(document.getiterator())
         ).__getitem__
+        css_to_xpath = GenericTranslator().css_to_xpath
+        html_css_to_xpath = HTMLTranslator().css_to_xpath
 
         def select_ids(selector, html_only):
             xpath = css_to_xpath(selector)
             items = document.xpath(xpath)
             if html_only:
                 assert items == []
-                xpath = css_to_xpath(selector, html=True)
+                xpath = html_css_to_xpath(selector)
                 items = document.xpath(xpath)
             items.sort(key=sort_key)
             return [element.get('id', 'nil') for element in items]

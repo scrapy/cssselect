@@ -18,13 +18,3 @@ from cssselect.xpath import GenericTranslator, HTMLTranslator, ExpressionError
 
 VERSION = '0.2'
 __version__ = VERSION
-
-
-def css_to_xpath(css, prefix='descendant-or-self::',
-                 html=False, translator=None):
-    if not translator:
-        if html:
-            translator = HTMLTranslator()
-        else:
-            translator = GenericTranslator()
-    return translator.css_to_xpath(css, prefix=prefix)
