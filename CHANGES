@@ -24,6 +24,8 @@ Not released yet.
   as appropriate for HTML, with all links  "not visited".
 * Remove the :func:`css_to_xpath` function. The translator classes
   are the new API.
+* Add support for ``:contains()`` back, but case-sensitive. lxml will
+  override it to be case-insensitive for backward-compatibility.
 
 Discussion is open if anyone is interested in implementing eg. ``:target``
 or ``:visited`` differently, but they can always do it in a ``Translator``

@@ -62,6 +62,15 @@ string quoting at all), so if you use expressions that contain
 characters that requiring quoting you might have problems with the
 translation from CSS to XPath.
 
+On the other hand, *cssselect* supports some selectors that are not
+in the Level 3 specification:
+
+* The ``:contains(text)`` pseudo-class that `existed in an early draft
+  <http://www.w3.org/TR/2001/CR-css3-selectors-20011113/#content-selectors>`_
+  but was then removed.
+* The ``!=`` attribute operator. ``[foo!=bar]`` is the same as
+  ``:not([foo=bar])``
+
 
 Customizing the translation
 ===========================

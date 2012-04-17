@@ -235,7 +235,7 @@ class GenericTranslator(object):
         method = getattr(self, method, None)
         if not method:
             raise ExpressionError(
-                "The pseudo-class :%r is unknown" % function.name)
+                "The pseudo-class :%s() is unknown" % function.name)
         return method(self.xpath(function.selector), function)
 
     def xpath_pseudo(self, pseudo):
@@ -245,7 +245,7 @@ class GenericTranslator(object):
         if not method:
             # TODO: better error message for pseudo-elements?
             raise ExpressionError(
-                "The pseudo-class :%r is unknown" % pseudo.ident)
+                "The pseudo-class :%s is unknown" % pseudo.ident)
         return method(self.xpath(pseudo.selector))
 
 
@@ -374,6 +374,11 @@ class GenericTranslator(object):
         condition = self.xpath(function.arguments).condition
         # FIXME: should I do something about element_path?
         xpath.add_condition('not(%s)' % condition)
+        return xpath
+
+    def xpath_contains_function(self, xpath, function):
+        xpath.add_condition('contains(string(.), %s)'
+                            % xpath_literal(function.arguments))
         return xpath
 
     def function_unsupported(self, xpath, pseudo):

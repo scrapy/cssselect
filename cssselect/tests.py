@@ -237,6 +237,10 @@ class TestCssselect(unittest.TestCase):
             "e[not(*) and not(normalize-space())]")
         assert xpath('E:root') == (
             "e[not(parent::*)]")
+        assert xpath('E:contains("foo")') == (
+            "e[contains(string(.), 'foo')]")
+        assert xpath('E:contains(foo)') == (
+            "e[contains(string(.), 'foo')]")
         assert xpath('E.warning') == (
             "e[@class and contains("
                "concat(' ', normalize-space(@class), ' '), ' warning ')]")
@@ -375,6 +379,13 @@ class TestCssselect(unittest.TestCase):
             'third-li', 'fourth-li', 'fifth-li', 'sixth-li', 'seventh-li']
         assert pcss(':root', 'html:root') == ['html']
         assert pcss('li:root', '* :root') == []
+        assert pcss('*:contains("link")') == [
+            'html', 'nil', 'outer-div', 'tag-anchor', 'nofollow-anchor']
+        assert pcss('*:contains("LInk")') == []  # case sensitive
+        assert pcss('*:contains("e")') == [
+            'html', 'nil', 'outer-div', 'first-ol', 'first-li',
+            'paragraph', 'p-em']
+        assert pcss('*:contains("E")') == []  # case-sensitive
         assert pcss('.a', '.b', '*.a', 'ol.a') == ['first-ol']
         assert pcss('.c', '*.c') == ['first-ol', 'third-li', 'fourth-li']
         assert pcss('ol *.c', 'ol li.c', 'li ~ li.c', 'ol > li.c') == [
@@ -427,6 +438,7 @@ class TestCssselect(unittest.TestCase):
         ## searching the body.
         #assert count('*') == 252
         assert count('*') == 246
+        assert count('div:contains(CELIA)') == 26
         assert count('div:only-child') == 22 # ?
         assert count('div:nth-child(even)') == 106
         assert count('div:nth-child(2n)') == 106
