@@ -13,10 +13,18 @@
 """
 
 from cssselect.parser import SelectorError, SelectorSyntaxError
-from cssselect.xpath import Translator, ExpressionError
+from cssselect.xpath import GenericTranslator, HTMLTranslator, ExpressionError
 
 
 VERSION = '0.2'
 __version__ = VERSION
 
-css_to_xpath = Translator().css_to_xpath
+
+def css_to_xpath(css, prefix='descendant-or-self::',
+                 html=False, translator=None):
+    if not translator:
+        if html:
+            translator = HTMLTranslator()
+        else:
+            translator = GenericTranslator()
+    return translator.css_to_xpath(css, prefix=prefix)

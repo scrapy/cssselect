@@ -146,7 +146,30 @@ def xpath_literal(s):
 
 #### Translation
 
-class Translator(object):
+class GenericTranslator(object):
+    """
+    Translator for "generic" XML documents.
+
+    It makes no assumption about the element or attribute names
+    (except for the 'class' and 'id' attributes.)
+
+    No element type is considered special: there is no link, checkbox, etc.
+    There is not interactivity either.
+
+    In other words, unless otherwise specified by a sub-class,
+    these pseudo-classes are implemented but never match:
+
+    * ``:link``
+    * ``:visited``
+    * ``:hover``
+    * ``:active``
+    * ``:focus``
+    * ``:target``
+    * ``:enabled``
+    * ``:disabled``
+    * ``:checked``
+
+    """
     combinator_mapping = {
         ' ': 'descendant',
         '>': 'child',
@@ -382,12 +405,6 @@ class Translator(object):
 
     # Pseudo: dispatch by pseudo-class name
 
-    def xpath_checked_pseudo(self, xpath):
-        # FIXME: is this really all the elements?
-        xpath.add_condition("(@selected or @checked) and "
-                            "(name(.) = 'input' or name(.) = 'option')")
-        return xpath
-
     def xpath_root_pseudo(self, xpath):
         xpath.add_condition("not(parent::*)")
         return xpath
@@ -437,18 +454,20 @@ class Translator(object):
         xpath.add_condition("not(*) and not(normalize-space())")
         return xpath
 
-    def pseudo_unsupported(self, xpath, pseudo):
-        raise ExpressionError(
-            "The pseudo-class :%s is not supported" % pseudo.name)
+    def pseudo_never_matches(self, xpath):
+        """Common implementation for pseudo-classes that never match."""
+        xpath.add_condition("0")
+        return xpath
 
-    xpath_link_pseudo = pseudo_unsupported
-    xpath_visited_pseudo = pseudo_unsupported
-    xpath_hover_pseudo = pseudo_unsupported
-    xpath_active_pseudo = pseudo_unsupported
-    xpath_focus_pseudo = pseudo_unsupported
-    xpath_target_pseudo = pseudo_unsupported
-    xpath_enabled_pseudo = pseudo_unsupported
-    xpath_disabled_pseudo = pseudo_unsupported
+    xpath_link_pseudo = pseudo_never_matches
+    xpath_visited_pseudo = pseudo_never_matches
+    xpath_hover_pseudo = pseudo_never_matches
+    xpath_active_pseudo = pseudo_never_matches
+    xpath_focus_pseudo = pseudo_never_matches
+    xpath_target_pseudo = pseudo_never_matches
+    xpath_enabled_pseudo = pseudo_never_matches
+    xpath_disabled_pseudo = pseudo_never_matches
+    xpath_checked_pseudo = pseudo_never_matches
 
     # Attrib: dispatch by attribute operator
 
@@ -501,4 +520,19 @@ class Translator(object):
         # Attribute selectors are case sensitive
         xpath.add_condition('%s and contains(%s, %s)' % (
             name, name, xpath_literal(value)))
+        return xpath
+
+
+class HTMLTranslator(GenericTranslator):
+    """
+    Translator for HTML documents.
+
+    It adds proper support for the ``:checked`` pseudo-class.
+
+    """
+    def xpath_checked_pseudo(self, xpath):
+        # FIXME: is this really all the elements?
+        xpath.add_condition(
+            "(@selected and name(.) = 'option') or "
+            "(@checked and name(.) = 'input')")
         return xpath

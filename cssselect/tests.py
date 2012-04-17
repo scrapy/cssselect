@@ -22,7 +22,7 @@ import unittest
 
 from lxml import html
 from cssselect.parser import tokenize, parse, parse_series, SelectorSyntaxError
-from cssselect.xpath import Translator, ExpressionError
+from cssselect.xpath import GenericTranslator, ExpressionError
 from cssselect import css_to_xpath
 
 
@@ -187,7 +187,7 @@ class TestCssselect(unittest.TestCase):
 
     def test_translation(self):
         def xpath(css):
-            return str(Translator().xpath(parse(css)))
+            return str(GenericTranslator().xpath(parse(css)))
 
         assert xpath('*') == "*"
         assert xpath('E') == "e"
@@ -306,16 +306,21 @@ class TestCssselect(unittest.TestCase):
             (el, count) for count, el in enumerate(document.getiterator())
         ).__getitem__
 
-        def select_ids(selector):
+        def select_ids(selector, html_only):
             xpath = css_to_xpath(selector)
             items = document.xpath(xpath)
+            if html_only:
+                assert items == []
+                xpath = css_to_xpath(selector, html=True)
+                items = document.xpath(xpath)
             items.sort(key=sort_key)
             return [element.get('id', 'nil') for element in items]
 
-        def pcss(main, *selectors):
-            result = select_ids(main)
+        def pcss(main, *selectors, **kwargs):
+            html_only = kwargs.pop('html_only', False)
+            result = select_ids(main, html_only)
             for selector in selectors:
-                assert select_ids(selector) == result
+                assert select_ids(selector, html_only) == result
             return result
 
         all_ids = pcss('*')
@@ -383,6 +388,7 @@ class TestCssselect(unittest.TestCase):
         assert pcss('#outer-div:first-child') == ['outer-div']
         assert pcss('#outer-div :first-child') == [
             'name-anchor', 'first-li', 'li-div', 'p-b']
+        assert pcss(':checked', html_only=True) == ['checkbox-checked']
 
     def test_select_shakespeare(self):
         document = html.document_fromstring(HTML_SHAKESPEARE)
@@ -477,7 +483,10 @@ c"></li>
  </ol>
  <p id="paragraph">
    <b id="p-b">hi</b> <em id="p-em">there</em>
-   <b id="p-b2">guy</b></p>
+   <b id="p-b2">guy</b>
+   <input type="checkbox" id="checkbox-unchecked">
+   <input type="checkbox" id="checkbox-checked" checked="checked">
+ </p>
  <ol id="second-ol">
  </ol>
 </div>
