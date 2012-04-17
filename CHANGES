@@ -12,7 +12,7 @@ Planned changes
 Version 0.3
 -----------
 
-Not released yet.
+Released on 2012-04-17.
 
 * Fix many parsing bugs.
 * Rename the :class:`Translator` class to :class:`GenericTranslator`
