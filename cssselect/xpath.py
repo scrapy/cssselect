@@ -78,7 +78,8 @@ class XPathExpr(object):
         if self.element == '*':
             # We weren't doing a test anyway
             return
-        self.add_condition("name() = %s" % xpath_literal(self.element))
+        self.add_condition(
+            "name() = %s" % GenericTranslator.xpath_literal(self.element))
         self.element = '*'
 
     def add_star_prefix(self):
@@ -125,23 +126,6 @@ class XPathExprOr(XPathExpr):
 
 
 split_at_single_quotes = re.compile("('+)").split
-
-def xpath_literal(s):
-    if isinstance(s, Element):
-        # This is probably a symbol that looks like an expression...
-        s = s._format_element()
-    else:
-        s = _unicode(s)
-    if "'" not in s:
-        s = "'%s'" % s
-    elif '"' not in s:
-        s = '"%s"' % s
-    else:
-        s = "concat(%s)" % ','.join([
-            (("'" in part) and '"%s"' or "'%s'") % part
-            for part in split_at_single_quotes(s) if part
-            ])
-    return s
 
 
 #### Translation
@@ -203,6 +187,24 @@ class GenericTranslator(object):
         xpath = self.xpath(selector)
         xpath.add_prefix(prefix or '')
         return _unicode(xpath)
+
+    @staticmethod
+    def xpath_literal(s):
+        if isinstance(s, Element):
+            # This is probably a symbol that looks like an expression...
+            s = s._format_element()
+        else:
+            s = _unicode(s)
+        if "'" not in s:
+            s = "'%s'" % s
+        elif '"' not in s:
+            s = '"%s"' % s
+        else:
+            s = "concat(%s)" % ','.join([
+                (("'" in part) and '"%s"' or "'%s'") % part
+                for part in split_at_single_quotes(s) if part
+                ])
+        return s
 
     def xpath(self, parsed_selector, prefix=None):
         """Translate any parsed selector object."""
@@ -273,7 +275,7 @@ class GenericTranslator(object):
     def xpath_hash(self, id_selector):
         """Translate an ID selector."""
         xpath = self.xpath(id_selector.selector)
-        xpath.add_condition('@id = %s' % xpath_literal(id_selector.id))
+        xpath.add_condition('@id = %s' % self.xpath_literal(id_selector.id))
         return xpath
 
     def xpath_element(self, selector):
@@ -378,7 +380,7 @@ class GenericTranslator(object):
 
     def xpath_contains_function(self, xpath, function):
         xpath.add_condition('contains(string(.), %s)'
-                            % xpath_literal(function.arguments))
+                            % self.xpath_literal(function.arguments))
         return xpath
 
     def function_unsupported(self, xpath, pseudo):
@@ -462,49 +464,49 @@ class GenericTranslator(object):
         return xpath
 
     def xpath_attrib_equals(self, xpath, name, value):
-        xpath.add_condition('%s = %s' % (name, xpath_literal(value)))
+        xpath.add_condition('%s = %s' % (name, self.xpath_literal(value)))
         return xpath
 
     def xpath_attrib_different(self, xpath, name, value):
         # FIXME: this seems like a weird hack...
         if value:
             xpath.add_condition('not(%s) or %s != %s'
-                                % (name, name, xpath_literal(value)))
+                                % (name, name, self.xpath_literal(value)))
         else:
             xpath.add_condition('%s != %s'
-                                % (name, xpath_literal(value)))
+                                % (name, self.xpath_literal(value)))
         return xpath
 
     def xpath_attrib_includes(self, xpath, name, value):
         xpath.add_condition(
             "%s and contains(concat(' ', normalize-space(%s), ' '), %s)"
-            % (name, name, xpath_literal(' '+value+' ')))
+            % (name, name, self.xpath_literal(' '+value+' ')))
         return xpath
 
     def xpath_attrib_dashmatch(self, xpath, name, value):
         # Weird, but true...
         xpath.add_condition('%s and (%s = %s or starts-with(%s, %s))' % (
             name,
-            name, xpath_literal(value),
-            name, xpath_literal(value + '-')))
+            name, self.xpath_literal(value),
+            name, self.xpath_literal(value + '-')))
         return xpath
 
     def xpath_attrib_prefixmatch(self, xpath, name, value):
         xpath.add_condition('%s and starts-with(%s, %s)' % (
-            name, name, xpath_literal(value)))
+            name, name, self.xpath_literal(value)))
         return xpath
 
     def xpath_attrib_suffixmatch(self, xpath, name, value):
         # Oddly there is a starts-with in XPath 1.0, but not ends-with
         xpath.add_condition(
             '%s and substring(%s, string-length(%s)-%s) = %s'
-            % (name, name, name, len(value)-1, xpath_literal(value)))
+            % (name, name, name, len(value)-1, self.xpath_literal(value)))
         return xpath
 
     def xpath_attrib_substringmatch(self, xpath, name, value):
         # Attribute selectors are case sensitive
         xpath.add_condition('%s and contains(%s, %s)' % (
-            name, name, xpath_literal(value)))
+            name, name, self.xpath_literal(value)))
         return xpath
 
 
