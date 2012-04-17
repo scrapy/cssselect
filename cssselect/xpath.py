@@ -262,13 +262,10 @@ class Translator(object):
 
     def xpath_class(self, class_selector):
         """Translate a class selector."""
-        # FIXME: is this HTML-specific?
+        # .foo is defined as [class~=foo] in the spec.
         xpath = self.xpath(class_selector.selector)
-        xpath.add_condition(
-            "@class and "
-            "contains(concat(' ', normalize-space(@class), ' '), %s)"
-            % xpath_literal(' ' + class_selector.class_name + ' '))
-        return xpath
+        return self.xpath_attrib_includes(
+            xpath, '@class', class_selector.class_name)
 
     def xpath_hash(self, id_selector):
         """Translate an ID selector."""
