@@ -32,7 +32,9 @@ class TestCssselect(unittest.TestCase):
                   for item in tokenize('E > f[a~="y\\"x"]')]
         assert tokens == [
             "Symbol('E', 0)",
+            "Token(' ', 1)",
             "Token('>', 2)",
+            "Token(' ', 3)",
             "Symbol('f', 4)",
             "Token('[', 5)",
             "Symbol('a', 6)",
@@ -92,17 +94,19 @@ class TestCssselect(unittest.TestCase):
         assert parse_many("a[hreflang |= 'en']") == (
             "Attrib[Element[a][hreflang |= String('en', 14)]]")
         assert parse_many('div:nth-child(10)') == (
-            'Function[Element[div]:nth-child(10)]')
+            "Function[Element[div]:nth-child(Symbol('10', 14))]")
+        assert parse_many(':nth-child(2n+2)') == (
+            "Function[Element[*]:nth-child(Symbol('2n+2', 11))]")
         assert parse_many('div:nth-of-type(10)') == (
-            'Function[Element[div]:nth-of-type(10)]')
+            "Function[Element[div]:nth-of-type(Symbol('10', 16))]")
         assert parse_many('div div:nth-of-type(10) .aclass') == (
-            'CombinedSelector[CombinedSelector[Element[div] '
-                '<followed> Function[Element[div]:nth-of-type(10)]] '
+            'CombinedSelector[CombinedSelector[Element[div] <followed> '
+                "Function[Element[div]:nth-of-type(Symbol('10', 20))]] "
                 '<followed> Class[Element[*].aclass]]')
         assert parse_many('label:only') == (
             'Pseudo[Element[label]:only]')
         assert parse_many('a:lang(fr)') == (
-            'Function[Element[a]:lang(Element[fr])]')
+            "Function[Element[a]:lang(Symbol('fr', 7))]")
         assert parse_many('div:contains("foo")') == (
             "Function[Element[div]:contains(String('foo', 13))]")
         assert parse_many('div#foobar') == (
@@ -129,21 +133,22 @@ class TestCssselect(unittest.TestCase):
         assert get_error('html/body/a') == (
             "Unexpected symbol: '/' at [Symbol('html', 0)] -> None")
         assert get_error(' ') == (
-            "Expected selector, got 'None' at [] -> None")
+            "Expected selector, got 'None' at [Token(' ', 0)] -> None")
         assert get_error('div, ') == (
             "Expected selector, got 'None' at "
-            "[Symbol('div', 0), Token(',', 3)] -> None")
+            "[Symbol('div', 0), Token(',', 3), Token(' ', 4)] -> None")
         assert get_error(' , div') == (
             "Expected selector, got ',' at "
-            "[] -> Token(',', 1)")
+            "[Token(' ', 0)] -> Token(',', 1)")
         assert get_error('p, , div') == (
             "Expected selector, got ',' at "
-            "[Symbol('p', 0), Token(',', 1)] -> Token(',', 3)")
+            "[Symbol('p', 0), Token(',', 1), Token(' ', 2)] -> Token(',', 3)")
         assert get_error('div > ') == (
             "Expected selector, got 'None' at "
-            "[Symbol('div', 0), Token('>', 4)] -> None")
-        assert get_error(' > div') == (
-            "Expected selector, got '>' at [] -> Token('>', 1)")
+            "[Symbol('div', 0), Token(' ', 3), Token('>', 4), Token(' ', 5)]"
+            " -> None")
+        assert get_error('  > div') == (
+            "Expected selector, got '>' at [Token(' ', 0)] -> Token('>', 2)")
         assert get_error('foo|#bar') == (
             "Expected symbol or '*', got '#' at "
             "[Symbol('foo', 0), Token('|', 3), "
@@ -171,6 +176,14 @@ class TestCssselect(unittest.TestCase):
             "Expected string or symbol, got '#' at "
             "[Token('[', 0), Symbol('foo', 1), Token('=', 4), Token('#', 5)]"
             " -> Token(']', 6)")
+        assert get_error(':nth-child()') == (
+            "Expected argument, got ')' at "
+            "[Token(':', 0), Symbol('nth-child', 1), Token('(', 10)]"
+            " -> Token(')', 11)")
+        assert get_error('[href]a') == (
+            "Expected selector, got 'a' at "
+            "[Token('[', 0), Symbol('href', 1), Token(']', 5)]"
+            " -> Symbol('a', 6)")
 
     def test_translation(self):
         def xpath(css):
@@ -332,9 +345,7 @@ class TestCssselect(unittest.TestCase):
         # FIXME: I'm not 100% sure this is right:
         assert pcss('li:nth-child(3n+1)') == [
             'first-li', 'fourth-li', 'seventh-li']
-        # FIXME: I'm not sure if nth-last-child(1) or nth-last-child(1)
-        # should be equivalent to nth-last-child()
-        assert pcss('li:nth-last-child()', 'li:nth-last-child(0)') == [
+        assert pcss('li:nth-last-child(0)') == [
             'seventh-li']
         assert pcss('li:nth-last-child(2n)', 'li:nth-last-child(even)') == [
             'second-li', 'fourth-li', 'sixth-li']

@@ -190,16 +190,16 @@ class CombinedSelector(object):
 
 #### Parser
 
-_el_re = re.compile(r'^\w+\s*$', re.UNICODE)
-_id_re = re.compile(r'^(\w*)#(\w+)\s*$', re.UNICODE)
-_class_re = re.compile(r'^(\w*)\.(\w+)\s*$', re.UNICODE)
+_el_re = re.compile(r'^\s*(\w+)$')
+_id_re = re.compile(r'^\s*(\w*)#(\w+)\s*$')
+_class_re = re.compile(r'^\s*(\w*)\.(\w+)\s*$')
 
 
 def parse(string):
     # Fast path for simple cases
     match = _el_re.match(string)
     if match:
-        return Element('*', match.group(0).strip())
+        return Element('*', match.group(1))
     match = _id_re.match(string)
     if match is not None:
         return Hash(Element('*', match.group(1) or '*'), match.group(2))
@@ -225,13 +225,12 @@ def parse(string):
 
 def parse_selector_group(stream):
     result = []
+    stream.skip_whitespace()
     while 1:
         result.append(parse_selector(stream))
         if stream.peek() == ',':
             stream.next()
-            # Ignore optional whitespace after a group separator
-            if stream.peek() == ' ':
-                stream.next()
+            stream.skip_whitespace()
         else:
             break
     if len(result) == 1:
@@ -241,34 +240,29 @@ def parse_selector_group(stream):
 
 
 def parse_selector(stream):
-    consumed = len(stream.used)
     result = parse_simple_selector(stream)
-    if consumed == len(stream.used):
-        raise SelectorSyntaxError(
-            "Expected selector, got '%s'" % stream.peek())
     while 1:
+        stream.skip_whitespace()
         peek = stream.peek()
         if peek == ',' or peek is None:
             return result
         elif peek in ('+', '>', '~'):
             # A combinator
             combinator = stream.next()
-            # Ignore optional whitespace after a combinator
-            if stream.peek() == ' ':
-                stream.next()
+            stream.skip_whitespace()
         else:
+            # By exclusion, the last parse_simple_selector() ended
+            # at peek == ' '
             combinator = ' '
-        consumed = len(stream.used)
         next_selector = parse_simple_selector(stream)
-        if consumed == len(stream.used):
-            raise SelectorSyntaxError(
-                "Expected selector, got '%s'" % stream.peek())
         result = CombinedSelector(result, combinator, next_selector)
     return result
 
 
-def parse_simple_selector(stream):
+def parse_simple_selector(stream, inside_negation=False):
+    stream.skip_whitespace()
     peek = stream.peek()
+    consumed = len(stream.used)
     if peek == '*' or isinstance(peek, Symbol):
         next = stream.next()
         if stream.peek() == '|':
@@ -304,41 +298,43 @@ def parse_simple_selector(stream):
             ident = stream.next_symbol()
             if stream.peek() == '(':
                 stream.next()
-                peek = stream.peek()
-                if isinstance(peek, String):
-                    selector = stream.next()
-                elif isinstance(peek, Symbol) and is_int(peek):
-                    selector = int(stream.next())
+                stream.skip_whitespace()
+                if ident == 'not':
+                    if inside_negation:
+                        raise SyntaxError('Got nested :not()')
+                    argument = parse_simple_selector(
+                        stream, inside_negation=True)
                 else:
-                    # FIXME: parse_simple_selector, or selector, or...?
-                    selector = parse_simple_selector(stream)
+                    peek = stream.peek()
+                    if isinstance(peek, (Symbol, String)):
+                        argument = stream.next()
+                    else:
+                        raise SelectorSyntaxError(
+                            "Expected argument, got '%s'" % peek)
+                stream.skip_whitespace()
                 next = stream.next()
                 if not next == ')':
                     raise SelectorSyntaxError(
-                        "Expected ')', got '%s' and '%s'"
-                        % (next, selector))
-                result = Function(result, type, ident, selector)
+                        "Expected ')', got '%s'" % next)
+                result = Function(result, type, ident, argument)
             else:
                 result = Pseudo(result, type, ident)
             continue
-        else:
-            if peek == ' ':
-                stream.next()
+        elif peek in (None, ' ', ',', '+', '>', '~') or (
+                inside_negation and peek == ')'):
             break
+        else:
+            raise SelectorSyntaxError(
+                "Expected selector, got '%s'" % peek)
         # FIXME: not sure what "negation" is
+    if consumed == len(stream.used):
+        raise SelectorSyntaxError(
+            "Expected selector, got '%s'" % stream.peek())
     return result
 
 
-def is_int(v):
-    try:
-        int(v)
-    except ValueError:
-        return False
-    else:
-        return True
-
-
 def parse_attrib(selector, stream):
+    stream.skip_whitespace()
     attrib = stream.next_symbol_or_star()
     if attrib == '*' and stream.peek() != '|':
         raise SelectorSyntaxError(
@@ -349,16 +345,19 @@ def parse_attrib(selector, stream):
         attrib = stream.next_symbol()
     else:
         namespace = '*'
+    stream.skip_whitespace()
     if stream.peek() == ']':
         return Attrib(selector, namespace, attrib, 'exists', None)
     op = stream.next()
     if not op in ('^=', '$=', '*=', '=', '~=', '|=', '!='):
         raise SelectorSyntaxError(
             "Operator expected, got '%s'" % op)
+    stream.skip_whitespace()
     value = stream.next()
     if not isinstance(value, (Symbol, String)):
         raise SelectorSyntaxError(
             "Expected string or symbol, got '%s'" % value)
+    stream.skip_whitespace()
     return Attrib(selector, namespace, attrib, op, value)
 
 
@@ -434,15 +433,13 @@ _match_count_number = re.compile(r'[+-]?\d*n(?:[+-]\d+)?').match
 def tokenize(s):
     pos = 0
     s = _replace_comments('', s)
-    while 1:
+    len_s = len(s)
+    while pos < len_s:
         match = _match_whitespace(s, pos=pos)
         if match:
-            preceding_whitespace_pos = pos
+            yield Token(' ', pos)
             pos = match.end()
-        else:
-            preceding_whitespace_pos = 0
-        if pos >= len(s):
-            return
+            continue
         match = _match_count_number(s, pos=pos)
         if match and match.group() != 'n':
             sym = s[pos:match.end()]
@@ -452,14 +449,10 @@ def tokenize(s):
         c = s[pos]
         c2 = s[pos:pos+2]
         if c2 in ('~=', '|=', '^=', '$=', '*=', '::', '!='):
-            if c2 == '::' and preceding_whitespace_pos > 0:
-                yield Token(' ', preceding_whitespace_pos)
             yield Token(c2, pos)
             pos += 2
             continue
         if c in '>+~,.*=[]()|:#':
-            if c in ':.#[' and preceding_whitespace_pos > 0:
-                yield Token(' ', preceding_whitespace_pos)
             yield Token(c, pos)
             pos += 1
             continue
@@ -598,3 +591,7 @@ class TokenStream(object):
             raise SelectorSyntaxError(
                 "Expected symbol or '*', got '%s'" % next)
         return next
+
+    def skip_whitespace(self):
+        if self.peek() == ' ':
+            self.next()
