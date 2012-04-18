@@ -70,6 +70,9 @@ in the Level 3 specification:
   but was then removed.
 * The ``!=`` attribute operator. ``[foo!=bar]`` is the same as
   ``:not([foo=bar])``
+* ``:not()`` accepts a *sequence of simple selectors*, not just single
+  *simple selector*. For example, ``:not(a.important[rel])`` is allowed,
+  even though the negation contains 3 *simple selectors*.
 
 
 Customizing the translation
