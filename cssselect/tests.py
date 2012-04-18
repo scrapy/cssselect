@@ -42,78 +42,86 @@ class TestCssselect(unittest.TestCase):
             "Token(']', 15)"]
 
     def test_parser(self):
-        def parse_many(first, *others):
-            result = repr(parse(first))
-            for other in others:
-                assert repr(parse(other)) == result
-            return result.replace("(u'", "('")
+        def repr_parse(css):
+            return [repr(selector).replace("(u'", "('")
+                    for selector in parse(css)]
 
-        assert parse_many('*') == 'Element[*]'
-        assert parse_many('*|*') == 'Element[*]'
-        assert parse_many('*|foo') == 'Element[foo]'
-        assert parse_many('foo|*') == 'Element[foo|*]'
-        assert parse_many('foo|bar') == 'Element[foo|bar]'
+        def parse_many(first, *others):
+            result = repr_parse(first)
+            for other in others:
+                assert repr_parse(other) == result
+            return result
+
+        assert parse_many('*') == ['Element[*]']
+        assert parse_many('*|*') == ['Element[*]']
+        assert parse_many('*|foo') == ['Element[foo]']
+        assert parse_many('foo|*') == ['Element[foo|*]']
+        assert parse_many('foo|bar') == ['Element[foo|bar]']
         # This will never match, but it is valid:
-        assert parse_many('#foo#bar') == 'Hash[Hash[Element[*]#foo]#bar]'
+        assert parse_many('#foo#bar') == ['Hash[Hash[Element[*]#foo]#bar]']
         assert parse_many(
             'div>.foo',
             'div> .foo',
             'div >.foo',
             'div > .foo',
             'div \n>  \t \t .foo', 'div\r>\n\n\n.foo', 'div\f>\f.foo'
-        ) == 'CombinedSelector[Element[div] > Class[Element[*].foo]]'
+        ) == ['CombinedSelector[Element[div] > Class[Element[*].foo]]']
         assert parse_many('td.foo,.bar',
             'td.foo, .bar',
             'td.foo\t\r\n\f ,\t\r\n\f .bar'
-        ) == 'Or([Class[Element[td].foo], Class[Element[*].bar]])'
-        assert parse_many('div, td.foo, div.bar span') == (
-            'Or([Element[div], Class[Element[td].foo], '
-                'CombinedSelector[Class[Element[div].bar] '
-                '<followed> Element[span]]])')
-        assert parse_many('div > p') == (
-            'CombinedSelector[Element[div] > Element[p]]')
-        assert parse_many('td:first') == (
-            'Pseudo[Element[td]:first]')
-        assert parse_many('td::first') == (
-            'Pseudo[Element[td]::first]')
-        assert parse_many('td :first') == (
+        ) == [
+            'Class[Element[td].foo]',
+            'Class[Element[*].bar]'
+        ]
+        assert parse_many('div, td.foo, div.bar span') == [
+            'Element[div]',
+            'Class[Element[td].foo]',
+            'CombinedSelector[Class[Element[div].bar] '
+                '<followed> Element[span]]']
+        assert parse_many('div > p') == [
+            'CombinedSelector[Element[div] > Element[p]]']
+        assert parse_many('td:first') == [
+            'Pseudo[Element[td]:first]']
+        assert parse_many('td::first') == [
+            'Pseudo[Element[td]::first]']
+        assert parse_many('td :first') == [
             'CombinedSelector[Element[td] '
-                '<followed> Pseudo[Element[*]:first]]')
-        assert parse_many('td ::first') == (
+                '<followed> Pseudo[Element[*]:first]]']
+        assert parse_many('td ::first') == [
             'CombinedSelector[Element[td] '
-                '<followed> Pseudo[Element[*]::first]]')
-        assert parse_many('a[name]', 'a[ name\t]') == (
-            'Attrib[Element[a][name]]')
-        assert parse_many('a [name]') == (
-            'CombinedSelector[Element[a] <followed> Attrib[Element[*][name]]]')
-        assert parse_many('a[rel="include"]') == (
-            "Attrib[Element[a][rel = String('include', 6)]]")
-        assert parse_many('a[rel = include]') == (
-            "Attrib[Element[a][rel = Symbol('include', 8)]]")
-        assert parse_many("a[hreflang |= 'en']") == (
-            "Attrib[Element[a][hreflang |= String('en', 14)]]")
-        assert parse_many('div:nth-child(10)') == (
-            "Function[Element[div]:nth-child(Symbol('10', 14))]")
-        assert parse_many(':nth-child(2n+2)') == (
-            "Function[Element[*]:nth-child(Symbol('2n+2', 11))]")
-        assert parse_many('div:nth-of-type(10)') == (
-            "Function[Element[div]:nth-of-type(Symbol('10', 16))]")
-        assert parse_many('div div:nth-of-type(10) .aclass') == (
+                '<followed> Pseudo[Element[*]::first]]']
+        assert parse_many('a[name]', 'a[ name\t]') == [
+            'Attrib[Element[a][name]]']
+        assert parse_many('a [name]') == [
+            'CombinedSelector[Element[a] <followed> Attrib[Element[*][name]]]']
+        assert parse_many('a[rel="include"]') == [
+            "Attrib[Element[a][rel = String('include', 6)]]"]
+        assert parse_many('a[rel = include]') == [
+            "Attrib[Element[a][rel = Symbol('include', 8)]]"]
+        assert parse_many("a[hreflang |= 'en']") == [
+            "Attrib[Element[a][hreflang |= String('en', 14)]]"]
+        assert parse_many('div:nth-child(10)') == [
+            "Function[Element[div]:nth-child(Symbol('10', 14))]"]
+        assert parse_many(':nth-child(2n+2)') == [
+            "Function[Element[*]:nth-child(Symbol('2n+2', 11))]"]
+        assert parse_many('div:nth-of-type(10)') == [
+            "Function[Element[div]:nth-of-type(Symbol('10', 16))]"]
+        assert parse_many('div div:nth-of-type(10) .aclass') == [
             'CombinedSelector[CombinedSelector[Element[div] <followed> '
                 "Function[Element[div]:nth-of-type(Symbol('10', 20))]] "
-                '<followed> Class[Element[*].aclass]]')
-        assert parse_many('label:only') == (
-            'Pseudo[Element[label]:only]')
-        assert parse_many('a:lang(fr)') == (
-            "Function[Element[a]:lang(Symbol('fr', 7))]")
-        assert parse_many('div:contains("foo")') == (
-            "Function[Element[div]:contains(String('foo', 13))]")
-        assert parse_many('div#foobar') == (
-            'Hash[Element[div]#foobar]')
-        assert parse_many('div:not(div.foo)') == (
-            'Function[Element[div]:not(Class[Element[div].foo])]')
-        assert parse_many('td ~ th') == (
-            'CombinedSelector[Element[td] ~ Element[th]]')
+                '<followed> Class[Element[*].aclass]]']
+        assert parse_many('label:only') == [
+            'Pseudo[Element[label]:only]']
+        assert parse_many('a:lang(fr)') == [
+            "Function[Element[a]:lang(Symbol('fr', 7))]"]
+        assert parse_many('div:contains("foo")') == [
+            "Function[Element[div]:contains(String('foo', 13))]"]
+        assert parse_many('div#foobar') == [
+            'Hash[Element[div]#foobar]']
+        assert parse_many('div:not(div.foo)') == [
+            'Function[Element[div]:not(Class[Element[div].foo])]']
+        assert parse_many('td ~ th') == [
+            'CombinedSelector[Element[td] ~ Element[th]]']
 
     def test_parse_errors(self):
         def get_error(css):
@@ -186,7 +194,7 @@ class TestCssselect(unittest.TestCase):
 
     def test_translation(self):
         def xpath(css):
-            return str(GenericTranslator().xpath(parse(css)))
+            return str(GenericTranslator().css_to_xpath(css, prefix=''))
 
         assert xpath('*') == "*"
         assert xpath('E') == "e"

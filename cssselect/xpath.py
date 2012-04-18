@@ -167,7 +167,8 @@ class GenericTranslator(object):
         if isinstance(selector_group, _basestring):
             selector_group = parse(selector_group)
         #else: assume it is already parsed
-        xpath = self.xpath(selector_group)
+        xpath = XPathExprOr([
+            self.xpath(selector) for selector in selector_group])
         xpath.add_prefix(prefix or '')
         return _unicode(xpath)
 
@@ -195,10 +196,6 @@ class GenericTranslator(object):
 
 
     # Dispatched by parsed object type
-
-    def xpath_or(self, selector_group):
-        """Translate a group of selectors (class Or)."""
-        return XPathExprOr([self.xpath(item) for item in selector_group.items])
 
     def xpath_combinedselector(self, combined):
         """Translate a combined selector."""

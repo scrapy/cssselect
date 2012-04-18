@@ -159,16 +159,6 @@ class Hash(object):
             self.selector, self.id)
 
 
-class Or(object):
-
-    def __init__(self, items):
-        self.items = items
-    def __repr__(self):
-        return '%s(%r)' % (
-            self.__class__.__name__,
-            self.items)
-
-
 class CombinedSelector(object):
 
     def __init__(self, selector, combinator, subselector):
@@ -200,18 +190,18 @@ def parse(string):
     # Fast path for simple cases
     match = _el_re.match(string)
     if match:
-        return Element('*', match.group(1))
+        return [Element('*', match.group(1))]
     match = _id_re.match(string)
     if match is not None:
-        return Hash(Element('*', match.group(1) or '*'), match.group(2))
+        return [Hash(Element('*', match.group(1) or '*'), match.group(2))]
     match = _class_re.match(string)
     if match is not None:
-        return Class(Element('*', match.group(1) or '*'), match.group(2))
+        return [Class(Element('*', match.group(1) or '*'), match.group(2))]
 
     stream = TokenStream(tokenize(string))
     stream.source = string
     try:
-        return parse_selector_group(stream)
+        return list(parse_selector_group(stream))
     except SelectorSyntaxError:
         import sys
         e = sys.exc_info()[1]
@@ -225,20 +215,14 @@ def parse(string):
 
 
 def parse_selector_group(stream):
-    result = []
     stream.skip_whitespace()
     while 1:
-        result.append(parse_selector(stream))
+        yield parse_selector(stream)
         if stream.peek() == ',':
             stream.next()
             stream.skip_whitespace()
         else:
             break
-    if len(result) == 1:
-        return result[0]
-    else:
-        return Or(result)
-
 
 def parse_selector(stream):
     result = parse_simple_selector(stream)
