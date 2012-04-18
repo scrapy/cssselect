@@ -12,7 +12,7 @@
 """
 
 import re
-from cssselect.parser import parse, parse_series, Element, SelectorError
+from cssselect.parser import parse, parse_series, SelectorError
 
 
 try:
@@ -173,11 +173,7 @@ class GenericTranslator(object):
 
     @staticmethod
     def xpath_literal(s):
-        if isinstance(s, Element):
-            # This is probably a symbol that looks like an expression...
-            s = s._format_element()
-        else:
-            s = _unicode(s)
+        s = _unicode(s)
         if "'" not in s:
             s = "'%s'" % s
         elif '"' not in s:
