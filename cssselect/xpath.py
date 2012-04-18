@@ -173,6 +173,12 @@ class GenericTranslator(object):
         return method(self.xpath(combined.selector),
                       self.xpath(combined.subselector))
 
+    def xpath_negation(self, negation):
+        xpath = self.xpath(negation.selector)
+        sub_xpath = self.xpath(negation.subselector)
+        sub_xpath.add_name_test()
+        return xpath.add_condition('not(%s)' % sub_xpath.condition)
+
     def xpath_function(self, function):
         """Translate a functional pseudo-class."""
         method = 'xpath_%s_function' % function.name.replace('-', '_')
@@ -310,11 +316,6 @@ class GenericTranslator(object):
                 "*:nth-of-type() is not implemented")
         return self.xpath_nth_child_function(xpath, function, last=True,
                                              add_name_test=False)
-
-    def xpath_not_function(self, xpath, function):
-        condition = self.xpath(function.arguments).condition
-        # FIXME: should I do something about element_path?
-        return xpath.add_condition('not(%s)' % condition)
 
     def xpath_contains_function(self, xpath, function):
         return xpath.add_condition('contains(string(.), %s)'

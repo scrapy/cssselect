@@ -122,7 +122,7 @@ class TestCssselect(unittest.TestCase):
         assert parse_many('div#foobar') == [
             'Hash[Element[div]#foobar]']
         assert parse_many('div:not(div.foo)') == [
-            'Function[Element[div]:not(Class[Element[div].foo])]']
+            'Negation[Element[div]:not(Class[Element[div].foo])]']
         assert parse_many('td ~ th') == [
             'CombinedSelector[Element[td] ~ Element[th]]']
 

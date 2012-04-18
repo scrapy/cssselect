@@ -91,6 +91,19 @@ class Pseudo(object):
             self.__class__.__name__, self.selector, self.ident)
 
 
+class Negation(object):
+    """
+    Represents selector:not(subselector)
+    """
+    def __init__(self, selector, subselector):
+        self.selector = selector
+        self.subselector = subselector
+
+    def __repr__(self):
+        return '%s[%r:not(%r)]' % (
+            self.__class__.__name__, self.selector, self.subselector)
+
+
 class Attrib(object):
     """
     Represents selector[namespace|attrib operator value]
@@ -308,7 +321,10 @@ def parse_simple_selector(stream, inside_negation=False):
                 if not next == ')':
                     raise SelectorSyntaxError(
                         "Expected ')', got '%s'" % next)
-                result = Function(result, ident, argument)
+                if ident == 'not':
+                    result = Negation(result, argument)
+                else:
+                    result = Function(result, ident, argument)
             else:
                 result = Pseudo(result, ident)
             continue
