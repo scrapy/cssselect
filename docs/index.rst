@@ -1,26 +1,71 @@
 .. module:: cssselect
+
 .. include:: ../README.rst
+
+
+.. contents:: Contents
+    :local:
+    :depth: 1
+
+Quickstart
+==========
+
+Use :class:`HTMLTranslator` for HTML documents, :class:`GenericTranslator`
+for "generic" XML documents. (The former has a more useful translation
+for some selectors, based on HTML-specific element types or attributes.)
+
+
+.. sourcecode:: pycon
+
+    >>> from cssselect import GenericTranslator, SelectorError
+    >>> try:
+    ...     expression = GenericTranslator().css_to_xpath('div.content')
+    ... except SelectorError:
+    ...     print('Invalid selector.')
+    ...
+    >>> print(expression)
+    descendant-or-self::div[@class and contains(concat(' ', normalize-space(@class), ' '), ' content ')]
+
+The resulting expression can be used with lxml's `XPath engine`_:
+
+.. _XPath engine: http://lxml.de/xpathxslt.html#xpath
+
+.. sourcecode:: pycon
+
+    >>> from lxml.etree import fromstring
+    >>> document = fromstring('''
+    ...   <div id="outer">
+    ...     <div id="inner" class="content body">text</div>
+    ...   </div>
+    ... ''')
+    >>> [e.get('id') for e in document.xpath(expression)]
+    ['inner']
 
 User API
 ========
 
-The ``cssselect`` module provides two classes:
-
-* :class:`GenericTranslator` for "generic" XML documents.
-* :class:`HTMLTranslator` for HTML documents.
-
-Both are instanciated without arguments.
-Currently, their only public API is the :meth:`~GenericTranslator.css_to_xpath`
-method. This API
-expected to expand to provide more information about the parsed selectors,
-and to allow customization of the translation.
+Currently, the only public API is the :meth:`~GenericTranslator.css_to_xpath`
+method of the translator classes. This API is expected to expand to provide
+more information about the parsed selectors, and to allow customization
+of the translation.
 
 
-.. automethod:: GenericTranslator.css_to_xpath
+.. autoclass:: GenericTranslator()
+    :members: css_to_xpath
+
+.. autoclass:: HTMLTranslator()
+
+    .. method:: css_to_xpath(css, prefix='descendant-or-self::')
+
+        Same as :meth:`GenericTranslator.css_to_xpath`
+
+.. autoexception:: SelectorError
+.. autoexception:: SelectorSyntaxError
+.. autoexception:: ExpressionError
 
 
-Limitations and supported selectors
-===================================
+Supported selectors
+===================
 
 This library implements CSS3 selectors as described in `the W3C specification
 <http://www.w3.org/TR/2011/REC-css3-selectors-20110929/>`_.
@@ -52,21 +97,10 @@ These applicable pseudo-classes are not yet implemented:
 None of the pseudo-elements apply since XPath only knows about “real”
 elements.
 
-..
-    The following claim was copied from lxml.
-    TODO: is this true? What kind of situation could cause trouble?
-    Maybe add an example?
-
-XPath has underspecified string quoting rules (there seems to be no
-string quoting at all), so if you use expressions that contain
-characters that requiring quoting you might have problems with the
-translation from CSS to XPath.
-
 On the other hand, *cssselect* supports some selectors that are not
 in the Level 3 specification:
 
-* The ``:contains(text)`` pseudo-class that `existed in an early draft
-  <http://www.w3.org/TR/2001/CR-css3-selectors-20011113/#content-selectors>`_
+* The ``:contains(text)`` pseudo-class that existed in `an early draft`_
   but was then removed.
 * The ``!=`` attribute operator. ``[foo!=bar]`` is the same as
   ``:not([foo=bar])``
@@ -74,20 +108,37 @@ in the Level 3 specification:
   *simple selector*. For example, ``:not(a.important[rel])`` is allowed,
   even though the negation contains 3 *simple selectors*.
 
+.. _an early draft: http://www.w3.org/TR/2001/CR-css3-selectors-20011113/#content-selectors
+
+..
+    The following claim was copied from lxml:
+
+    """
+    XPath has underspecified string quoting rules (there seems to be no
+    string quoting at all), so if you use expressions that contain
+    characters that requiring quoting you might have problems with the
+    translation from CSS to XPath.
+    """
+
+    It seems "string quoting" meant "quote escaping". There is indeed
+    no quote escaping, but the xpath_literal method handles this.
+    It should not be a problem anymore.
+
 
 Customizing the translation
 ===========================
 
 Just like :class:`HTMLTranslator` is a subclass of :class:`GenericTranslator`,
 you can make new sub-classes of either of them and override some methods.
-This way, you can customize how eg. some pseudo-class is implemented or change
-some other detail of the XPath translation, without forking or monkey-patching
-cssselect.
+This enables you, for example, to customize how some pseudo-class is
+implemented without forking or monkey-patching cssselect.
 
 The "customization API" is the set of methods in translation classes
-and their signature. You can look at the source code to see how it works.
+and their signature. You can look at the `source code`_ to see how it works.
 However, be aware that this API is not very stable yet. It might change
 and break you sub-class.
+
+.. _source code: https://github.com/SimonSapin/cssselect/blob/master/cssselect/xpath.py
 
 
 Namespaces

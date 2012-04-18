@@ -25,7 +25,7 @@ except NameError:
 
 
 class ExpressionError(SelectorError, RuntimeError):
-    """Inexistent or unsupported selector (eg. pseudo-class)."""
+    """Unknown or unsupported selector (eg. pseudo-class)."""
 
 
 #### XPath Helpers
@@ -152,39 +152,22 @@ class GenericTranslator(object):
         '!=': 'different',  # XXX Not in Level 3 but meh
     }
 
-    def css_to_xpath(self, css, prefix='descendant-or-self::'):
+    def css_to_xpath(self, selector_group, prefix='descendant-or-self::'):
         """Translate a CSS Selector to XPath.
 
-        :param css: An Unicode string or a parsed selector object.
-        :returns: An Unicode string.
-
-        .. sourcecode:: pycon
-
-            >>> from cssselect import GenericTranslator
-            >>> expression = GenericTranslator().css_to_xpath('div.content')
-            >>> print(expression)
-            descendant-or-self::div[@class and contains(concat(' ', normalize-space(@class), ' '), ' content ')]
-
-        The resulting expression can be used with lxml's `XPath engine`_:
-
-        .. _XPath engine: http://lxml.de/xpathxslt.html#xpath
-
-        .. sourcecode:: pycon
-
-            >>> from lxml.etree import fromstring
-            >>> document = fromstring('''<div id="outer">
-            ...   <div id="inner" class="content body">
-            ...       text
-            ...   </div></div>''')
-            >>> [e.get('id') for e in document.xpath(expression)]
-            ['inner']
+        :param selector_group:
+            A *group of selectors* as an Unicode string.
+        :raises:
+            :class:`SelectorSyntaxError` on invalid selectors,
+            :class:`ExpressionError` on unknown/unsupported selectors.
+        :returns:
+            The equivalent XPath 1.0 expression as an Unicode string.
 
         """
-        if isinstance(css, _basestring):
-            selector = parse(css)
-        else:
-            selector = css  # assume it is already parsed
-        xpath = self.xpath(selector)
+        if isinstance(selector_group, _basestring):
+            selector_group = parse(selector_group)
+        #else: assume it is already parsed
+        xpath = self.xpath(selector_group)
         xpath.add_prefix(prefix or '')
         return _unicode(xpath)
 

@@ -35,7 +35,7 @@ subclass.
 Version 0.2
 -----------
 
-Released on 2012-04-13.
+Released on 2012-04-16.
 
 * Remove the ``CSSSelector`` class. (The ``css_to_xpath()`` function is now
   the main API.)

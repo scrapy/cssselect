@@ -24,10 +24,11 @@ except NameError:
 
 
 class SelectorError(Exception):
-    """Invalid or unsupported selector.
+    """Common parent for :class:`SelectorSyntaxError` and
+    :class:`ExpressionError`.
 
-    Common parent class for the exceptions that are actually raised.
-    You can use it to catch any error in a selector.
+    You can just use ``except SelectorError:`` when calling
+    :meth:`~GenericTranslator.css_to_xpath` and handle both exceptions types.
 
     """
 
