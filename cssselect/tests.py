@@ -168,6 +168,32 @@ class TestCssselect(unittest.TestCase):
             ('Element[bar]', None),
             ('Element[baz]', 'after')]
 
+    def test_specificity(self):
+        def specificity(css):
+            selectors = parse(css)
+            assert len(selectors) == 1
+            return selectors[0].specificity()
+
+        assert specificity('*') == (0, 0, 0)
+        assert specificity(' foo') == (0, 0, 1)
+        assert specificity(':empty ') == (0, 1, 0)
+        assert specificity(':before') == (0, 0, 1)
+        assert specificity('*:before') == (0, 0, 1)
+        assert specificity(':nth-child(2)') == (0, 1, 0)
+        assert specificity('.bar') == (0, 1, 0)
+        assert specificity('[baz]') == (0, 1, 0)
+        assert specificity('[baz="4"]') == (0, 1, 0)
+        assert specificity('[baz^="4"]') == (0, 1, 0)
+        assert specificity('#lipsum') == (1, 0, 0)
+
+        assert specificity('foo:empty') == (0, 1, 1)
+        assert specificity('foo:before') == (0, 0, 2)
+        assert specificity('foo::before') == (0, 0, 2)
+        assert specificity('foo:empty::before') == (0, 1, 2)
+
+        assert specificity('#lorem + foo#ipsum:first-child > bar:first-line'
+            ) == (2, 1, 3)
+
     def test_parse_errors(self):
         def get_error(css):
             try:

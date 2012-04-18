@@ -50,6 +50,12 @@ class Selector(object):
         return '%s[%r::%s]' % (
             self.__class__.__name__, self._tree, self.pseudo_element)
 
+    def specificity(self):
+        a, b, c = self._tree.specificity()
+        if self.pseudo_element:
+            c += 1
+        return a, b, c
+
 
 class Class(object):
     """
@@ -62,6 +68,11 @@ class Class(object):
     def __repr__(self):
         return '%s[%r.%s]' % (
             self.__class__.__name__, self.selector, self.class_name)
+
+    def specificity(self):
+        a, b, c = self.selector.specificity()
+        b += 1
+        return a, b, c
 
 
 class Function(object):
@@ -77,6 +88,11 @@ class Function(object):
         return '%s[%r:%s(%r)]' % (
             self.__class__.__name__, self.selector, self.name, self.arguments)
 
+    def specificity(self):
+        a, b, c = self.selector.specificity()
+        b += 1
+        return a, b, c
+
 
 class Pseudo(object):
     """
@@ -90,6 +106,11 @@ class Pseudo(object):
         return '%s[%r:%s]' % (
             self.__class__.__name__, self.selector, self.ident)
 
+    def specificity(self):
+        a, b, c = self.selector.specificity()
+        b += 1
+        return a, b, c
+
 
 class Negation(object):
     """
@@ -102,6 +123,11 @@ class Negation(object):
     def __repr__(self):
         return '%s[%r:not(%r)]' % (
             self.__class__.__name__, self.selector, self.subselector)
+
+    def specificity(self):
+        a1, b1, c1 = self.selector.specificity()
+        a2, b2, c2 = self.sub_selector.specificity()
+        return a1 + a2, b1 + b2, c1 + c2
 
 
 class Attrib(object):
@@ -128,6 +154,11 @@ class Attrib(object):
                 self.__class__.__name__, self.selector, attrib,
                 self.operator, self.value)
 
+    def specificity(self):
+        a, b, c = self.selector.specificity()
+        b += 1
+        return a, b, c
+
 
 class Element(object):
     """
@@ -145,6 +176,12 @@ class Element(object):
         return '%s[%s]' % (
             self.__class__.__name__, element)
 
+    def specificity(self):
+        if self.element == '*':
+            return 0, 0, 0
+        else:
+            return 0, 0, 1
+
 
 class Hash(object):
     """
@@ -157,6 +194,11 @@ class Hash(object):
     def __repr__(self):
         return '%s[%r#%s]' % (
             self.__class__.__name__, self.selector, self.id)
+
+    def specificity(self):
+        a, b, c = self.selector.specificity()
+        a += 1
+        return a, b, c
 
 
 class CombinedSelector(object):
@@ -173,6 +215,11 @@ class CombinedSelector(object):
             comb = self.combinator
         return '%s[%r %s %r]' % (
             self.__class__.__name__, self.selector, comb, self.subselector)
+
+    def specificity(self):
+        a1, b1, c1 = self.selector.specificity()
+        a2, b2, c2 = self.subselector.specificity()
+        return a1 + a2, b1 + b2, c1 + c2
 
 
 #### Parser
