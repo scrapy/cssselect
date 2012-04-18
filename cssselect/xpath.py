@@ -120,7 +120,7 @@ class GenericTranslator(object):
         """Translate a *group of selectors* to XPath.
 
         Pseudo-elements are not supported here since XPath only knows
-        about “real” elements.
+        about "real" elements.
 
         :param css:
             A *group of selectors* as an Unicode string.
@@ -145,7 +145,7 @@ class GenericTranslator(object):
         """Translate a parsed selector to XPath.
 
         The :attr:`~Selector.pseudo_element` attribute of the selector
-        is ignored. It is the caller’s responsibility to reject selectors
+        is ignored. It is the caller's responsibility to reject selectors
         with pseudo-elements, or to account for them somehow.
 
         :param selector:

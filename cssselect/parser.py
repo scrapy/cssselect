@@ -44,7 +44,11 @@ class Selector(object):
     """
     def __init__(self, tree, pseudo_element=None):
         self._tree = tree
-        #: A string like ``'after'`` or ``None``
+        #: If the selector has a pseudo-element: a string like ``'after'``.
+        #: Otherwise, ``None``.
+        #: Any identifier preceded by ``::`` is accepted as a pseudo-element.
+        #: It is the user’s responsibility to reject selectors with
+        #: unknown or unsupported pseudo-elements.
         self.pseudo_element = pseudo_element
 
     def __repr__(self):
@@ -242,7 +246,7 @@ _class_re = re.compile(r'^\s*(\w*)\.(\w+)\s*$')
 def parse(css):
     """Parse a CSS *group of selectors*.
 
-    If you don’t care about pseudo-elements or selector specificity,
+    If you don't care about pseudo-elements or selector specificity,
     you can skip this and use :meth:`~GenericTranslator.css_to_xpath`.
 
     :param css:
