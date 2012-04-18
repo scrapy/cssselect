@@ -4,6 +4,8 @@ Changelog
 Version 0.4
 -----------
 
+Released on 2012-04-18.
+
 * Add proper support for pseudo-elements
 * Add specificity calculation
 * Expose the :func:`parse` function and the parsed :class:`Selector` objects
