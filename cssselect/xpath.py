@@ -116,10 +116,10 @@ class GenericTranslator(object):
     #: http://www.w3.org/TR/selectors/#id-selectors
     id_attribute = 'id'
 
-    def css_to_xpath(self, selector_group, prefix='descendant-or-self::'):
+    def css_to_xpath(self, css, prefix='descendant-or-self::'):
         """Translate a CSS Selector to XPath.
 
-        :param selector_group:
+        :param css:
             A *group of selectors* as an Unicode string.
         :raises:
             :class:`SelectorSyntaxError` on invalid selectors,
@@ -128,18 +128,15 @@ class GenericTranslator(object):
             The equivalent XPath 1.0 expression as an Unicode string.
 
         """
-        if isinstance(selector_group, _basestring):
-            selector_group = parse(selector_group)
-        #else: assume it is already parsed
-
         prefix = prefix or ''
-        # Note that unfortunately | isn't the union, it's the sum,
-        # so duplicate elements will appear.
-        # FIXME: is it?
+        selectors = parse(css)
+        for selector in selectors:
+            if selector.pseudo_element:
+                raise ExpressionError('Pseudo-elements are not supported.')
+
         return ' | '.join(
-            prefix + _unicode(self.xpath(selector))
-            for selector in selector_group
-        )
+            prefix + _unicode(self.xpath(selector._tree))
+            for selector in selectors)
 
     @staticmethod
     def xpath_literal(s):

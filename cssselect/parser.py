@@ -38,63 +38,63 @@ class SelectorSyntaxError(SelectorError, SyntaxError):
 
 #### Parsed objects
 
+class Selector(object):
+    """
+    Represents a selector with an optional pseudo element.
+    """
+    def __init__(self, tree, pseudo_element=None):
+        self._tree = tree
+        self.pseudo_element = pseudo_element
+
+    def __repr__(self):
+        return '%s[%r::%s]' % (
+            self.__class__.__name__, self._tree, self.pseudo_element)
+
+
 class Class(object):
     """
     Represents selector.class_name
     """
-
     def __init__(self, selector, class_name):
         self.selector = selector
         self.class_name = class_name
 
     def __repr__(self):
         return '%s[%r.%s]' % (
-            self.__class__.__name__,
-            self.selector,
-            self.class_name)
+            self.__class__.__name__, self.selector, self.class_name)
 
 
 class Function(object):
     """
     Represents selector:name(expr)
     """
-
-    def __init__(self, selector, type, name, arguments):
+    def __init__(self, selector, name, arguments):
         self.selector = selector
-        self.type = type  # TODO: is this needed?
         self.name = name
         self.arguments = arguments
 
     def __repr__(self):
-        return '%s[%r%s%s(%r)]' % (
-            self.__class__.__name__,
-            self.selector,
-            self.type, self.name, self.arguments)
+        return '%s[%r:%s(%r)]' % (
+            self.__class__.__name__, self.selector, self.name, self.arguments)
 
 
 class Pseudo(object):
     """
     Represents selector:ident
     """
-
-    def __init__(self, selector, type, ident):
+    def __init__(self, selector, ident):
         self.selector = selector
-        assert type in (':', '::')
-        self.type = type
         self.ident = ident
 
     def __repr__(self):
-        return '%s[%r%s%s]' % (
-            self.__class__.__name__,
-            self.selector,
-            self.type, self.ident)
+        return '%s[%r:%s]' % (
+            self.__class__.__name__, self.selector, self.ident)
 
 
 class Attrib(object):
     """
     Represents selector[namespace|attrib operator value]
     """
-
     def __init__(self, selector, namespace, attrib, operator, value):
         self.selector = selector
         self.namespace = namespace
@@ -103,64 +103,50 @@ class Attrib(object):
         self.value = value
 
     def __repr__(self):
+        if self.namespace == '*':
+            attrib = self.attrib
+        else:
+            attrib = '%s|%s' % (self.namespace, self.attrib)
         if self.operator == 'exists':
             return '%s[%r[%s]]' % (
-                self.__class__.__name__,
-                self.selector,
-                self._format_attrib())
+                self.__class__.__name__, self.selector, attrib)
         else:
             return '%s[%r[%s %s %r]]' % (
-                self.__class__.__name__,
-                self.selector,
-                self._format_attrib(),
-                self.operator,
-                self.value)
-
-    def _format_attrib(self):
-        if self.namespace == '*':
-            return self.attrib
-        else:
-            return '%s|%s' % (self.namespace, self.attrib)
+                self.__class__.__name__, self.selector, attrib,
+                self.operator, self.value)
 
 
 class Element(object):
     """
     Represents namespace|element
     """
-
     def __init__(self, namespace, element):
         self.namespace = namespace
         self.element = element
 
     def __repr__(self):
-        return '%s[%s]' % (
-            self.__class__.__name__,
-            self._format_element())
-
-    def _format_element(self):
         if self.namespace == '*':
-            return self.element
+            element = self.element
         else:
-            return '%s|%s' % (self.namespace, self.element)
+            element = '%s|%s' % (self.namespace, self.element)
+        return '%s[%s]' % (
+            self.__class__.__name__, element)
 
 
 class Hash(object):
     """
     Represents selector#id
     """
-
     def __init__(self, selector, id):
         self.selector = selector
         self.id = id
 
     def __repr__(self):
         return '%s[%r#%s]' % (
-            self.__class__.__name__,
-            self.selector, self.id)
+            self.__class__.__name__, self.selector, self.id)
 
 
 class CombinedSelector(object):
-
     def __init__(self, selector, combinator, subselector):
         assert selector is not None
         self.selector = selector
@@ -173,10 +159,7 @@ class CombinedSelector(object):
         else:
             comb = self.combinator
         return '%s[%r %s %r]' % (
-            self.__class__.__name__,
-            self.selector,
-            comb,
-            self.subselector)
+            self.__class__.__name__, self.selector, comb, self.subselector)
 
 
 #### Parser
@@ -190,13 +173,15 @@ def parse(string):
     # Fast path for simple cases
     match = _el_re.match(string)
     if match:
-        return [Element('*', match.group(1))]
+        return [Selector(Element('*', match.group(1)))]
     match = _id_re.match(string)
     if match is not None:
-        return [Hash(Element('*', match.group(1) or '*'), match.group(2))]
+        return [Selector(Hash(Element(
+            '*', match.group(1) or '*'), match.group(2)))]
     match = _class_re.match(string)
     if match is not None:
-        return [Class(Element('*', match.group(1) or '*'), match.group(2))]
+        return [Selector(Class(Element(
+            '*', match.group(1) or '*'), match.group(2)))]
 
     stream = TokenStream(tokenize(string))
     stream.source = string
@@ -217,7 +202,7 @@ def parse(string):
 def parse_selector_group(stream):
     stream.skip_whitespace()
     while 1:
-        yield parse_selector(stream)
+        yield Selector(*parse_selector(stream))
         if stream.peek() == ',':
             stream.next()
             stream.skip_whitespace()
@@ -225,13 +210,16 @@ def parse_selector_group(stream):
             break
 
 def parse_selector(stream):
-    result = parse_simple_selector(stream)
+    result, pseudo_element = parse_simple_selector(stream)
     while 1:
         stream.skip_whitespace()
         peek = stream.peek()
         if peek == ',' or peek is None:
-            return result
-        elif peek in ('+', '>', '~'):
+            break
+        if pseudo_element:
+            raise SelectorSyntaxError(
+                'A pseudo-element must be at the end of a selector')
+        if peek in ('+', '>', '~'):
             # A combinator
             combinator = stream.next()
             stream.skip_whitespace()
@@ -239,9 +227,9 @@ def parse_selector(stream):
             # By exclusion, the last parse_simple_selector() ended
             # at peek == ' '
             combinator = ' '
-        next_selector = parse_simple_selector(stream)
+        next_selector, pseudo_element = parse_simple_selector(stream)
         result = CombinedSelector(result, combinator, next_selector)
-    return result
+    return result, pseudo_element
 
 
 def parse_simple_selector(stream, inside_negation=False):
@@ -260,8 +248,15 @@ def parse_simple_selector(stream, inside_negation=False):
     else:
         element = namespace = '*'
     result = Element(namespace, element)
+    pseudo_element = None
     while 1:
         peek = stream.peek()
+        if peek in (None, ' ', ',', '+', '>', '~') or (
+                inside_negation and peek == ')'):
+            break
+        if pseudo_element:
+            raise SelectorSyntaxError(
+                'A pseudo-element must be at the end of a selector')
         if peek == '#':
             stream.next()
             result = Hash(result, stream.next_symbol())
@@ -278,17 +273,29 @@ def parse_simple_selector(stream, inside_negation=False):
                 raise SelectorSyntaxError(
                     "] expected, got '%s'" % next)
             continue
-        elif peek == ':' or peek == '::':
-            type = stream.next()
+        elif peek == '::':
+            stream.next()
+            pseudo_element = stream.next_symbol()
+            continue
+        elif peek == ':':
+            stream.next()
             ident = stream.next_symbol()
+            if ident in ('first-line', 'first-letter', 'before', 'after'):
+                # Special case: CSS 2.1 pseudo-elements can have a single ':'
+                # Any new pseudo-element must have two.
+                pseudo_element = ident
+                continue
             if stream.peek() == '(':
                 stream.next()
                 stream.skip_whitespace()
                 if ident == 'not':
                     if inside_negation:
-                        raise SyntaxError('Got nested :not()')
-                    argument = parse_simple_selector(
+                        raise SelectorSyntaxError('Got nested :not()')
+                    argument, argument_pseudo_element = parse_simple_selector(
                         stream, inside_negation=True)
+                    if argument_pseudo_element:
+                        raise SelectorSyntaxError(
+                            'Pseudo-elements are not allowed inside :not()')
                 else:
                     peek = stream.peek()
                     if isinstance(peek, (Symbol, String)):
@@ -301,20 +308,17 @@ def parse_simple_selector(stream, inside_negation=False):
                 if not next == ')':
                     raise SelectorSyntaxError(
                         "Expected ')', got '%s'" % next)
-                result = Function(result, type, ident, argument)
+                result = Function(result, ident, argument)
             else:
-                result = Pseudo(result, type, ident)
+                result = Pseudo(result, ident)
             continue
-        elif peek in (None, ' ', ',', '+', '>', '~') or (
-                inside_negation and peek == ')'):
-            break
         else:
             raise SelectorSyntaxError(
                 "Expected selector, got '%s'" % peek)
     if consumed == len(stream.used):
         raise SelectorSyntaxError(
             "Expected selector, got '%s'" % stream.peek())
-    return result
+    return result, pseudo_element
 
 
 def parse_attrib(selector, stream):
@@ -524,7 +528,6 @@ def tokenize_symbol(s, pos):
 
 
 class TokenStream(object):
-
     def __init__(self, tokens, source=None):
         self.used = []
         self.tokens = iter(tokens)

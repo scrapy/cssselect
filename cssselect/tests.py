@@ -43,8 +43,11 @@ class TestCssselect(unittest.TestCase):
 
     def test_parser(self):
         def repr_parse(css):
-            return [repr(selector).replace("(u'", "('")
-                    for selector in parse(css)]
+            selectors = parse(css)
+            for selector in selectors:
+                assert selector.pseudo_element is None
+            return [repr(selector._tree).replace("(u'", "('")
+                    for selector in selectors]
 
         def parse_many(first, *others):
             result = repr_parse(first)
@@ -82,14 +85,14 @@ class TestCssselect(unittest.TestCase):
             'CombinedSelector[Element[div] > Element[p]]']
         assert parse_many('td:first') == [
             'Pseudo[Element[td]:first]']
-        assert parse_many('td::first') == [
-            'Pseudo[Element[td]::first]']
+        assert parse_many('td:first') == [
+            'Pseudo[Element[td]:first]']
         assert parse_many('td :first') == [
             'CombinedSelector[Element[td] '
                 '<followed> Pseudo[Element[*]:first]]']
-        assert parse_many('td ::first') == [
+        assert parse_many('td :first') == [
             'CombinedSelector[Element[td] '
-                '<followed> Pseudo[Element[*]::first]]']
+                '<followed> Pseudo[Element[*]:first]]']
         assert parse_many('a[name]', 'a[ name\t]') == [
             'Attrib[Element[a][name]]']
         assert parse_many('a [name]') == [
@@ -122,6 +125,48 @@ class TestCssselect(unittest.TestCase):
             'Function[Element[div]:not(Class[Element[div].foo])]']
         assert parse_many('td ~ th') == [
             'CombinedSelector[Element[td] ~ Element[th]]']
+
+    def test_pseudo_elements(self):
+        def parse_pseudo(css):
+            result = []
+            for selector in parse(css):
+                result.append((
+                    repr(selector._tree).replace("(u'", "('"),
+                    selector.pseudo_element))
+            return result
+
+        def parse_one(css):
+            result = parse_pseudo(css)
+            assert len(result) == 1
+            return result[0]
+
+        assert parse_one('foo') == ('Element[foo]', None)
+        assert parse_one('*') == ('Element[*]', None)
+        assert parse_one(':empty') == ('Pseudo[Element[*]:empty]', None)
+
+        # Special cases for CSS 2.1 pseudo-elements
+        assert parse_one(':before') == ('Element[*]', 'before')
+        assert parse_one(':after') == ('Element[*]', 'after')
+        assert parse_one(':first-line') == ('Element[*]', 'first-line')
+        assert parse_one(':first-letter') == ('Element[*]', 'first-letter')
+
+        assert parse_one('::before') == ('Element[*]', 'before')
+        assert parse_one('::after') == ('Element[*]', 'after')
+        assert parse_one('::first-line') == ('Element[*]', 'first-line')
+        assert parse_one('::first-letter') == ('Element[*]', 'first-letter')
+
+        assert parse_one('::selection') == ('Element[*]', 'selection')
+        assert parse_one('foo:after') == ('Element[foo]', 'after')
+        assert parse_one('foo::selection') == ('Element[foo]', 'selection')
+        assert parse_one('lorem#ipsum ~ a#b.c[href]:empty::selection') == (
+            'CombinedSelector[Hash[Element[lorem]#ipsum] ~ '
+                'Pseudo[Attrib[Class[Hash[Element[a]#b].c][href]]:empty]]',
+            'selection')
+
+        parse_pseudo('foo:before, bar, baz:after') == [
+            ('Element[foo]', 'before'),
+            ('Element[bar]', None),
+            ('Element[baz]', 'after')]
 
     def test_parse_errors(self):
         def get_error(css):
@@ -191,6 +236,21 @@ class TestCssselect(unittest.TestCase):
             "Expected selector, got 'a' at "
             "[Token('[', 0), Symbol('href', 1), Token(']', 5)]"
             " -> Symbol('a', 6)")
+
+        # Mis-placed pseudo-elements
+        assert get_error('a:before:empty') == (
+            "A pseudo-element must be at the end of a selector at "
+            "[Symbol('a', 0), Token(':', 1), Symbol('before', 2)] "
+            "-> Token(':', 8)")
+        assert get_error('li:before a') == (
+            "A pseudo-element must be at the end of a selector at "
+            "[Symbol('li', 0), Token(':', 2), Symbol('before', 3), "
+            "Token(' ', 9)] -> Symbol('a', 10)")
+        assert get_error(':not(:before)') == (
+            "Pseudo-elements are not allowed inside :not() at "
+            "[Token(':', 0), Symbol('not', 1), Token('(', 4), Token(':', 5),"
+            " Symbol('before', 6)] -> Token(')', 12)")
+
 
     def test_translation(self):
         def xpath(css):
@@ -342,6 +402,8 @@ class TestCssselect(unittest.TestCase):
         assert all_ids[:4] == ['html', 'nil', 'nil', 'outer-div']
         assert all_ids[-1:] == ['foobar-span']
         assert pcss('div') == ['outer-div', 'li-div', 'foobar-div']
+        assert pcss('div div') == ['li-div']
+        assert pcss('div, div div') == ['outer-div', 'li-div', 'foobar-div']
         assert pcss('a[name]') == ['name-anchor']
         assert pcss('a[rel]') == ['tag-anchor', 'nofollow-anchor']
         assert pcss('a[rel="tag"]') == ['tag-anchor']
