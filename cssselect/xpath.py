@@ -117,26 +117,45 @@ class GenericTranslator(object):
     id_attribute = 'id'
 
     def css_to_xpath(self, css, prefix='descendant-or-self::'):
-        """Translate a CSS Selector to XPath.
+        """Translate a *group of selectors* to XPath.
+
+        Pseudo-elements are not supported here.
 
         :param css:
             A *group of selectors* as an Unicode string.
         :raises:
             :class:`SelectorSyntaxError` on invalid selectors,
-            :class:`ExpressionError` on unknown/unsupported selectors.
+            :class:`ExpressionError` on unknown/unsupported selectors,
+            including pseudo-elements.
         :returns:
             The equivalent XPath 1.0 expression as an Unicode string.
 
         """
-        prefix = prefix or ''
         selectors = parse(css)
         for selector in selectors:
             if selector.pseudo_element:
                 raise ExpressionError('Pseudo-elements are not supported.')
 
         return ' | '.join(
-            prefix + _unicode(self.xpath(selector._tree))
+            self.selector_to_xpath(selector, prefix)
             for selector in selectors)
+
+    def selector_to_xpath(self, selector, prefix='descendant-or-self::'):
+        """Translate a parsed selector to XPath.
+
+        The :attr:`~Selector.pseudo_element` attribute of the selector
+        is ignored. It is the caller’s responsibility to reject selectors
+        with pseudo-elements, or to account for them somehow.
+
+        :param selector:
+            A parsed :class:`Selector` object.
+        :raises:
+            :class:`ExpressionError` on unknown/unsupported selectors.
+        :returns:
+            The equivalent XPath 1.0 expression as an Unicode string.
+
+        """
+        return (prefix or '') + _unicode(self.xpath(selector._tree))
 
     @staticmethod
     def xpath_literal(s):

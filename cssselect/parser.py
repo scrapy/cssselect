@@ -44,13 +44,23 @@ class Selector(object):
     """
     def __init__(self, tree, pseudo_element=None):
         self._tree = tree
+        #: A string like ``'after'`` or ``None``
         self.pseudo_element = pseudo_element
 
     def __repr__(self):
-        return '%s[%r::%s]' % (
-            self.__class__.__name__, self._tree, self.pseudo_element)
+        if self.pseudo_element:
+            pseudo_element = '::%s' % self.pseudo_element
+        else:
+            pseudo_element = ''
+        return '%s[%r%s]' % (
+            self.__class__.__name__, self._tree, pseudo_element)
 
     def specificity(self):
+        """Return the specificity_ of this selector as a tuple of 3 integers.
+
+        .. _specificity: http://www.w3.org/TR/selectors/#specificity
+
+        """
         a, b, c = self._tree.specificity()
         if self.pseudo_element:
             c += 1
@@ -229,22 +239,36 @@ _id_re = re.compile(r'^\s*(\w*)#(\w+)\s*$')
 _class_re = re.compile(r'^\s*(\w*)\.(\w+)\s*$')
 
 
-def parse(string):
+def parse(css):
+    """Parse a CSS *group of selectors*.
+
+    If you don’t care about pseudo-elements or selector specificity,
+    you can skip this and use :meth:`~GenericTranslator.css_to_xpath`.
+
+    :param css:
+        A *group of selectors* as an Unicode string.
+    :raises:
+        :class:`SelectorSyntaxError` on invalid selectors.
+    :returns:
+        A list of parsed :class:`Selector` objects, one for each
+        selector in the comma-separated group.
+
+    """
     # Fast path for simple cases
-    match = _el_re.match(string)
+    match = _el_re.match(css)
     if match:
         return [Selector(Element('*', match.group(1)))]
-    match = _id_re.match(string)
+    match = _id_re.match(css)
     if match is not None:
         return [Selector(Hash(Element(
             '*', match.group(1) or '*'), match.group(2)))]
-    match = _class_re.match(string)
+    match = _class_re.match(css)
     if match is not None:
         return [Selector(Class(Element(
             '*', match.group(1) or '*'), match.group(2)))]
 
-    stream = TokenStream(tokenize(string))
-    stream.source = string
+    stream = TokenStream(tokenize(css))
+    stream.source = css
     try:
         return list(parse_selector_group(stream))
     except SelectorSyntaxError:

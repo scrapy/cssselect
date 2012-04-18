@@ -1,12 +1,14 @@
 Changelog
 =========
 
-Planned changes
----------------
+Version 0.4
+-----------
 
-* Add some support for pseudo-elements by separating them from the
-  rest of the selector.
-* Add specificity calculation.
+* Add proper support for pseudo-elements
+* Add specificity calculation
+* Expose the :func:`parse` function and the parsed :class:`Selector` objects
+  in the API.
+* Add the :meth:`~GenericTranslator.selector_to_xpath` method.
 
 
 Version 0.3

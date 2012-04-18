@@ -12,9 +12,10 @@
 
 """
 
-from cssselect.parser import SelectorError, SelectorSyntaxError
+from cssselect.parser import (parse, Selector, SelectorError,
+                              SelectorSyntaxError)
 from cssselect.xpath import GenericTranslator, HTMLTranslator, ExpressionError
 
 
-VERSION = '0.3'
+VERSION = '0.4'
 __version__ = VERSION

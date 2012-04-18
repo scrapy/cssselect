@@ -44,20 +44,21 @@ The resulting expression can be used with lxml's `XPath engine`_:
 User API
 ========
 
-Currently, the only public API is the :meth:`~GenericTranslator.css_to_xpath`
-method of the translator classes. This API is expected to expand to provide
-more information about the parsed selectors, and to allow customization
-of the translation.
+In CSS3 terms, a `group of selectors`_ is a sequence of comma-separated
+selectors. For example, ``div, h1.title + p`` is a group of 2 selectors.
 
+.. _group of selectors: http://www.w3.org/TR/selectors/#grouping
 
-.. autoclass:: GenericTranslator()
-    :members: css_to_xpath
+.. autofunction:: parse
+.. autoclass:: Selector()
+    :members:
 
-.. autoclass:: HTMLTranslator()
+.. autoclass:: GenericTranslator
+    :members: css_to_xpath, selector_to_xpath
 
-    .. method:: css_to_xpath(css, prefix='descendant-or-self::')
+.. autoclass:: HTMLTranslator
 
-        Same as :meth:`GenericTranslator.css_to_xpath`
+    The API is the same as :class:`GenericTranslator`.
 
 .. autoexception:: SelectorError
 .. autoexception:: SelectorSyntaxError
