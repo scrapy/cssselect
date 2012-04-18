@@ -112,6 +112,10 @@ class GenericTranslator(object):
         '!=': 'different',  # XXX Not in Level 3 but meh
     }
 
+    #: The attribute used for ID selectors depends on the document language:
+    #: http://www.w3.org/TR/selectors/#id-selectors
+    id_attribute = 'id'
+
     def css_to_xpath(self, selector_group, prefix='descendant-or-self::'):
         """Translate a CSS Selector to XPath.
 
@@ -216,8 +220,8 @@ class GenericTranslator(object):
     def xpath_hash(self, id_selector):
         """Translate an ID selector."""
         xpath = self.xpath(id_selector.selector)
-        return xpath.add_condition(
-            '@id = %s' % self.xpath_literal(id_selector.id))
+        return xpath.add_condition('@%s = %s' % (
+            self.id_attribute, self.xpath_literal(id_selector.id)))
 
     def xpath_element(self, selector):
         """Translate a type or universal selector."""
