@@ -119,7 +119,8 @@ class GenericTranslator(object):
     def css_to_xpath(self, css, prefix='descendant-or-self::'):
         """Translate a *group of selectors* to XPath.
 
-        Pseudo-elements are not supported here.
+        Pseudo-elements are not supported here since XPath only knows
+        about “real” elements.
 
         :param css:
             A *group of selectors* as an Unicode string.

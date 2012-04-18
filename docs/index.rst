@@ -95,9 +95,6 @@ These applicable pseudo-classes are not yet implemented:
   ``*:nth-last-of-type``, ``*:only-of-type``.  All of these work when
   you specify an element type, but not with ``*``
 
-None of the pseudo-elements apply since XPath only knows about “real”
-elements.
-
 On the other hand, *cssselect* supports some selectors that are not
 in the Level 3 specification:
 
