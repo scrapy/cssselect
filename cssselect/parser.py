@@ -376,7 +376,8 @@ def parse_simple_selector(stream, inside_negation=False):
             if stream.peek() == '(':
                 stream.next()
                 stream.skip_whitespace()
-                if ident == 'not':
+                is_negation = ident.lower() == 'not'
+                if is_negation:
                     if inside_negation:
                         raise SelectorSyntaxError('Got nested :not()')
                     argument, argument_pseudo_element = parse_simple_selector(
@@ -396,7 +397,7 @@ def parse_simple_selector(stream, inside_negation=False):
                 if not next == ')':
                     raise SelectorSyntaxError(
                         "Expected ')', got '%s'" % next)
-                if ident == 'not':
+                if is_negation:
                     result = Negation(result, argument)
                 else:
                     result = Function(result, ident, argument)

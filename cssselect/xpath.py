@@ -93,6 +93,10 @@ split_at_single_quotes = re.compile("('+)").split
 class GenericTranslator(object):
     """
     Translator for "generic" XML documents.
+
+    Everything is case-sensitive, no assumption is made on the meaning
+    of element names and attribute names.
+
     """
     combinator_mapping = {
         ' ': 'descendant',
@@ -115,6 +119,24 @@ class GenericTranslator(object):
     #: The attribute used for ID selectors depends on the document language:
     #: http://www.w3.org/TR/selectors/#id-selectors
     id_attribute = 'id'
+
+    #: The case sensitivity of document language element names,
+    #: attribute names, and attribute values in selectors depends
+    #: on the document language.
+    #: http://www.w3.org/TR/selectors/#casesens
+    #:
+    #: When a document language defines one of these as case-insensitive,
+    #: cssselect assumes that the document parser makes the parsed values
+    #: lower-case. Making the selector lower-case too makes the comparaison
+    #: case-insensitive.
+    #:
+    #: In HTML, element names and attributes names (but not attribute values)
+    #: are case-insensitive. All of lxml.html, html5lib, BeautifulSoup4
+    #: and HTMLParser make them lower-case in their parse result, so
+    #: the assumption holds.
+    lower_case_element_names = False
+    lower_case_attribute_names = False
+    lower_case_attribute_values = False
 
     def css_to_xpath(self, css, prefix='descendant-or-self::'):
         """Translate a *group of selectors* to XPath.
@@ -201,7 +223,7 @@ class GenericTranslator(object):
 
     def xpath_function(self, function):
         """Translate a functional pseudo-class."""
-        method = 'xpath_%s_function' % function.name.replace('-', '_')
+        method = 'xpath_%s_function' % function.name.replace('-', '_').lower()
         method = getattr(self, method, None)
         if not method:
             raise ExpressionError(
@@ -210,7 +232,7 @@ class GenericTranslator(object):
 
     def xpath_pseudo(self, pseudo):
         """Translate a pseudo-class."""
-        method = 'xpath_%s_pseudo' % pseudo.ident.replace('-', '_')
+        method = 'xpath_%s_pseudo' % pseudo.ident.replace('-', '_').lower()
         method = getattr(self, method, None)
         if not method:
             # TODO: better error message for pseudo-elements?
@@ -226,12 +248,19 @@ class GenericTranslator(object):
             raise ExpressionError(
                 "Unknown attribute operator: %r" % selector.operator)
         method = getattr(self, 'xpath_attrib_%s' % operator)
-        # FIXME: what if attrib is *?
-        if selector.namespace == '*':
-            name = '@' + selector.attrib
+        if self.lower_case_attribute_names:
+            name = selector.attrib.lower()
         else:
-            name = '@%s:%s' % (selector.namespace, selector.attrib)
-        return method(self.xpath(selector.selector), name, selector.value)
+            name = selector.attrib
+        if selector.namespace == '*':
+            name = '@' + name
+        else:
+            name = '@%s:%s' % (selector.namespace, name)
+        if self.lower_case_attribute_values:
+            value = selector.value.lower()
+        else:
+            value = selector.value
+        return method(self.xpath(selector.selector), name, value)
 
     def xpath_class(self, class_selector):
         """Translate a class selector."""
@@ -243,23 +272,18 @@ class GenericTranslator(object):
     def xpath_hash(self, id_selector):
         """Translate an ID selector."""
         xpath = self.xpath(id_selector.selector)
-        return xpath.add_condition('@%s = %s' % (
-            self.id_attribute, self.xpath_literal(id_selector.id)))
+        return self.xpath_attrib_equals(xpath, '@id', id_selector.id)
 
     def xpath_element(self, selector):
         """Translate a type or universal selector."""
-        if selector.namespace == '*':
-            # Fixed case sensitive matching on lxml 2.3.4 patched for external cssselect with Python 2.7 64-bit on Windows.
-            # Case insensitive matching is not working unless source elements are lower case.
-            # For HTMLTranslator, I kept the existing behavior of setting the element to lower case.
-            # "...in HTML, element names are case-insensitive, but in XML they are case-sensitive."
-            # http://www.w3.org/TR/CSS2/selector.html#pattern-matching
-            element = selector.element
-            if isinstance(self, HTMLTranslator):
-                element = element.lower()
+        if self.lower_case_element_names:
+            element = selector.element.lower()
         else:
-            # FIXME: Should we lowercase here?
-            element = '%s:%s' % (selector.namespace, selector.element)
+            element = selector.element
+        if selector.namespace != '*':
+            # Namespace prefixes are case-sensitive.
+            # http://www.w3.org/TR/css3-namespace/#prefixes
+            element = '%s:%s' % (selector.namespace, element)
         return XPathExpr(element=element)
 
 
@@ -465,8 +489,24 @@ class GenericTranslator(object):
 
 class HTMLTranslator(GenericTranslator):
     """
-    Translator for HTML documents.
+    Translator for (X)HTML documents.
+
+    Has a more useful implementation of some pseudo-classes, based on
+    HTML-specific element names and attribute names.
+    The API is the same as :class:`GenericTranslator`.
+
+    :param xhtml:
+        If false (the default), element names and attribute names
+        are case-insensitive.
+
     """
+    def __init__(self, xhtml=False):
+        self.xhtml = xhtml  # Might be useful for sub-classes?
+        if not xhtml:
+            # See their definition in GenericTranslator.
+            self.lower_case_element_names = True
+            self.lower_case_attribute_names = True
+
     def xpath_checked_pseudo(self, xpath):
         # FIXME: is this really all the elements?
         return xpath.add_condition(

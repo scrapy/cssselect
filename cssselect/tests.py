@@ -284,72 +284,72 @@ class TestCssselect(unittest.TestCase):
             return str(GenericTranslator().css_to_xpath(css, prefix=''))
 
         assert xpath('*') == "*"
-        assert xpath('E') == "e"
-        assert xpath('E[foo]') == "e[@foo]"
-        assert xpath('E[foo="bar"]') == "e[@foo = 'bar']"
-        assert xpath('E[foo~="bar"]') == (
+        assert xpath('e') == "e"
+        assert xpath('e[foo]') == "e[@foo]"
+        assert xpath('e[foo="bar"]') == "e[@foo = 'bar']"
+        assert xpath('e[foo~="bar"]') == (
             "e[@foo and contains("
                "concat(' ', normalize-space(@foo), ' '), ' bar ')]")
-        assert xpath('E[foo^="bar"]') == (
+        assert xpath('e[foo^="bar"]') == (
             "e[@foo and starts-with(@foo, 'bar')]")
-        assert xpath('E[foo$="bar"]') == (
+        assert xpath('e[foo$="bar"]') == (
             "e[@foo and substring(@foo, string-length(@foo)-2) = 'bar']")
-        assert xpath('E[foo*="bar"]') == (
+        assert xpath('e[foo*="bar"]') == (
             "e[@foo and contains(@foo, 'bar')]")
-        assert xpath('E[hreflang|="en"]') == (
+        assert xpath('e[hreflang|="en"]') == (
             "e[@hreflang and ("
                "@hreflang = 'en' or starts-with(@hreflang, 'en-'))]")
-        assert xpath('E:nth-child(1)') == (
+        assert xpath('e:nth-child(1)') == (
             "*/*[name() = 'e' and (position() = 1)]")
-        assert xpath('E:nth-last-child(1)') == (
+        assert xpath('e:nth-last-child(1)') == (
             "*/*[name() = 'e' and (position() = last() - 1)]")
-        assert xpath('E:nth-last-child(2n+2)') == (
+        assert xpath('e:nth-last-child(2n+2)') == (
             "*/*[name() = 'e' and ("
                "(position() +2) mod -2 = 0 and position() < (last() -2))]")
-        assert xpath('E:nth-of-type(1)') == (
+        assert xpath('e:nth-of-type(1)') == (
             "*/e[position() = 1]")
-        assert xpath('E:nth-last-of-type(1)') == (
+        assert xpath('e:nth-last-of-type(1)') == (
             "*/e[position() = last() - 1]")
-        assert xpath('E:nth-last-of-type(1)') == (
+        assert xpath('e:nth-last-of-type(1)') == (
             "*/e[position() = last() - 1]")
-        assert xpath('div E:nth-last-of-type(1) .aclass') == (
+        assert xpath('div e:nth-last-of-type(1) .aclass') == (
             "div/descendant-or-self::*/e[position() = last() - 1]"
                "/descendant-or-self::*/*[@class and contains("
                "concat(' ', normalize-space(@class), ' '), ' aclass ')]")
-        assert xpath('E:first-child') == (
+        assert xpath('e:first-child') == (
             "*/*[name() = 'e' and (position() = 1)]")
-        assert xpath('E:last-child') == (
+        assert xpath('e:last-child') == (
             "*/*[name() = 'e' and (position() = last())]")
-        assert xpath('E:first-of-type') == (
+        assert xpath('e:first-of-type') == (
             "*/e[position() = 1]")
-        assert xpath('E:last-of-type') == (
+        assert xpath('e:last-of-type') == (
             "*/e[position() = last()]")
-        assert xpath('E:only-child') == (
+        assert xpath('e:only-child') == (
             "*/*[name() = 'e' and (last() = 1)]")
-        assert xpath('E:only-of-type') == (
+        assert xpath('e:only-of-type') == (
             "e[last() = 1]")
-        assert xpath('E:empty') == (
+        assert xpath('e:empty') == (
             "e[not(*) and not(normalize-space())]")
-        assert xpath('E:root') == (
+        assert xpath('e:root') == (
             "e[not(parent::*)]")
-        assert xpath('E:contains("foo")') == (
+        assert xpath('e:contains("foo")') == (
             "e[contains(string(.), 'foo')]")
-        assert xpath('E:contains(foo)') == (
+        assert xpath('e:contains(foo)') == (
             "e[contains(string(.), 'foo')]")
-        assert xpath('E.warning') == (
+        assert xpath('e.warning') == (
             "e[@class and contains("
                "concat(' ', normalize-space(@class), ' '), ' warning ')]")
-        assert xpath('E#myid') == (
+        assert xpath('e#myid') == (
             "e[@id = 'myid']")
-        assert xpath('E:not(:nth-child(odd))') == (
+        assert xpath('e:not(:nth-child(odd))') == (
             "e[not((position() -1) mod 2 = 0 and position() >= 1)]")
-        assert xpath('E F') == (
+        assert xpath('e f') == (
             "e/descendant-or-self::*/f")
-        assert xpath('E > F') == (
+        assert xpath('e > f') == (
             "e/f")
-        assert xpath('E + F') == (
+        assert xpath('e + f') == (
             "e/following-sibling::*[name() = 'f' and (position() = 1)]")
-        assert xpath('E ~ F') == (
+        assert xpath('e ~ f') == (
             "e/following-sibling::f")
         assert xpath('div#container p') == (
             "div[@id = 'container']/descendant-or-self::*/p")
@@ -426,12 +426,17 @@ class TestCssselect(unittest.TestCase):
             return result
 
         all_ids = pcss('*')
+        assert len(all_ids) == 27
         assert all_ids[:4] == ['html', 'nil', 'nil', 'outer-div']
         assert all_ids[-1:] == ['foobar-span']
         assert pcss('div') == ['outer-div', 'li-div', 'foobar-div']
+        assert pcss('DIV', html_only=True) == [
+            'outer-div', 'li-div', 'foobar-div']  # case-insensitive in HTML
         assert pcss('div div') == ['li-div']
         assert pcss('div, div div') == ['outer-div', 'li-div', 'foobar-div']
         assert pcss('a[name]') == ['name-anchor']
+        assert pcss('a[NAme]', html_only=True) == [
+            'name-anchor'] # case-insensitive in HTML:
         assert pcss('a[rel]') == ['tag-anchor', 'nofollow-anchor']
         assert pcss('a[rel="tag"]') == ['tag-anchor']
         assert pcss('a[href*="localhost"]') == ['tag-anchor']
@@ -441,7 +446,7 @@ class TestCssselect(unittest.TestCase):
         assert pcss('div[foobar~="bc"]', 'div[foobar~="cde"]') == [
             'foobar-div']
         assert pcss('div[foobar~="cd"]') == []
-        assert pcss('*[lang|="en"]', '*[lang|="en-US"]') == ['second-li']
+        assert pcss('*[lang|="en"]', '[lang|="en-US"]') == ['second-li']
         assert pcss('*[lang|="e"]') == []
         assert pcss('li:nth-child(3)') == ['third-li']
         assert pcss('li:nth-child(10)') == []
@@ -471,12 +476,12 @@ class TestCssselect(unittest.TestCase):
         self.assertRaises(ExpressionError, pcss, 'p *:only-of-type')
         self.assertRaises(ExpressionError, pcss, 'p:lang(fr)')
         assert pcss('p:only-of-type') == ['paragraph']
-        assert pcss('a:empty') == ['name-anchor']
+        assert pcss('a:empty', 'a:EMpty') == ['name-anchor']
         assert pcss('li:empty') == [
             'third-li', 'fourth-li', 'fifth-li', 'sixth-li', 'seventh-li']
         assert pcss(':root', 'html:root') == ['html']
         assert pcss('li:root', '* :root') == []
-        assert pcss('*:contains("link")') == [
+        assert pcss('*:contains("link")', ':CONtains("link")') == [
             'html', 'nil', 'outer-div', 'tag-anchor', 'nofollow-anchor']
         assert pcss('*:contains("LInk")') == []  # case sensitive
         assert pcss('*:contains("e")') == [
@@ -488,7 +493,6 @@ class TestCssselect(unittest.TestCase):
         assert pcss('ol *.c', 'ol li.c', 'li ~ li.c', 'ol > li.c') == [
             'third-li', 'fourth-li']
         assert pcss('#first-li', 'li#first-li', '*#first-li') == ['first-li']
-        # Need some tests of :not()']
         assert pcss('li div', 'li > div', 'div div') == ['li-div']
         assert pcss('div > div') == []
         assert pcss('div>.c', 'div > .c') == ['first-ol']
@@ -507,6 +511,10 @@ class TestCssselect(unittest.TestCase):
             'fieldset', 'checkbox-disabled']
         assert pcss(':enabled', html_only=True) == [
             'checkbox-unchecked', 'checkbox-checked']
+        assert pcss('a:not([href])') == ['name-anchor']
+        assert pcss('ol :Not(li[class])') == [
+            'first-li', 'second-li', 'li-div',
+            'fifth-li', 'sixth-li', 'seventh-li']
 
     def test_select_shakespeare(self):
         document = html.document_fromstring(HTML_SHAKESPEARE)

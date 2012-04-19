@@ -57,9 +57,6 @@ selectors. For example, ``div, h1.title + p`` is a group of 2 selectors.
     :members: css_to_xpath, selector_to_xpath
 
 .. autoclass:: HTMLTranslator
-
-    The API is the same as :class:`GenericTranslator`.
-
 .. autoexception:: SelectorError
 .. autoexception:: SelectorSyntaxError
 .. autoexception:: ExpressionError

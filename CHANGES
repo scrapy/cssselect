@@ -1,6 +1,15 @@
 Changelog
 =========
 
+Version 0.5
+-----------
+
+Not released yet.
+
+* Fix case sensitivity issues.
+* Add the ``xhtml`` parameter for :class:`HTMLTranslator`.
+
+
 Version 0.4
 -----------
 
