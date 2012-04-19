@@ -45,7 +45,7 @@ User API
 ========
 
 In CSS3 terms, a `group of selectors`_ is a sequence of comma-separated
-selectors. For example, ``div, h1.title + p`` is a group of 2 selectors.
+selectors. For example, ``div, h1.title + p`` is a group of 2 selectors.
 
 .. _group of selectors: http://www.w3.org/TR/selectors/#grouping
 
@@ -57,6 +57,10 @@ selectors. For example, ``div, h1.title + p`` is a group of 2 selectors.
     :members: css_to_xpath, selector_to_xpath
 
 .. autoclass:: HTMLTranslator
+
+Exceptions
+----------
+
 .. autoexception:: SelectorError
 .. autoexception:: SelectorSyntaxError
 .. autoexception:: ExpressionError
