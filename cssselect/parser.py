@@ -373,36 +373,33 @@ def parse_simple_selector(stream, inside_negation=False):
                 # Any new pseudo-element must have two.
                 pseudo_element = ident
                 continue
-            if stream.peek() == '(':
-                stream.next()
-                stream.skip_whitespace()
-                is_negation = ident.lower() == 'not'
-                if is_negation:
-                    if inside_negation:
-                        raise SelectorSyntaxError('Got nested :not()')
-                    argument, argument_pseudo_element = parse_simple_selector(
-                        stream, inside_negation=True)
-                    if argument_pseudo_element:
-                        raise SelectorSyntaxError(
-                            'Pseudo-elements are not allowed inside :not()')
-                else:
-                    peek = stream.peek()
-                    if isinstance(peek, (Symbol, String)):
-                        argument = stream.next()
-                    else:
-                        raise SelectorSyntaxError(
-                            "Expected argument, got '%s'" % peek)
-                stream.skip_whitespace()
-                next = stream.next()
-                if not next == ')':
-                    raise SelectorSyntaxError(
-                        "Expected ')', got '%s'" % next)
-                if is_negation:
-                    result = Negation(result, argument)
-                else:
-                    result = Function(result, ident, argument)
-            else:
+            if stream.peek() != '(':
                 result = Pseudo(result, ident)
+                continue
+            stream.next()
+            stream.skip_whitespace()
+            if ident.lower() == 'not':
+                if inside_negation:
+                    raise SelectorSyntaxError('Got nested :not()')
+                argument, argument_pseudo_element = parse_simple_selector(
+                    stream, inside_negation=True)
+                if argument_pseudo_element:
+                    raise SelectorSyntaxError(
+                        'Pseudo-elements are not allowed inside :not()')
+                result = Negation(result, argument)
+            else:
+                peek = stream.peek()
+                if isinstance(peek, (Symbol, String)):
+                    argument = stream.next()
+                else:
+                    raise SelectorSyntaxError(
+                        "Expected argument, got '%s'" % peek)
+                result = Function(result, ident, argument)
+            stream.skip_whitespace()
+            next = stream.next()
+            if not next == ')':
+                raise SelectorSyntaxError(
+                    "Expected ')', got '%s'" % next)
             continue
         else:
             raise SelectorSyntaxError(
