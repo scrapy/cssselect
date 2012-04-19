@@ -249,7 +249,14 @@ class GenericTranslator(object):
     def xpath_element(self, selector):
         """Translate a type or universal selector."""
         if selector.namespace == '*':
-            element = selector.element.lower()
+            # Fixed case sensitive matching on lxml 2.3.4 patched for external cssselect with Python 2.7 64-bit on Windows.
+            # Case insensitive matching is not working unless source elements are lower case.
+            # For HTMLTranslator, I kept the existing behavior of setting the element to lower case.
+            # "...in HTML, element names are case-insensitive, but in XML they are case-sensitive."
+            # http://www.w3.org/TR/CSS2/selector.html#pattern-matching
+            element = selector.element
+            if isinstance(self, HTMLTranslator):
+                element = element.lower()
         else:
             # FIXME: Should we lowercase here?
             element = '%s:%s' % (selector.namespace, selector.element)
