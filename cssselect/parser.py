@@ -11,14 +11,14 @@
 
 """
 
+import sys
 import re
 
 
-try:  # pragma: no cover
+if sys.version_info[0] < 3:
     _unicode = unicode
     _unichr = unichr
-except NameError:
-    # Python 3
+else:
     _unicode = str
     _unichr = chr
 
@@ -276,7 +276,6 @@ def parse(css):
     try:
         return list(parse_selector_group(stream))
     except SelectorSyntaxError:
-        import sys
         e = sys.exc_info()[1]
         message = "%s at %s -> %r" % (
             e, stream.used, stream.peek())
@@ -359,7 +358,7 @@ def parse_simple_selector(stream, inside_negation=False):
             next = stream.next()
             if next != ']':
                 raise SelectorSyntaxError(
-                    "] expected, got '%s'" % next)
+                    "Expected ']', got '%s'" % next)
             continue
         elif peek == '::':
             stream.next()
@@ -609,7 +608,6 @@ def tokenize_symbol(s, pos):
     try:
         result = result.encode('ASCII', 'backslashreplace').decode('unicode_escape')
     except UnicodeDecodeError:
-        import sys
         e = sys.exc_info()[1]
         raise SelectorSyntaxError(
             "Bad symbol %r: %s" % (result, e))

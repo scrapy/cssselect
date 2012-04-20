@@ -270,6 +270,10 @@ class TestCssselect(unittest.TestCase):
             "Expected selector, got 'a' at "
             "[Token('[', 0), Symbol('href', 1), Token(']', 5)]"
             " -> Symbol('a', 6)")
+        assert get_error('[rel=stylesheet]') == None
+        assert get_error('[rel=stylesheet') == (
+            "Expected ']', got 'None' at [Token('[', 0), Symbol('rel', 1), "
+            "Token('=', 4), Symbol('stylesheet', 5)] -> None")
 
         # Mis-placed pseudo-elements
         assert get_error('a:before:empty') == (
@@ -284,6 +288,10 @@ class TestCssselect(unittest.TestCase):
             "Pseudo-elements are not allowed inside :not() at "
             "[Token(':', 0), Symbol('not', 1), Token('(', 4), Token(':', 5),"
             " Symbol('before', 6)] -> Token(')', 12)")
+        assert get_error(':not(:not(a))') == (
+            "Got nested :not() at [Token(':', 0), Symbol('not', 1), "
+            "Token('(', 4), Token(':', 5), Symbol('not', 6), Token('(', 9)]"
+            " -> Symbol('a', 10)")
 
 
     def test_translation(self):
@@ -339,6 +347,8 @@ class TestCssselect(unittest.TestCase):
             "e[not(*) and not(normalize-space())]")
         assert xpath('e:root') == (
             "e[not(parent::*)]")
+        assert xpath('e:hover') == (
+            "e[0]")  # never matches
         assert xpath('e:contains("foo")') == (
             "e[contains(string(.), 'foo')]")
         assert xpath('e:contains(foo)') == (
@@ -350,6 +360,8 @@ class TestCssselect(unittest.TestCase):
             "e[@id = 'myid']")
         assert xpath('e:not(:nth-child(odd))') == (
             "e[not((position() -1) mod 2 = 0 and position() >= 1)]")
+        assert xpath('e:not(*)') == (
+            "e[0]")  # never matches
         assert xpath('e f') == (
             "e/descendant-or-self::*/f")
         assert xpath('e > f') == (
@@ -512,6 +524,7 @@ class TestCssselect(unittest.TestCase):
             'name-anchor', 'first-li', 'li-div', 'p-b',
             'checkbox-fieldset-disabled', 'area-href']
         assert pcss('a[href]') == ['tag-anchor', 'nofollow-anchor']
+        assert pcss(':not(*)') == []
         assert pcss('a:not([href])') == ['name-anchor']
         assert pcss('ol :Not(li[class])') == [
             'first-li', 'second-li', 'li-div',

@@ -5,3 +5,4 @@ branch = True
 exclude_lines =
     pragma: no cover
     def __repr__
+    if sys.version_info

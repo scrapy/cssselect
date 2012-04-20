@@ -219,7 +219,10 @@ class GenericTranslator(object):
         xpath = self.xpath(negation.selector)
         sub_xpath = self.xpath(negation.subselector)
         sub_xpath.add_name_test()
-        return xpath.add_condition('not(%s)' % sub_xpath.condition)
+        if sub_xpath.condition:
+            return xpath.add_condition('not(%s)' % sub_xpath.condition)
+        else:
+            return xpath.add_condition('0')
 
     def xpath_function(self, function):
         """Translate a functional pseudo-class."""
