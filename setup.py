@@ -1,3 +1,5 @@
+# coding: utf8
+
 import re
 import os.path
 from setuptools import setup
