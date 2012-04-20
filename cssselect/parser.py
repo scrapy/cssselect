@@ -14,7 +14,7 @@
 import re
 
 
-try:
+try:  # pragma: no cover
     _unicode = unicode
     _unichr = unichr
 except NameError:
@@ -140,7 +140,7 @@ class Negation(object):
 
     def specificity(self):
         a1, b1, c1 = self.selector.specificity()
-        a2, b2, c2 = self.sub_selector.specificity()
+        a2, b2, c2 = self.subselector.specificity()
         return a1 + a2, b1 + b2, c1 + c2
 
 

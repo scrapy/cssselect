@@ -4,3 +4,4 @@
 /MANIFEST
 /dist
 /docs/_build
+/.coverage

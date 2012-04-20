@@ -187,6 +187,13 @@ class TestCssselect(unittest.TestCase):
         assert specificity('[baz^="4"]') == (0, 1, 0)
         assert specificity('#lipsum') == (1, 0, 0)
 
+        assert specificity(':not(*)') == (0, 0, 0)
+        assert specificity(':not(foo)') == (0, 0, 1)
+        assert specificity(':not(.foo)') == (0, 1, 0)
+        assert specificity(':not([foo])') == (0, 1, 0)
+        assert specificity(':not(:empty)') == (0, 1, 0)
+        assert specificity(':not(#foo)') == (1, 0, 0)
+
         assert specificity('foo:empty') == (0, 1, 1)
         assert specificity('foo:before') == (0, 0, 2)
         assert specificity('foo::before') == (0, 0, 2)
