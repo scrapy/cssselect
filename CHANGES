@@ -7,7 +7,10 @@ Version 0.5
 Not released yet.
 
 * Fix case sensitivity issues.
-* Add the ``xhtml`` parameter for :class:`HTMLTranslator`.
+* Implement :class:`HTMLTranslator` based on the `HTML5 specification`_
+  rather than guessing; add the ``xhtml`` parameter.
+
+.. _HTML5 specification: http://www.w3.org/TR/html5/links.html#selectors
 
 
 Version 0.4

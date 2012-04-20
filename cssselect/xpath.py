@@ -491,9 +491,12 @@ class HTMLTranslator(GenericTranslator):
     """
     Translator for (X)HTML documents.
 
-    Has a more useful implementation of some pseudo-classes, based on
-    HTML-specific element names and attribute names.
+    Has a more useful implementation of some pseudo-classes based on
+    HTML-specific element names and attribute names, as described in
+    the `HTML5 specification`_. It assumes no-quirks mode.
     The API is the same as :class:`GenericTranslator`.
+
+    .. _HTML5 specification: http://www.w3.org/TR/html5/links.html#selectors
 
     :param xhtml:
         If false (the default), element names and attribute names
@@ -514,7 +517,8 @@ class HTMLTranslator(GenericTranslator):
             "(@checked and name(.) = 'input')")
 
     def xpath_link_pseudo(self, xpath):
-        return xpath.add_condition("@href and name(.) = 'a'")
+        return xpath.add_condition("@href and "
+            "(name(.) = 'a' or name(.) = 'link' or name(.) = 'area')")
 
     # Links are never visited, the implementation for :visited is the same
     # as in GenericTranslator

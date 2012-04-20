@@ -20,7 +20,7 @@ import sys
 import operator
 import unittest
 
-from lxml import html
+from lxml import etree, html
 from cssselect import (parse, GenericTranslator, HTMLTranslator,
                        SelectorSyntaxError, ExpressionError)
 from cssselect.parser import tokenize, parse_series
@@ -401,7 +401,7 @@ class TestCssselect(unittest.TestCase):
         assert parse_series('5') == (0, 5)
 
     def test_select(self):
-        document = html.document_fromstring(HTML_IDS)
+        document = etree.fromstring(HTML_IDS)
         sort_key = dict(
             (el, count) for count, el in enumerate(document.getiterator())
         ).__getitem__
@@ -426,8 +426,9 @@ class TestCssselect(unittest.TestCase):
             return result
 
         all_ids = pcss('*')
-        assert len(all_ids) == 27
-        assert all_ids[:4] == ['html', 'nil', 'nil', 'outer-div']
+        assert len(all_ids) == 32
+        assert all_ids[:6] == [
+            'html', 'nil', 'link-href', 'link-nohref', 'nil', 'outer-div']
         assert all_ids[-1:] == ['foobar-span']
         assert pcss('div') == ['outer-div', 'li-div', 'foobar-div']
         assert pcss('DIV', html_only=True) == [
@@ -503,9 +504,16 @@ class TestCssselect(unittest.TestCase):
         assert pcss('ol#first-ol *:last-child') == ['li-div', 'seventh-li']
         assert pcss('#outer-div:first-child') == ['outer-div']
         assert pcss('#outer-div :first-child') == [
-            'name-anchor', 'first-li', 'li-div', 'p-b', 'checkbox-disabled']
+            'name-anchor', 'first-li', 'li-div', 'p-b', 'checkbox-disabled',
+            'area-href']
         assert pcss('a[href]') == ['tag-anchor', 'nofollow-anchor']
-        assert pcss(':link', html_only=True) == pcss('a[href]')
+
+
+        assert pcss(':link', html_only=True) == [
+            'link-href', 'tag-anchor', 'nofollow-anchor', 'area-href']
+        assert pcss(':visited', html_only=True) == []
+
+
         assert pcss(':checked', html_only=True) == ['checkbox-checked']
         assert pcss(':disabled', html_only=True) == [
             'fieldset', 'checkbox-disabled']
@@ -590,7 +598,10 @@ class TestCssselect(unittest.TestCase):
         assert count('div[class~=dialog]') == 51 # ? Seems right
 
 HTML_IDS = '''
-<html id="html"><head></head><body>
+<html id="html"><head>
+  <link id="link-href" href="foo" />
+  <link id="link-nohref" />
+</head><body>
 <div id="outer-div">
  <a id="name-anchor" name="foo"></a>
  <a id="tag-anchor" rel="tag" href="http://localhost/foo">link</a>
@@ -612,14 +623,18 @@ c"></li>
  <p id="paragraph">
    <b id="p-b">hi</b> <em id="p-em">there</em>
    <b id="p-b2">guy</b>
-   <input type="checkbox" id="checkbox-unchecked">
-   <input type="checkbox" id="checkbox-checked" checked="checked">
+   <input type="checkbox" id="checkbox-unchecked" />
+   <input type="checkbox" id="checkbox-checked" checked="checked" />
    <fieldset id="fieldset" disabled="disabled">
-     <input type="checkbox" id="checkbox-disabled">
+     <input type="checkbox" id="checkbox-disabled" />
    </fieldset>
  </p>
  <ol id="second-ol">
  </ol>
+ <map name="dummymap">
+   <area shape="circle" coords="200,250,25" href="foo.html" id="area-href" />
+   <area shape="default" id="area-nohref" />
+ </map>
 </div>
 <div id="foobar-div" foobar="ab bc
 cde"><span id="foobar-span"></span></div>
