@@ -40,15 +40,32 @@ class SelectorSyntaxError(SelectorError, SyntaxError):
 
 class Selector(object):
     """
-    Represents a selector with an optional pseudo element.
+    Represents a parsed selector.
+
+    :meth:`~GenericTranslator.selector_to_xpath` accepts this object,
+    but ignores :attr:`pseudo_element`. It is the user’s responsibility
+    to account for pseudo-elements and reject selectors with unknown
+    or unsupported pseudo-elements.
+
     """
     def __init__(self, tree, pseudo_element=None):
         self.parsed_tree = tree
-        #: If the selector has a pseudo-element: a string like ``'after'``.
-        #: Otherwise, ``None``.
-        #: Any identifier preceded by ``::`` is accepted as a pseudo-element.
-        #: It is the user’s responsibility to reject selectors with
-        #: unknown or unsupported pseudo-elements.
+        #: The identifier for the pseudo-element as a string, or ``None``.
+        #:
+        #: +-------------------------+----------------+----------------+
+        #: |                         | Selector       | Pseudo-element |
+        #: +=========================+================+================+
+        #: | CSS3 syntax             | ``a::before``  | ``'before'``   |
+        #: +-------------------------+----------------+----------------+
+        #: | Older syntax            | ``a:before``   | ``'before'``   |
+        #: +-------------------------+----------------+----------------+
+        #: | From the Lists3_ draft, | ``li::marker`` | ``'marker'``   |
+        #: | not in Selectors3       |                |                |
+        #: +-------------------------+----------------+----------------+
+        #: | Invalid pseudo-class    | ``li:marker``  | ``None``       |
+        #: +-------------------------+----------------+----------------+
+        #:
+        #: .. _Lists3: http://www.w3.org/TR/2011/WD-css3-lists-20110524/#marker-pseudoelement
         self.pseudo_element = pseudo_element
 
     def __repr__(self):

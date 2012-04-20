@@ -44,8 +44,9 @@ The resulting expression can be used with lxml's `XPath engine`_:
 User API
 ========
 
-In CSS3 terms, a `group of selectors`_ is a sequence of comma-separated
-selectors. For example, ``div, h1.title + p`` is a group of 2 selectors.
+In CSS3 Selectors terms, the top-level object is a `group of selectors`_, a
+sequence of comma-separated selectors. For example, ``div, h1.title + p``
+is a group of two selectors.
 
 .. _group of selectors: http://www.w3.org/TR/selectors/#grouping
 
