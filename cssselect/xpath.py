@@ -315,7 +315,10 @@ class GenericTranslator(object):
 
     def xpath_nth_child_function(self, xpath, function, last=False,
                                  add_name_test=True):
-        a, b = parse_series(function.arguments)
+        try:
+            a, b = parse_series(function.arguments)
+        except ValueError:
+            raise ExpressionError("Invalid series: '%r'" % function.arguments)
         if not a and not b and not last:
             # a=0 means nothing is returned...
             return xpath.add_condition('false() and position() = 0')

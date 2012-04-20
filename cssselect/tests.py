@@ -271,9 +271,16 @@ class TestCssselect(unittest.TestCase):
             "[Token('[', 0), Symbol('href', 1), Token(']', 5)]"
             " -> Symbol('a', 6)")
         assert get_error('[rel=stylesheet]') == None
+        assert get_error('[rel:stylesheet]') == (
+            "Operator expected, got ':' at [Token('[', 0), Symbol('rel', 1), "
+            "Token(':', 4)] -> Symbol('stylesheet', 5)")
         assert get_error('[rel=stylesheet') == (
             "Expected ']', got 'None' at [Token('[', 0), Symbol('rel', 1), "
             "Token('=', 4), Symbol('stylesheet', 5)] -> None")
+        assert get_error(':lang(fr)') == None
+        assert get_error(':lang(fr') == (
+            "Expected ')', got 'None' at [Token(':', 0), Symbol('lang', 1), "
+            "Token('(', 5), Symbol('fr', 6)] -> None")
 
         # Mis-placed pseudo-elements
         assert get_error('a:before:empty') == (
@@ -372,7 +379,10 @@ class TestCssselect(unittest.TestCase):
             "e/following-sibling::f")
         assert xpath('div#container p') == (
             "div[@id = 'container']/descendant-or-self::*/p")
-        self.assertRaises(ExpressionError, xpath, 'p *:only-of-type')
+        self.assertRaises(ExpressionError, xpath, 'p :only-of-type')
+        self.assertRaises(ExpressionError, xpath, ':lang(fr)')
+        self.assertRaises(ExpressionError, xpath, ':nth-child(n-)')
+
 
     def test_unicode(self):
         if sys.version_info[0] >= 3:
@@ -417,6 +427,8 @@ class TestCssselect(unittest.TestCase):
         assert parse_series('even') == (2, 0)
         assert parse_series('3n') == (3, 0)
         assert parse_series('n') == (1, 0)
+        assert parse_series('+n') == (1, 0)
+        assert parse_series('-n') == (-1, 0)
         assert parse_series('5') == (0, 5)
 
     def test_select(self):
