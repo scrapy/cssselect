@@ -47,7 +47,7 @@ class TestCssselect(unittest.TestCase):
             selectors = parse(css)
             for selector in selectors:
                 assert selector.pseudo_element is None
-            return [repr(selector._tree).replace("(u'", "('")
+            return [repr(selector.parsed_tree).replace("(u'", "('")
                     for selector in selectors]
 
         def parse_many(first, *others):
@@ -132,7 +132,7 @@ class TestCssselect(unittest.TestCase):
             result = []
             for selector in parse(css):
                 result.append((
-                    repr(selector._tree).replace("(u'", "('"),
+                    repr(selector.parsed_tree).replace("(u'", "('"),
                     selector.pseudo_element))
             return result
 
@@ -311,7 +311,10 @@ class TestCssselect(unittest.TestCase):
 
         assert xpath('*') == "*"
         assert xpath('e') == "e"
+        assert xpath('*|e') == "e"
+        assert xpath('e|f') == "e:f"
         assert xpath('e[foo]') == "e[@foo]"
+        assert xpath('e[foo|bar]') == "e[@foo:bar]"
         assert xpath('e[foo="bar"]') == "e[@foo = 'bar']"
         assert xpath('e[foo~="bar"]') == (
             "e[@foo and contains("
@@ -383,15 +386,26 @@ class TestCssselect(unittest.TestCase):
             "e/following-sibling::f")
         assert xpath('div#container p') == (
             "div[@id = 'container']/descendant-or-self::*/p")
-        self.assertRaises(ExpressionError, xpath, 'p :only-of-type')
+        self.assertRaises(ExpressionError, xpath, ':first-of-type')
+        self.assertRaises(ExpressionError, xpath, ':only-of-type')
+        self.assertRaises(ExpressionError, xpath, ':last-of-type')
+        self.assertRaises(ExpressionError, xpath, ':nth-of-type(1)')
+        self.assertRaises(ExpressionError, xpath, ':nth-last-of-type(1)')
         self.assertRaises(ExpressionError, xpath, ':lang(fr)')
         self.assertRaises(ExpressionError, xpath, ':nth-child(n-)')
+        self.assertRaises(ExpressionError, xpath, ':after')
+        self.assertRaises(ExpressionError, xpath, ':lorem-ipsum')
+        self.assertRaises(ExpressionError, xpath, ':lorem(ipsum)')
+        self.assertRaises(ExpressionError, xpath, '::lorem-ipsum')
+        self.assertRaises(TypeError, GenericTranslator().css_to_xpath, 4)
+        self.assertRaises(TypeError, GenericTranslator().selector_to_xpath,
+            'foo')
 
     def test_unicode(self):
-        if sys.version_info[0] >= 3:
-            css = '.a\xc1b'
-        else:
+        if sys.version_info[0] < 3:
             css = '.a\xc1b'.decode('ISO-8859-1')
+        else:
+            css = '.a\xc1b'
 
         xpath = GenericTranslator().css_to_xpath(css)
         assert css[1:] in xpath
@@ -433,6 +447,8 @@ class TestCssselect(unittest.TestCase):
         assert parse_series('+n') == (1, 0)
         assert parse_series('-n') == (-1, 0)
         assert parse_series('5') == (0, 5)
+        self.assertRaises(ValueError, parse_series, 'foo')
+        self.assertRaises(ValueError, parse_series, 'n+')
 
     def test_select(self):
         document = etree.fromstring(HTML_IDS)
@@ -659,7 +675,7 @@ c"></li>
    <b id="p-b">hi</b> <em id="p-em">there</em>
    <b id="p-b2">guy</b>
    <input type="checkbox" id="checkbox-unchecked" />
-   <input type="checkbox" id="checkbox-disabled" disabled="disabled" />
+   <input type="checkbox" id="checkbox-disabled" disabled="" />
    <input type="text" id="text-checked" checked="checked" />
    <input type="hidden" />
    <input type="hidden" disabled="disabled" />

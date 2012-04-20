@@ -9,8 +9,7 @@ Not released yet.
 * Fix case sensitivity issues.
 * Implement :class:`HTMLTranslator` based on the `HTML5 specification`_
   rather than guessing; add the ``xhtml`` parameter.
-* Bug fixes: specificity for ``:not()`` (any argument), translation for
-  ``:not(*)``
+* Several bug fixes and better test coverage.
 
 .. _HTML5 specification: http://www.w3.org/TR/html5/links.html#selectors
 

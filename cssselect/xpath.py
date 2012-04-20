@@ -11,15 +11,16 @@
 
 """
 
+import sys
 import re
+
 from cssselect.parser import parse, parse_series, SelectorError
 
 
-try:
+if sys.version_info[0] < 3:
     _basestring = basestring
     _unicode = unicode
-except NameError:
-    # Python 3
+else:
     _basestring = str
     _unicode = str
 
@@ -36,7 +37,6 @@ class XPathExpr(object):
         self.path = path
         self.element = element
         self.condition = condition
-        self.star_prefix = star_prefix
 
     def __str__(self):
         path =  _unicode(self.path) + _unicode(self.element)
@@ -64,20 +64,15 @@ class XPathExpr(object):
 
     def add_star_prefix(self):
         """
-        Adds a /* prefix if there is no prefix.  This is when you need
-        to keep context's constrained to a single parent.
+        Append '*/' to the path to keep the context constrained
+        to a single parent.
         """
-        if self.path:
-            self.path += '*/'
-        else:
-            self.path = '*/'
-        self.star_prefix = True
+        self.path += '*/'
 
     def join(self, combiner, other):
         path = _unicode(self) + combiner
-        # We don't need a star prefix if we are joining to this other
-        # prefix; so we'll get rid of it
-        if not(other.star_prefix and other.path == '*/'):
+        # Any "star prefix" is redundant when joining.
+        if other.path != '*/':
             path += other.path
         self.path = path
         self.element = other.element
@@ -178,7 +173,10 @@ class GenericTranslator(object):
             The equivalent XPath 1.0 expression as an Unicode string.
 
         """
-        return (prefix or '') + _unicode(self.xpath(selector._tree))
+        tree = getattr(selector, 'parsed_tree', None)
+        if not tree:
+            raise TypeError('Expected a parsed selector, got %r' % (selector,))
+        return (prefix or '') + _unicode(self.xpath(tree))
 
     @staticmethod
     def xpath_literal(s):
@@ -197,9 +195,7 @@ class GenericTranslator(object):
     def xpath(self, parsed_selector):
         """Translate any parsed selector object."""
         type_name = type(parsed_selector).__name__
-        method = getattr(self, 'xpath_%s' % type_name.lower(), None)
-        if not method:
-            raise TypeError('Expected a parsed selector, got %s' % type_name)
+        method = getattr(self, 'xpath_%s' % type_name.lower())
         return method(parsed_selector)
 
 
@@ -207,10 +203,7 @@ class GenericTranslator(object):
 
     def xpath_combinedselector(self, combined):
         """Translate a combined selector."""
-        combinator = self.combinator_mapping.get(combined.combinator)
-        if not combinator:
-            raise ExpressionError(
-                "Unknown combinator: %r" % combined.combinator)
+        combinator = self.combinator_mapping[combined.combinator]
         method = getattr(self, 'xpath_%s_combinator' % combinator)
         return method(self.xpath(combined.selector),
                       self.xpath(combined.subselector))
@@ -246,10 +239,7 @@ class GenericTranslator(object):
 
     def xpath_attrib(self, selector):
         """Translate an attribute selector."""
-        operator = self.attribute_operator_mapping.get(selector.operator)
-        if not operator:
-            raise ExpressionError(
-                "Unknown attribute operator: %r" % selector.operator)
+        operator = self.attribute_operator_mapping[selector.operator]
         method = getattr(self, 'xpath_attrib_%s' % operator)
         if self.lower_case_attribute_names:
             name = selector.attrib.lower()
@@ -319,9 +309,6 @@ class GenericTranslator(object):
             a, b = parse_series(function.arguments)
         except ValueError:
             raise ExpressionError("Invalid series: '%r'" % function.arguments)
-        if not a and not b and not last:
-            # a=0 means nothing is returned...
-            return xpath.add_condition('false() and position() = 0')
         if add_name_test:
             xpath.add_name_test()
         xpath.add_star_prefix()

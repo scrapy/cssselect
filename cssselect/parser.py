@@ -43,7 +43,7 @@ class Selector(object):
     Represents a selector with an optional pseudo element.
     """
     def __init__(self, tree, pseudo_element=None):
-        self._tree = tree
+        self.parsed_tree = tree
         #: If the selector has a pseudo-element: a string like ``'after'``.
         #: Otherwise, ``None``.
         #: Any identifier preceded by ``::`` is accepted as a pseudo-element.
@@ -57,7 +57,7 @@ class Selector(object):
         else:
             pseudo_element = ''
         return '%s[%r%s]' % (
-            self.__class__.__name__, self._tree, pseudo_element)
+            self.__class__.__name__, self.parsed_tree, pseudo_element)
 
     def specificity(self):
         """Return the specificity_ of this selector as a tuple of 3 integers.
@@ -65,7 +65,7 @@ class Selector(object):
         .. _specificity: http://www.w3.org/TR/selectors/#specificity
 
         """
-        a, b, c = self._tree.specificity()
+        a, b, c = self.parsed_tree.specificity()
         if self.pseudo_element:
             c += 1
         return a, b, c
