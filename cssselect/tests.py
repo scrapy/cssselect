@@ -516,11 +516,13 @@ class TestCssselect(unittest.TestCase):
         assert pcss(':visited', html_only=True) == []
         assert pcss(':enabled', html_only=True) == [
             'link-href', 'tag-anchor', 'nofollow-anchor',
-            'checkbox-unchecked', 'checkbox-checked', 'area-href']
+            'checkbox-unchecked', 'text-checked', 'checkbox-checked',
+            'area-href']
         assert pcss(':disabled', html_only=True) == [
-            'checkbox-disabled', 'fieldset', 'checkbox-fieldset-disabled']
-
-        assert pcss(':checked', html_only=True) == ['checkbox-checked']
+            'checkbox-disabled', 'checkbox-disabled-checked', 'fieldset',
+            'checkbox-fieldset-disabled']
+        assert pcss(':checked', html_only=True) == [
+            'checkbox-checked', 'checkbox-disabled-checked']
 
     def test_select_shakespeare(self):
         document = html.document_fromstring(HTML_SHAKESPEARE)
@@ -623,9 +625,12 @@ c"></li>
    <b id="p-b2">guy</b>
    <input type="checkbox" id="checkbox-unchecked" />
    <input type="checkbox" id="checkbox-disabled" disabled="disabled" />
+   <input type="text" id="text-checked" checked="checked" />
    <input type="hidden" />
    <input type="hidden" disabled="disabled" />
    <input type="checkbox" id="checkbox-checked" checked="checked" />
+   <input type="checkbox" id="checkbox-disabled-checked"
+          disabled="disabled" checked="checked" />
    <fieldset id="fieldset" disabled="disabled">
      <input type="checkbox" id="checkbox-fieldset-disabled" />
      <input type="hidden" />

@@ -514,7 +514,9 @@ class HTMLTranslator(GenericTranslator):
         # FIXME: is this really all the elements?
         return xpath.add_condition(
             "(@selected and name(.) = 'option') or "
-            "(@checked and name(.) = 'input')")
+            "(@checked "
+                "and (name(.) = 'input' or name(.) = 'command')"
+                "and (@type = 'checkbox' or @type = 'radio'))")
 
     def xpath_link_pseudo(self, xpath):
         return xpath.add_condition("@href and "
