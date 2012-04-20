@@ -426,7 +426,6 @@ class TestCssselect(unittest.TestCase):
             return result
 
         all_ids = pcss('*')
-        assert len(all_ids) == 32
         assert all_ids[:6] == [
             'html', 'nil', 'link-href', 'link-nohref', 'nil', 'outer-div']
         assert all_ids[-1:] == ['foobar-span']
@@ -472,8 +471,7 @@ class TestCssselect(unittest.TestCase):
         assert pcss('ol:nth-last-of-type(1)') == ['first-ol']
         assert pcss('span:only-child') == ['foobar-span']
         assert pcss('li div:only-child') == ['li-div']
-        assert pcss('div *:only-child') == [
-            'li-div', 'checkbox-disabled', 'foobar-span']
+        assert pcss('div *:only-child') == ['li-div', 'foobar-span']
         self.assertRaises(ExpressionError, pcss, 'p *:only-of-type')
         self.assertRaises(ExpressionError, pcss, 'p:lang(fr)')
         assert pcss('p:only-of-type') == ['paragraph']
@@ -504,25 +502,25 @@ class TestCssselect(unittest.TestCase):
         assert pcss('ol#first-ol *:last-child') == ['li-div', 'seventh-li']
         assert pcss('#outer-div:first-child') == ['outer-div']
         assert pcss('#outer-div :first-child') == [
-            'name-anchor', 'first-li', 'li-div', 'p-b', 'checkbox-disabled',
-            'area-href']
+            'name-anchor', 'first-li', 'li-div', 'p-b',
+            'checkbox-fieldset-disabled', 'area-href']
         assert pcss('a[href]') == ['tag-anchor', 'nofollow-anchor']
-
-
-        assert pcss(':link', html_only=True) == [
-            'link-href', 'tag-anchor', 'nofollow-anchor', 'area-href']
-        assert pcss(':visited', html_only=True) == []
-
-
-        assert pcss(':checked', html_only=True) == ['checkbox-checked']
-        assert pcss(':disabled', html_only=True) == [
-            'fieldset', 'checkbox-disabled']
-        assert pcss(':enabled', html_only=True) == [
-            'checkbox-unchecked', 'checkbox-checked']
         assert pcss('a:not([href])') == ['name-anchor']
         assert pcss('ol :Not(li[class])') == [
             'first-li', 'second-li', 'li-div',
             'fifth-li', 'sixth-li', 'seventh-li']
+
+        # HTML-specific
+        assert pcss(':link', html_only=True) == [
+            'link-href', 'tag-anchor', 'nofollow-anchor', 'area-href']
+        assert pcss(':visited', html_only=True) == []
+        assert pcss(':enabled', html_only=True) == [
+            'link-href', 'tag-anchor', 'nofollow-anchor',
+            'checkbox-unchecked', 'checkbox-checked', 'area-href']
+        assert pcss(':disabled', html_only=True) == [
+            'checkbox-disabled', 'fieldset', 'checkbox-fieldset-disabled']
+
+        assert pcss(':checked', html_only=True) == ['checkbox-checked']
 
     def test_select_shakespeare(self):
         document = html.document_fromstring(HTML_SHAKESPEARE)
@@ -624,9 +622,13 @@ c"></li>
    <b id="p-b">hi</b> <em id="p-em">there</em>
    <b id="p-b2">guy</b>
    <input type="checkbox" id="checkbox-unchecked" />
+   <input type="checkbox" id="checkbox-disabled" disabled="disabled" />
+   <input type="hidden" />
+   <input type="hidden" disabled="disabled" />
    <input type="checkbox" id="checkbox-checked" checked="checked" />
    <fieldset id="fieldset" disabled="disabled">
-     <input type="checkbox" id="checkbox-disabled" />
+     <input type="checkbox" id="checkbox-fieldset-disabled" />
+     <input type="hidden" />
    </fieldset>
  </p>
  <ol id="second-ol">

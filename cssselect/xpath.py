@@ -529,11 +529,10 @@ class HTMLTranslator(GenericTranslator):
         (
             @disabled and
             (
-                name(.) = 'input' or
+                (name(.) = 'input' and @type != 'hidden') or
                 name(.) = 'button' or
                 name(.) = 'select' or
                 name(.) = 'textarea' or
-                name(.) = 'keygen' or
                 name(.) = 'command' or
                 name(.) = 'fieldset' or
                 name(.) = 'optgroup' or
@@ -541,11 +540,10 @@ class HTMLTranslator(GenericTranslator):
             )
         ) or (
             (
-                name(.) = 'input' or
+                (name(.) = 'input' and @type != 'hidden') or
                 name(.) = 'button' or
                 name(.) = 'select' or
-                name(.) = 'textarea' or
-                name(.) = 'keygen'
+                name(.) = 'textarea'
             )
             and ancestor::fieldset[@disabled]
         )
@@ -557,23 +555,36 @@ class HTMLTranslator(GenericTranslator):
         # http://www.w3.org/TR/html5/section-index.html#attributes-1
         return xpath.add_condition('''
         (
+            @href and (
+                name(.) = 'a' or
+                name(.) = 'link' or
+                name(.) = 'area'
+            )
+        ) or (
             (
                 name(.) = 'command' or
                 name(.) = 'fieldset' or
-                name(.) = 'optgroup' or
-                name(.) = 'option'
+                name(.) = 'optgroup'
             )
             and not(@disabled)
         ) or (
             (
-                name(.) = 'input' or
+                (name(.) = 'input' and @type != 'hidden') or
                 name(.) = 'button' or
                 name(.) = 'select' or
                 name(.) = 'textarea' or
                 name(.) = 'keygen'
             )
             and not (@disabled or ancestor::fieldset[@disabled])
+        ) or (
+            name(.) = 'option' and not(
+                @disabled or ancestor::optgroup[@disabled]
+            )
         )
         ''')
-        # FIXME: in the second half, add "and is not a descendant of that
-        # fieldset element's first legend element child, if any."
+        # FIXME: ... or "li elements that are children of menu elements,
+        # and that have a child element that defines a command, if the first
+        # such element's Disabled State facet is false (not disabled)".
+        # FIXME: after ancestor::fieldset[@disabled], add "and is not a
+        # descendant of that fieldset element's first legend element child,
+        # if any."
