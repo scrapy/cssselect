@@ -589,18 +589,15 @@ _illegal_symbol = re.compile(r'[^\w\\-]', re.UNICODE)
 def tokenize_symbol(s, pos):
     start = pos
     match = _illegal_symbol.search(s, pos=pos)
-    if not match:
-        # Goes to end of s
-        return s[start:], len(s)
-    if match.start() == pos:
-        raise SelectorSyntaxError(
-            "Unexpected symbol: %r" % s[pos])
-    if not match:
-        result = s[start:]
-        pos = len(s)
-    else:
+    if match:
+        if match.start() == pos:
+            raise SelectorSyntaxError(
+                "Unexpected symbol: %r" % s[pos])
         result = s[start:match.start()]
         pos = match.start()
+    else:
+        result = s[start:]
+        pos = len(s)
     try:
         result = result.encode('ASCII', 'backslashreplace').decode('unicode_escape')
     except UnicodeDecodeError:
@@ -635,9 +632,6 @@ class TokenStream(object):
                 return next
             except StopIteration:
                 return None
-
-    def __iter__(self):
-        return iter(self.next, None)
 
     def peek(self):
         if not self._peeking:

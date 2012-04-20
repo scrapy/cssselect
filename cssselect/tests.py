@@ -281,6 +281,11 @@ class TestCssselect(unittest.TestCase):
         assert get_error(':lang(fr') == (
             "Expected ')', got 'None' at [Token(':', 0), Symbol('lang', 1), "
             "Token('(', 5), Symbol('fr', 6)] -> None")
+        assert get_error(':contains("foo') == (
+            "Expected closing \" for string in: 'foo' at "
+            "[Token(':', 0), Symbol('contains', 1), Token('(', 9)] -> None")
+        assert get_error('foo!') == (
+            "Unexpected symbol: '!' at [Symbol('foo', 0)] -> None")
 
         # Mis-placed pseudo-elements
         assert get_error('a:before:empty') == (
@@ -299,7 +304,6 @@ class TestCssselect(unittest.TestCase):
             "Got nested :not() at [Token(':', 0), Symbol('not', 1), "
             "Token('(', 4), Token(':', 5), Symbol('not', 6), Token('(', 9)]"
             " -> Symbol('a', 10)")
-
 
     def test_translation(self):
         def xpath(css):
@@ -382,7 +386,6 @@ class TestCssselect(unittest.TestCase):
         self.assertRaises(ExpressionError, xpath, 'p :only-of-type')
         self.assertRaises(ExpressionError, xpath, ':lang(fr)')
         self.assertRaises(ExpressionError, xpath, ':nth-child(n-)')
-
 
     def test_unicode(self):
         if sys.version_info[0] >= 3:
