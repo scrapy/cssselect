@@ -116,6 +116,10 @@ class GenericTranslator(object):
     #: http://www.w3.org/TR/selectors/#id-selectors
     id_attribute = 'id'
 
+    #: The attribute used for ``:lang()`` depends on the document language:
+    #: http://www.w3.org/TR/selectors/#lang-pseudo
+    lang_attribute = 'xml:lang'
+
     #: The case sensitivity of document language element names,
     #: attribute names, and attribute values in selectors depends
     #: on the document language.
@@ -366,11 +370,15 @@ class GenericTranslator(object):
         return xpath.add_condition('contains(string(.), %s)'
                             % self.xpath_literal(function.arguments))
 
-    def function_unsupported(self, xpath, pseudo):
-        raise ExpressionError(
-            "The pseudo-class :%s() is not supported" % pseudo.name)
-
-    xpath_lang_function = function_unsupported
+    def xpath_lang_function(self, xpath, function):
+        return xpath.add_condition(
+            "ancestor-or-self::*[@lang][1][starts-with(concat("
+                # XPath 1.0 has no lower-case function...
+                "translate(@%s, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "
+                               "'abcdefghijklmnopqrstuvwxyz'), "
+                "'-'), %s)]"
+            % (self.lang_attribute, self.xpath_literal(
+                function.arguments.lower() + '-')))
 
 
     # Pseudo: dispatch by pseudo-class name
@@ -497,6 +505,9 @@ class HTMLTranslator(GenericTranslator):
         are case-insensitive.
 
     """
+
+    lang_attribute = 'lang'
+
     def __init__(self, xhtml=False):
         self.xhtml = xhtml  # Might be useful for sub-classes?
         if not xhtml:

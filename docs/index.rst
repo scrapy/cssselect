@@ -92,7 +92,6 @@ they never match:
 
 These applicable pseudo-classes are not yet implemented:
 
-* ``:lang(language)``
 * ``*:first-of-type``, ``*:last-of-type``, ``*:nth-of-type``,
   ``*:nth-last-of-type``, ``*:only-of-type``.  All of these work when
   you specify an element type, but not with ``*``
@@ -136,7 +135,7 @@ implemented without forking or monkey-patching cssselect.
 The "customization API" is the set of methods in translation classes
 and their signature. You can look at the `source code`_ to see how it works.
 However, be aware that this API is not very stable yet. It might change
-and break you sub-class.
+and break your sub-class.
 
 .. _source code: https://github.com/SimonSapin/cssselect/blob/master/cssselect/xpath.py
 

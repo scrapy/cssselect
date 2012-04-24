@@ -1,6 +1,17 @@
 Changelog
 =========
 
+Version 0.6
+-----------
+
+* In ``setup.py`` use setuptools/distribute if available, but fall back
+  on distutils.
+* Implement the ``:lang()`` pseudo-class, although it is only based on
+  ``xml:lang`` or ``lang`` attributes. If the document language is known from
+  some other meta-data (like a ``Content-Language`` HTTP header or ``<meta>``
+  element), a workaround is to set a lang attribute on the root element.
+
+
 Version 0.5
 -----------
 

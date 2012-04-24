@@ -18,7 +18,6 @@
 """
 
 import sys
-import operator
 import unittest
 
 from lxml import etree, html
@@ -392,7 +391,6 @@ class TestCssselect(unittest.TestCase):
         self.assertRaises(ExpressionError, xpath, ':last-of-type')
         self.assertRaises(ExpressionError, xpath, ':nth-of-type(1)')
         self.assertRaises(ExpressionError, xpath, ':nth-last-of-type(1)')
-        self.assertRaises(ExpressionError, xpath, ':lang(fr)')
         self.assertRaises(ExpressionError, xpath, ':nth-child(n-)')
         self.assertRaises(ExpressionError, xpath, ':after')
         self.assertRaises(ExpressionError, xpath, ':lorem-ipsum')
@@ -497,8 +495,14 @@ class TestCssselect(unittest.TestCase):
         assert pcss('div[foobar~="bc"]', 'div[foobar~="cde"]') == [
             'foobar-div']
         assert pcss('div[foobar~="cd"]') == []
-        assert pcss('*[lang|="en"]', '[lang|="en-US"]') == ['second-li']
+        assert pcss('*[lang|="En"]', '[lang|="En-us"]') == ['second-li']
+        # Attribute values are case sensitive
+        assert pcss('*[lang|="en"]', '[lang|="en-US"]') == []
         assert pcss('*[lang|="e"]') == []
+        # ... :lang() is not.
+        assert pcss(':lang("EN")', '*:lang(en-US)', html_only=True) == [
+            'second-li', 'li-div']
+        assert pcss(':lang("e")', html_only=True) == []
         assert pcss('li:nth-child(3)') == ['third-li']
         assert pcss('li:nth-child(10)') == []
         assert pcss('li:nth-child(2n)', 'li:nth-child(even)',
@@ -524,7 +528,6 @@ class TestCssselect(unittest.TestCase):
         assert pcss('li div:only-child') == ['li-div']
         assert pcss('div *:only-child') == ['li-div', 'foobar-span']
         self.assertRaises(ExpressionError, pcss, 'p *:only-of-type')
-        self.assertRaises(ExpressionError, pcss, 'p:lang(fr)')
         assert pcss('p:only-of-type') == ['paragraph']
         assert pcss('a:empty', 'a:EMpty') == ['name-anchor']
         assert pcss('li:empty') == [
@@ -661,7 +664,7 @@ HTML_IDS = '''
     link</a>
  <ol id="first-ol" class="a b c">
    <li id="first-li">content</li>
-   <li id="second-li" lang="en-US">
+   <li id="second-li" lang="En-us">
      <div id="li-div">
      </div>
    </li>
