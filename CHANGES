@@ -4,6 +4,8 @@ Changelog
 Version 0.6
 -----------
 
+Released on 2012-04-24.
+
 * In ``setup.py`` use setuptools/distribute if available, but fall back
   on distutils.
 * Implement the ``:lang()`` pseudo-class, although it is only based on
