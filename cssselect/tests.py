@@ -23,7 +23,7 @@ import unittest
 from lxml import etree, html
 from cssselect import (parse, GenericTranslator, HTMLTranslator,
                        SelectorSyntaxError, ExpressionError)
-from cssselect.parser import tokenize, parse_series
+from cssselect.parser import tokenize, parse_series, _unicode
 
 
 class TestCssselect(unittest.TestCase):
@@ -131,9 +131,11 @@ class TestCssselect(unittest.TestCase):
         def parse_pseudo(css):
             result = []
             for selector in parse(css):
-                result.append((
-                    repr(selector.parsed_tree).replace("(u'", "('"),
-                    selector.pseudo_element))
+                pseudo = selector.pseudo_element
+                # No Symbol here
+                assert pseudo is None or type(pseudo) is _unicode
+                selector = repr(selector.parsed_tree).replace("(u'", "('")
+                result.append((selector, pseudo))
             return result
 
         def parse_one(css):

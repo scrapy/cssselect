@@ -381,7 +381,7 @@ def parse_simple_selector(stream, inside_negation=False):
                     "Expected ']', got '%s'" % next)
         elif peek == '::':
             stream.next()
-            pseudo_element = stream.next_symbol()
+            pseudo_element = _unicode(stream.next_symbol())
             continue
         elif peek == ':':
             stream.next()
@@ -389,7 +389,7 @@ def parse_simple_selector(stream, inside_negation=False):
             if ident in ('first-line', 'first-letter', 'before', 'after'):
                 # Special case: CSS 2.1 pseudo-elements can have a single ':'
                 # Any new pseudo-element must have two.
-                pseudo_element = ident
+                pseudo_element = _unicode(ident)
                 continue
             if stream.peek() != '(':
                 result = Pseudo(result, ident)
