@@ -14,6 +14,7 @@
 
 import sys
 import re
+import operator
 
 
 if sys.version_info[0] < 3:
@@ -118,7 +119,11 @@ class Function(object):
 
     def __repr__(self):
         return '%s[%r:%s(%r)]' % (
-            self.__class__.__name__, self.selector, self.name, self.arguments)
+            self.__class__.__name__, self.selector, self.name,
+            [token.value for token in self.arguments])
+
+    def argument_types(self):
+        return [token.type for token in self.arguments]
 
     def specificity(self):
         a, b, c = self.selector.specificity()
@@ -174,10 +179,10 @@ class Attrib(object):
         self.value = value
 
     def __repr__(self):
-        if self.namespace == '*':
-            attrib = self.attrib
-        else:
+        if self.namespace:
             attrib = '%s|%s' % (self.namespace, self.attrib)
+        else:
+            attrib = self.attrib
         if self.operator == 'exists':
             return '%s[%r[%s]]' % (
                 self.__class__.__name__, self.selector, attrib)
@@ -195,24 +200,25 @@ class Attrib(object):
 class Element(object):
     """
     Represents namespace|element
+
+    `None` is for the universal selector '*'
+
     """
-    def __init__(self, namespace, element):
+    def __init__(self, namespace=None, element=None):
         self.namespace = namespace
         self.element = element
 
     def __repr__(self):
-        if self.namespace == '*':
-            element = self.element
-        else:
-            element = '%s|%s' % (self.namespace, self.element)
-        return '%s[%s]' % (
-            self.__class__.__name__, element)
+        element = self.element or '*'
+        if self.namespace:
+            element = '%s|%s' % (self.namespace, element)
+        return '%s[%s]' % (self.__class__.__name__, element)
 
     def specificity(self):
-        if self.element == '*':
-            return 0, 0, 0
-        else:
+        if self.element:
             return 0, 0, 1
+        else:
+            return 0, 0, 0
 
 
 class Hash(object):
@@ -256,9 +262,15 @@ class CombinedSelector(object):
 
 #### Parser
 
-_el_re = re.compile(r'^\s*(\w+)$')
-_id_re = re.compile(r'^\s*(\w*)#(\w+)\s*$')
-_class_re = re.compile(r'^\s*(\w*)\.(\w+)\s*$')
+# foo
+_el_re = re.compile(r'^[ \t\r\n\f]*([a-zA-Z]+)[ \t\r\n\f]*$')
+
+# foo#bar or #bar
+_id_re = re.compile(r'^[ \t\r\n\f]*([a-zA-Z]*)#([a-zA-Z0-9_-]+)[ \t\r\n\f]*$')
+
+# foo.bar or .bar
+_class_re = re.compile(
+    r'^[ \t\r\n\f]*([a-zA-Z]*)\.([a-zA-Z][a-zA-Z0-9_-]*)[ \t\r\n\f]*$')
 
 
 def parse(css):
@@ -279,36 +291,35 @@ def parse(css):
     # Fast path for simple cases
     match = _el_re.match(css)
     if match:
-        return [Selector(Element('*', match.group(1)))]
+        return [Selector(Element(element=match.group(1)))]
     match = _id_re.match(css)
     if match is not None:
-        return [Selector(Hash(Element(
-            '*', match.group(1) or '*'), match.group(2)))]
+        return [Selector(Hash(Element(element=match.group(1) or None),
+                              match.group(2)))]
     match = _class_re.match(css)
     if match is not None:
-        return [Selector(Class(Element(
-            '*', match.group(1) or '*'), match.group(2)))]
+        return [Selector(Class(Element(element=match.group(1) or None),
+                               match.group(2)))]
 
     stream = TokenStream(tokenize(css))
     stream.source = css
-    try:
-        return list(parse_selector_group(stream))
-    except SelectorSyntaxError:
-        e = sys.exc_info()[1]
-        message = "%s at %s -> %r" % (
-            e, stream.used, stream.peek())
-        e.msg = message
-        if sys.version_info < (2,6):
-            e.message = message
-        e.args = tuple([message])
-        raise
+    return list(parse_selector_group(stream))
+#    except SelectorSyntaxError:
+#        e = sys.exc_info()[1]
+#        message = "%s at %s -> %r" % (
+#            e, stream.used, stream.peek())
+#        e.msg = message
+#        if sys.version_info < (2,6):
+#            e.message = message
+#        e.args = tuple([message])
+#        raise
 
 
 def parse_selector_group(stream):
     stream.skip_whitespace()
     while 1:
         yield Selector(*parse_selector(stream))
-        if stream.peek() == ',':
+        if stream.peek() == ('DELIM', ','):
             stream.next()
             stream.skip_whitespace()
         else:
@@ -319,14 +330,15 @@ def parse_selector(stream):
     while 1:
         stream.skip_whitespace()
         peek = stream.peek()
-        if peek == ',' or peek is None:
+        if peek in (('EOF', None), ('DELIM', ',')):
             break
         if pseudo_element:
             raise SelectorSyntaxError(
-                'A pseudo-element must be at the end of a selector')
-        if peek in ('+', '>', '~'):
+                'Got pseudo-element ::%s not at the end of a selector'
+                % pseudo_element)
+        if peek.is_delim('+', '>', '~'):
             # A combinator
-            combinator = stream.next()
+            combinator = stream.next().value
             stream.skip_whitespace()
         else:
             # By exclusion, the last parse_simple_selector() ended
@@ -339,59 +351,54 @@ def parse_selector(stream):
 
 def parse_simple_selector(stream, inside_negation=False):
     stream.skip_whitespace()
+    selector_start = len(stream.used)
     peek = stream.peek()
-    consumed = len(stream.used)
-    if peek == '*' or isinstance(peek, Symbol):
-        next = stream.next()
-        if stream.peek() == '|':
-            namespace = next
-            stream.next()
-            element = stream.next_symbol_or_star()
+    if peek.type == 'IDENT' or peek == ('DELIM', '*'):
+        if peek.type == 'IDENT':
+            namespace = stream.next().value
         else:
-            namespace = '*'
-            element = next
+            stream.next()
+            namespace = None
+        if stream.peek() == ('DELIM', '|'):
+            stream.next()
+            element = stream.next_ident_or_star()
+        else:
+            element = namespace
+            namespace = None
     else:
-        element = namespace = '*'
+        element = namespace = None
     result = Element(namespace, element)
     pseudo_element = None
     while 1:
         peek = stream.peek()
-        if peek in (None, ' ', ',', '+', '>', '~') or (
-                inside_negation and peek == ')'):
+        if peek.type in ('S', 'EOF') or peek.is_delim(',', '+', '>', '~') or (
+                inside_negation and peek == ('DELIM', ')')):
             break
         if pseudo_element:
             raise SelectorSyntaxError(
-                'A pseudo-element must be at the end of a selector')
-        if peek == '#':
+                'Got pseudo-element ::%s not at the end of a selector'
+                % pseudo_element)
+        if peek.type == 'HASH':
+            result = Hash(result, stream.next().value)
+        elif peek == ('DELIM', '.'):
             stream.next()
-            result = Hash(result, stream.next_symbol())
-            continue
-        elif peek == '.':
-            stream.next()
-            result = Class(result, stream.next_symbol())
-            continue
-        elif peek == '[':
+            result = Class(result, stream.next_ident())
+        elif peek == ('DELIM', '['):
             stream.next()
             result = parse_attrib(result, stream)
-            next = stream.next()
-            if next == ']':
+        elif peek == ('DELIM', ':'):
+            stream.next()
+            if stream.peek() == ('DELIM', ':'):
+                stream.next()
+                pseudo_element = stream.next_ident()
                 continue
-            else:
-                raise SelectorSyntaxError(
-                    "Expected ']', got '%s'" % next)
-        elif peek == '::':
-            stream.next()
-            pseudo_element = _unicode(stream.next_symbol())
-            continue
-        elif peek == ':':
-            stream.next()
-            ident = stream.next_symbol()
+            ident = stream.next_ident()
             if ident in ('first-line', 'first-letter', 'before', 'after'):
                 # Special case: CSS 2.1 pseudo-elements can have a single ':'
                 # Any new pseudo-element must have two.
                 pseudo_element = _unicode(ident)
                 continue
-            if stream.peek() != '(':
+            if stream.peek() != ('DELIM', '('):
                 result = Pseudo(result, ident)
                 continue
             stream.next()
@@ -401,60 +408,90 @@ def parse_simple_selector(stream, inside_negation=False):
                     raise SelectorSyntaxError('Got nested :not()')
                 argument, argument_pseudo_element = parse_simple_selector(
                     stream, inside_negation=True)
+                next = stream.next()
                 if argument_pseudo_element:
                     raise SelectorSyntaxError(
-                        'Pseudo-elements are not allowed inside :not()')
+                        'Got pseudo-element ::%s inside :not() at %s'
+                        % (argument_pseudo_element, next.pos))
+                if next != ('DELIM', ')'):
+                    raise SelectorSyntaxError("Expected ')', got %s" % (next,))
                 result = Negation(result, argument)
             else:
-                peek = stream.peek()
-                if isinstance(peek, (Symbol, String)):
-                    argument = stream.next()
-                else:
+                arguments = []
+                while 1:
+                    stream.skip_whitespace()
+                    next = stream.next()
+                    if next.type in ('IDENT', 'STRING', 'NUMBER') or next in [
+                            ('DELIM', '+'), ('DELIM', '-')]:
+                        arguments.append(next)
+                    elif next == ('DELIM', ')'):
+                        break
+                    else:
+                        raise SelectorSyntaxError(
+                            "Expected an argument, got %s" % (next,))
+                if not arguments:
                     raise SelectorSyntaxError(
-                        "Expected argument, got '%s'" % peek)
-                result = Function(result, ident, argument)
-            stream.skip_whitespace()
-            next = stream.next()
-            if next == ')':
-                continue
-            else:
-                raise SelectorSyntaxError(
-                    "Expected ')', got '%s'" % next)
+                        "Expected at least one argument, got %s" % (next,))
+                result = Function(result, ident, arguments)
         else:
             raise SelectorSyntaxError(
-                "Expected selector, got '%s'" % peek)
-    if consumed == len(stream.used):
+                "Expected selector, got %s" % (peek,))
+    if len(stream.used) == selector_start:
         raise SelectorSyntaxError(
-            "Expected selector, got '%s'" % stream.peek())
+            "Expected selector, got %s" % (stream.peek(),))
     return result, pseudo_element
 
 
 def parse_attrib(selector, stream):
     stream.skip_whitespace()
-    attrib = stream.next_symbol_or_star()
-    if attrib == '*' and stream.peek() != '|':
+    attrib = stream.next_ident_or_star()
+    if attrib is None and stream.peek() != ('DELIM', '|'):
         raise SelectorSyntaxError(
-            "Expected '|', got '%s'" % stream.peek())
-    if stream.peek() == '|':
-        namespace = attrib
+            "Expected '|', got %s" % (stream.peek(),))
+    if stream.peek() == ('DELIM', '|'):
         stream.next()
-        attrib = stream.next_symbol()
+        if stream.peek() == ('DELIM', '='):
+            namespace = None
+            stream.next()
+            op = '|='
+        else:
+            namespace = attrib
+            attrib = stream.next_ident()
+            op = None
     else:
-        namespace = '*'
-    stream.skip_whitespace()
-    if stream.peek() == ']':
-        return Attrib(selector, namespace, attrib, 'exists', None)
-    op = stream.next()
-    if not op in ('^=', '$=', '*=', '=', '~=', '|=', '!='):
-        raise SelectorSyntaxError(
-            "Operator expected, got '%s'" % op)
+        namespace = op = None
+    if op is None:
+        stream.skip_whitespace()
+        next = stream.next()
+        if next == ('DELIM', ']'):
+            return Attrib(selector, namespace, attrib, 'exists', None)
+        elif next == ('DELIM', '='):
+            op = '='
+        elif next.is_delim('^', '$', '*', '~', '|', '!') and (
+                stream.peek() == ('DELIM', '=')):
+            op = next.value + '='
+            stream.next()
+        else:
+            raise SelectorSyntaxError(
+                "Operator expected, got %s" % (next,))
     stream.skip_whitespace()
     value = stream.next()
-    if not isinstance(value, (Symbol, String)):
+    if value.type not in ('IDENT', 'STRING'):
         raise SelectorSyntaxError(
-            "Expected string or symbol, got '%s'" % value)
+            "Expected string or ident, got %s" % (value,))
     stream.skip_whitespace()
-    return Attrib(selector, namespace, attrib, op, value)
+    next = stream.next()
+    if next != ('DELIM', ']'):
+        raise SelectorSyntaxError(
+            "Expected ']', got %s" % (next,))
+    return Attrib(selector, namespace, attrib, op, value.value)
+
+
+def parse_series_from_tokens(tokens):
+    for token in tokens:
+        if token.type == 'STRING':
+            raise ValueError('String tokens not allowed in series.')
+    return parse_series(''.join(token.value for token in tokens))
 
 
 def parse_series(s):
@@ -465,6 +502,7 @@ def parse_series(s):
     :returns: :``(a, b)``
 
     """
+    s = s.strip()
     if s == 'odd':
         return (2, 1)
     elif s == 'even':
@@ -490,139 +528,136 @@ def parse_series(s):
 
 #### Token objects
 
-class _UniToken(_unicode):
-    def __new__(cls, contents, pos):
-        obj = _unicode.__new__(cls, contents)
+class Token(tuple):
+    def __new__(cls, type_, value, pos):
+        obj = tuple.__new__(cls, (type_, value))
         obj.pos = pos
         return obj
 
     def __repr__(self):
-        return '%s(%s, %r)' % (
-            self.__class__.__name__,
-            _unicode.__repr__(self),
-            self.pos)
+        return '<%s %r at %i>' % (self.type, self.value, self.pos)
 
-class Symbol(_UniToken):
-    pass
+    def is_delim(self, *values):
+        return self.type == 'DELIM' and self.value in values
 
-class String(_UniToken):
-    pass
+    type = property(operator.itemgetter(0))
+    value = property(operator.itemgetter(1))
 
-class Token(_UniToken):
-    pass
+
+class EOFToken(Token):
+    def __new__(cls, pos):
+        return Token.__new__(cls, 'EOF', None, pos)
+
+    def __repr__(self):
+        return '<%s at %i>' % (self.type, self.pos)
 
 
 #### Tokenizer
 
-_match_whitespace = re.compile(r'\s+', re.UNICODE).match
 
-_replace_comments = re.compile(r'/\*.*?\*/', re.DOTALL).sub
+class TokenMacros:
+    unicode_escape = r'\\([0-9a-f]{1,6})(?:\r\n|[ \n\r\t\f])?'
+    escape = unicode_escape + r'|\\[^\n\r\f0-9a-f]'
+    string_escape = r'\\(?:\n|\r\n|\r|\f)|' + escape
+    nonascii = r'[^\0-\177]'
+    nmchar = '[_a-z0-9-]|%s|%s' % (escape, nonascii)
+    nmstart = '[_a-z]|%s|%s' % (escape, nonascii)
 
-_match_count_number = re.compile(r'[+-]?\d*n(?:[+-]\d+)?').match
+def _compile(pattern):
+    return re.compile(pattern % vars(TokenMacros), re.IGNORECASE).match
+
+_match_whitespace = _compile(r'[ \t\r\n\f]+')
+_match_number = _compile('[+-]?(?:[0-9]*\.[0-9]+|[0-9]+)')
+_match_hash = _compile('#(?:%(nmchar)s)+')
+_match_ident = _compile('-?(?:%(nmstart)s)(?:%(nmchar)s)*')
+_match_string_by_quote = {
+    "'": _compile(r"([^\n\r\f\\']|%(string_escape)s)*"),
+    '"': _compile(r'([^\n\r\f\\"]|%(string_escape)s)*'),
+}
+
+_sub_simple_escape = re.compile(r'\\(.)').sub
+_sub_unicode_escape = re.compile(TokenMacros.unicode_escape, re.I).sub
+_sub_newline_escape =re.compile(r'\\(?:\n|\r\n|\r|\f)').sub
+
+# Same as r'\1', but faster on CPython
+_replace_simple = operator.methodcaller('group', 1)
+
+def _replace_unicode(match):
+    codepoint = int(match.group(1), 16)
+    if codepoint > sys.maxunicode:
+        codepoint = 0xFFFD
+    return _unichr(codepoint)
+
+
+def unescape_ident(value):
+    value = _sub_unicode_escape(_replace_unicode, value)
+    value = _sub_simple_escape(_replace_simple, value)
+    return value
+
 
 def tokenize(s):
     pos = 0
-    s = _replace_comments('', s)
     len_s = len(s)
     while pos < len_s:
         match = _match_whitespace(s, pos=pos)
         if match:
-            yield Token(' ', pos)
+            yield Token('S', ' ', pos)
             pos = match.end()
             continue
-        match = _match_count_number(s, pos=pos)
-        if match and match.group() != 'n':
-            sym = s[pos:match.end()]
-            yield Symbol(sym, pos)
+
+        match = _match_ident(s, pos=pos)
+        if match:
+            value = _sub_simple_escape(_replace_simple,
+                    _sub_unicode_escape(_replace_unicode, match.group()))
+            yield Token('IDENT', value, pos)
             pos = match.end()
             continue
-        c = s[pos]
-        c2 = s[pos:pos+2]
-        if c2 in ('~=', '|=', '^=', '$=', '*=', '::', '!='):
-            yield Token(c2, pos)
-            pos += 2
-            continue
-        if c in '>+~,.*=[]()|:#':
-            yield Token(c, pos)
-            pos += 1
-            continue
-        if c == '"' or c == "'":
-            # Quoted string
-            old_pos = pos
-            sym, pos = tokenize_escaped_string(s, pos)
-            yield String(sym, old_pos)
-            continue
-        old_pos = pos
-        sym, pos = tokenize_symbol(s, pos)
-        yield Symbol(sym, old_pos)
-        continue
 
-split_at_string_escapes = re.compile(r'(\\(?:%s))'
-                                     % '|'.join(['[A-Fa-f0-9]{1,6}(?:\r\n|\s)?',
-                                                 '[^A-Fa-f0-9]'])).split
-
-
-def unescape_string_literal(literal):
-    substrings = []
-    for substring in split_at_string_escapes(literal):
-        if not substring:
+        match = _match_hash(s, pos=pos)
+        if match:
+            value = _sub_simple_escape(_replace_simple,
+                    _sub_unicode_escape(_replace_unicode, match.group()[1:]))
+            yield Token('HASH', value, pos)
+            pos = match.end()
             continue
-        elif '\\' in substring:
-            if substring[0] == '\\' and len(substring) > 1:
-                substring = substring[1:]
-                if substring[0] in '0123456789ABCDEFabcdef':
-                    # int() correctly ignores the potentially trailing whitespace
-                    substring = _unichr(int(substring, 16))
+
+        quote = s[pos]
+        if quote in _match_string_by_quote:
+            match = _match_string_by_quote[quote](s, pos=pos + 1)
+            assert match, 'Should have found at least an empty match'
+            end_pos = match.end()
+            if end_pos == len_s:
+                raise SelectorSyntaxError('Unclosed string at %s' % pos)
+            if s[end_pos] != quote:
+                raise SelectorSyntaxError('Invalid string at %s' % next_pos)
+            value = _sub_simple_escape(_replace_simple,
+                    _sub_unicode_escape(_replace_unicode,
+                    _sub_newline_escape('', match.group())))
+            yield Token('STRING', value, pos)
+            pos = end_pos + 1
+            continue
+
+        match = _match_number(s, pos=pos)
+        if match:
+            value = match.group()
+            yield Token('NUMBER', value, pos)
+            pos = match.end()
+            continue
+
+        pos2 = pos + 2
+        if s[pos:pos2] == '/*':
+            pos = s.find('*/', pos2)
+            if pos == -1:
+                pos = len_s
             else:
-                raise SelectorSyntaxError(
-                    "Invalid escape sequence %r in string %r"
-                    % (substring.split('\\')[1], literal))
-        substrings.append(substring)
-    return ''.join(substrings)
-
-
-def tokenize_escaped_string(s, pos):
-    quote = s[pos]
-    assert quote in ('"', "'")
-    pos = pos+1
-    start = pos
-    while 1:
-        next = s.find(quote, pos)
-        if next == -1:
-            raise SelectorSyntaxError(
-                "Expected closing %s for string in: %r"
-                % (quote, s[start:]))
-        result = s[start:next]
-        if result.endswith('\\'):
-            # next quote character is escaped
-            pos = next+1
+                pos += 2
             continue
-        if '\\' in result:
-            result = unescape_string_literal(result)
-        return result, next+1
 
+        yield Token('DELIM', s[pos], pos)
+        pos += 1
 
-_illegal_symbol = re.compile(r'[^\w\\-]', re.UNICODE)
-
-def tokenize_symbol(s, pos):
-    start = pos
-    match = _illegal_symbol.search(s, pos=pos)
-    if match:
-        if match.start() == pos:
-            raise SelectorSyntaxError(
-                "Unexpected symbol: %r" % s[pos])
-        result = s[start:match.start()]
-        pos = match.start()
-    else:
-        result = s[start:]
-        pos = len(s)
-    try:
-        result = result.encode('ASCII', 'backslashreplace').decode('unicode_escape')
-    except UnicodeDecodeError:
-        e = sys.exc_info()[1]
-        raise SelectorSyntaxError(
-            "Bad symbol %r: %s" % (result, e))
-    return result, pos
+    assert pos == len_s
+    yield EOFToken(pos)
 
 
 class TokenStream(object):
@@ -644,36 +679,33 @@ class TokenStream(object):
             self.used.append(self.peeked)
             return self.peeked
         else:
-            try:
-                next = self.next_token()
-                self.used.append(next)
-                return next
-            except StopIteration:
-                return None
+            next = self.next_token()
+            self.used.append(next)
+            return next
 
     def peek(self):
         if not self._peeking:
-            try:
-                self.peeked = self.next_token()
-            except StopIteration:
-                return None
+            self.peeked = self.next_token()
             self._peeking = True
         return self.peeked
 
-    def next_symbol(self):
+    def next_ident(self):
         next = self.next()
-        if not isinstance(next, Symbol):
-            raise SelectorSyntaxError(
-                "Expected symbol, got '%s'" % next)
-        return next
+        if next.type != 'IDENT':
+            raise SelectorSyntaxError('Expected ident, got %s' % (next,))
+        return next.value
 
-    def next_symbol_or_star(self):
+    def next_ident_or_star(self):
         next = self.next()
-        if next != '*' and not isinstance(next, Symbol):
+        if next.type == 'IDENT':
+            return next.value
+        elif next == ('DELIM', '*'):
+            return None
+        else:
             raise SelectorSyntaxError(
-                "Expected symbol or '*', got '%s'" % next)
-        return next
+                "Expected ident or '*', got %s" % (next,))
 
     def skip_whitespace(self):
-        if self.peek() == ' ':
+        peek = self.peek()
+        if peek.type == 'S':
             self.next()

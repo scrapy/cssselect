@@ -26,21 +26,42 @@ from cssselect import (parse, GenericTranslator, HTMLTranslator,
 from cssselect.parser import tokenize, parse_series, _unicode
 
 
+if sys.version_info[0] < 3:
+    # Python 2
+    def u(text):
+        return text.decode('utf8')
+else:
+    # Python 3
+    def u(text):
+        return text
+
+
 class TestCssselect(unittest.TestCase):
     def test_tokenizer(self):
-        tokens = [repr(item).replace("u'", "'")
-                  for item in tokenize('E > f[a~="y\\"x"]')]
+        tokens = [
+            repr(item).replace("u'", "'")  # Py 2/3
+            for item in tokenize(
+                u(r'E\ é > f [a~="y\"x"]:nth(/* fu /]* */-3.7)'))]
         assert tokens == [
-            "Symbol('E', 0)",
-            "Token(' ', 1)",
-            "Token('>', 2)",
-            "Token(' ', 3)",
-            "Symbol('f', 4)",
-            "Token('[', 5)",
-            "Symbol('a', 6)",
-            "Token('~=', 7)",
-            "String('y\"x', 9)",
-            "Token(']', 15)"]
+            "<IDENT 'E é' at 0>",
+            "<S ' ' at 4>",
+            "<DELIM '>' at 5>",
+            "<S ' ' at 6>",
+            # the no-break space is not whitespace in CSS
+            r"<IDENT 'f\xa0' at 7>",
+            "<DELIM '[' at 9>",
+            "<IDENT 'a' at 10>",
+            "<DELIM '~' at 11>",
+            "<DELIM '=' at 12>",
+            "<STRING 'y\"x' at 13>",
+            "<DELIM ']' at 19>",
+            "<DELIM ':' at 20>",
+            "<IDENT 'nth' at 21>",
+            "<DELIM '(' at 24>",
+            "<NUMBER '-3.7' at 37>",
+            "<DELIM ')' at 41>",
+            "<EOF at 42>",
+        ]
 
     def test_parser(self):
         def repr_parse(css):
@@ -98,28 +119,26 @@ class TestCssselect(unittest.TestCase):
             'Attrib[Element[a][name]]']
         assert parse_many('a [name]') == [
             'CombinedSelector[Element[a] <followed> Attrib[Element[*][name]]]']
-        assert parse_many('a[rel="include"]') == [
-            "Attrib[Element[a][rel = String('include', 6)]]"]
-        assert parse_many('a[rel = include]') == [
-            "Attrib[Element[a][rel = Symbol('include', 8)]]"]
-        assert parse_many("a[hreflang |= 'en']") == [
-            "Attrib[Element[a][hreflang |= String('en', 14)]]"]
+        assert parse_many('a[rel="include"]', 'a[rel = include]') == [
+            "Attrib[Element[a][rel = 'include']]"]
+        assert parse_many("a[hreflang |= 'en']", "a[hreflang|=en]") == [
+            "Attrib[Element[a][hreflang |= 'en']]"]
         assert parse_many('div:nth-child(10)') == [
-            "Function[Element[div]:nth-child(Symbol('10', 14))]"]
+            "Function[Element[div]:nth-child(['10'])]"]
         assert parse_many(':nth-child(2n+2)') == [
-            "Function[Element[*]:nth-child(Symbol('2n+2', 11))]"]
+            "Function[Element[*]:nth-child(['2', 'n', '+2'])]"]
         assert parse_many('div:nth-of-type(10)') == [
-            "Function[Element[div]:nth-of-type(Symbol('10', 16))]"]
+            "Function[Element[div]:nth-of-type(['10'])]"]
         assert parse_many('div div:nth-of-type(10) .aclass') == [
             'CombinedSelector[CombinedSelector[Element[div] <followed> '
-                "Function[Element[div]:nth-of-type(Symbol('10', 20))]] "
+                "Function[Element[div]:nth-of-type(['10'])]] "
                 '<followed> Class[Element[*].aclass]]']
         assert parse_many('label:only') == [
             'Pseudo[Element[label]:only]']
         assert parse_many('a:lang(fr)') == [
-            "Function[Element[a]:lang(Symbol('fr', 7))]"]
+            "Function[Element[a]:lang(['fr'])]"]
         assert parse_many('div:contains("foo")') == [
-            "Function[Element[div]:contains(String('foo', 13))]"]
+            "Function[Element[div]:contains(['foo'])]"]
         assert parse_many('div#foobar') == [
             'Hash[Element[div]#foobar]']
         assert parse_many('div:not(div.foo)') == [
@@ -213,99 +232,65 @@ class TestCssselect(unittest.TestCase):
                 return str(sys.exc_info()[1]).replace("(u'", "('")
 
         assert get_error('attributes(href)/html/body/a') == (
-            "Expected selector, got '(' at "
-            "[Symbol('attributes', 0)] -> Token('(', 10)")
+            "Expected selector, got <DELIM '(' at 10>")
         assert get_error('attributes(href)') == (
-            "Expected selector, got '(' at "
-            "[Symbol('attributes', 0)] -> Token('(', 10)")
+            "Expected selector, got <DELIM '(' at 10>")
         assert get_error('html/body/a') == (
-            "Unexpected symbol: '/' at [Symbol('html', 0)] -> None")
+            "Expected selector, got <DELIM '/' at 4>")
         assert get_error(' ') == (
-            "Expected selector, got 'None' at [Token(' ', 0)] -> None")
+            "Expected selector, got <EOF at 1>")
         assert get_error('div, ') == (
-            "Expected selector, got 'None' at "
-            "[Symbol('div', 0), Token(',', 3), Token(' ', 4)] -> None")
+            "Expected selector, got <EOF at 5>")
         assert get_error(' , div') == (
-            "Expected selector, got ',' at "
-            "[Token(' ', 0)] -> Token(',', 1)")
+            "Expected selector, got <DELIM ',' at 1>")
         assert get_error('p, , div') == (
-            "Expected selector, got ',' at "
-            "[Symbol('p', 0), Token(',', 1), Token(' ', 2)] -> Token(',', 3)")
+            "Expected selector, got <DELIM ',' at 3>")
         assert get_error('div > ') == (
-            "Expected selector, got 'None' at "
-            "[Symbol('div', 0), Token(' ', 3), Token('>', 4), Token(' ', 5)]"
-            " -> None")
+            "Expected selector, got <EOF at 6>")
         assert get_error('  > div') == (
-            "Expected selector, got '>' at [Token(' ', 0)] -> Token('>', 2)")
+            "Expected selector, got <DELIM '>' at 2>")
         assert get_error('foo|#bar') == (
-            "Expected symbol or '*', got '#' at "
-            "[Symbol('foo', 0), Token('|', 3), "
-            "Token('#', 4)] -> Symbol('bar', 5)")
+            "Expected ident or '*', got <HASH 'bar' at 4>")
         assert get_error('#.foo') == (
-            "Expected symbol, got '.' at "
-            "[Token('#', 0), Token('.', 1)] -> Symbol('foo', 2)")
+            "Expected selector, got <DELIM '#' at 0>")
         assert get_error('.#foo') == (
-            "Expected symbol, got '#' at "
-            "[Token('.', 0), Token('#', 1)] -> Symbol('foo', 2)")
+            "Expected ident, got <HASH 'foo' at 1>")
         assert get_error(':#foo') == (
-            "Expected symbol, got '#' at "
-            "[Token(':', 0), Token('#', 1)] -> Symbol('foo', 2)")
+            "Expected ident, got <HASH 'foo' at 1>")
         assert get_error('[*]') == (
-            "Expected '|', got ']' at "
-            "[Token('[', 0), Token('*', 1)] -> Token(']', 2)")
+            "Expected '|', got <DELIM ']' at 2>")
         assert get_error('[foo|]') == (
-            "Expected symbol, got ']' at "
-            "[Token('[', 0), Symbol('foo', 1), Token('|', 4), Token(']', 5)]"
-            " -> None")
+            "Expected ident, got <DELIM ']' at 5>")
         assert get_error('[#]') == (
-            "Expected symbol or '*', got '#' at "
-            "[Token('[', 0), Token('#', 1)] -> Token(']', 2)")
+            "Expected ident or '*', got <DELIM '#' at 1>")
         assert get_error('[foo=#]') == (
-            "Expected string or symbol, got '#' at "
-            "[Token('[', 0), Symbol('foo', 1), Token('=', 4), Token('#', 5)]"
-            " -> Token(']', 6)")
+            "Expected string or ident, got <DELIM '#' at 5>")
         assert get_error(':nth-child()') == (
-            "Expected argument, got ')' at "
-            "[Token(':', 0), Symbol('nth-child', 1), Token('(', 10)]"
-            " -> Token(')', 11)")
+            "Expected at least one argument, got <DELIM ')' at 11>")
         assert get_error('[href]a') == (
-            "Expected selector, got 'a' at "
-            "[Token('[', 0), Symbol('href', 1), Token(']', 5)]"
-            " -> Symbol('a', 6)")
+            "Expected selector, got <IDENT 'a' at 6>")
         assert get_error('[rel=stylesheet]') == None
         assert get_error('[rel:stylesheet]') == (
-            "Operator expected, got ':' at [Token('[', 0), Symbol('rel', 1), "
-            "Token(':', 4)] -> Symbol('stylesheet', 5)")
+            "Operator expected, got <DELIM ':' at 4>")
         assert get_error('[rel=stylesheet') == (
-            "Expected ']', got 'None' at [Token('[', 0), Symbol('rel', 1), "
-            "Token('=', 4), Symbol('stylesheet', 5)] -> None")
+            "Expected ']', got <EOF at 15>")
         assert get_error(':lang(fr)') == None
         assert get_error(':lang(fr') == (
-            "Expected ')', got 'None' at [Token(':', 0), Symbol('lang', 1), "
-            "Token('(', 5), Symbol('fr', 6)] -> None")
+            "Expected an argument, got <EOF at 8>")
         assert get_error(':contains("foo') == (
-            "Expected closing \" for string in: 'foo' at "
-            "[Token(':', 0), Symbol('contains', 1), Token('(', 9)] -> None")
+            "Unclosed string at 10")
         assert get_error('foo!') == (
-            "Unexpected symbol: '!' at [Symbol('foo', 0)] -> None")
+            "Expected selector, got <DELIM '!' at 3>")
 
         # Mis-placed pseudo-elements
         assert get_error('a:before:empty') == (
-            "A pseudo-element must be at the end of a selector at "
-            "[Symbol('a', 0), Token(':', 1), Symbol('before', 2)] "
-            "-> Token(':', 8)")
+            "Got pseudo-element ::before not at the end of a selector")
         assert get_error('li:before a') == (
-            "A pseudo-element must be at the end of a selector at "
-            "[Symbol('li', 0), Token(':', 2), Symbol('before', 3), "
-            "Token(' ', 9)] -> Symbol('a', 10)")
+            "Got pseudo-element ::before not at the end of a selector")
         assert get_error(':not(:before)') == (
-            "Pseudo-elements are not allowed inside :not() at "
-            "[Token(':', 0), Symbol('not', 1), Token('(', 4), Token(':', 5),"
-            " Symbol('before', 6)] -> Token(')', 12)")
+            "Got pseudo-element ::before inside :not() at 12")
         assert get_error(':not(:not(a))') == (
-            "Got nested :not() at [Token(':', 0), Symbol('not', 1), "
-            "Token('(', 4), Token(':', 5), Symbol('not', 6), Token('(', 9)]"
-            " -> Symbol('a', 10)")
+            "Got nested :not()")
 
     def test_translation(self):
         def xpath(css):

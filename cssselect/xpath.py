@@ -15,7 +15,7 @@
 import sys
 import re
 
-from cssselect.parser import parse, parse_series, SelectorError
+from cssselect.parser import parse, parse_series_from_tokens, SelectorError
 
 
 if sys.version_info[0] < 3:
@@ -250,10 +250,10 @@ class GenericTranslator(object):
             name = selector.attrib.lower()
         else:
             name = selector.attrib
-        if selector.namespace == '*':
-            name = '@' + name
-        else:
+        if selector.namespace:
             name = '@%s:%s' % (selector.namespace, name)
+        else:
+            name = '@' + name
         if self.lower_case_attribute_values:
             value = selector.value.lower()
         else:
@@ -274,11 +274,12 @@ class GenericTranslator(object):
 
     def xpath_element(self, selector):
         """Translate a type or universal selector."""
-        if self.lower_case_element_names:
-            element = selector.element.lower()
-        else:
-            element = selector.element
-        if selector.namespace != '*':
+        element = selector.element
+        if not element:
+            element = '*'
+        elif self.lower_case_element_names:
+            element = element.lower()
+        if selector.namespace:
             # Namespace prefixes are case-sensitive.
             # http://www.w3.org/TR/css3-namespace/#prefixes
             element = '%s:%s' % (selector.namespace, element)
@@ -311,7 +312,7 @@ class GenericTranslator(object):
     def xpath_nth_child_function(self, xpath, function, last=False,
                                  add_name_test=True):
         try:
-            a, b = parse_series(function.arguments)
+            a, b = parse_series_from_tokens(function.arguments)
         except ValueError:
             raise ExpressionError("Invalid series: '%r'" % function.arguments)
         if add_name_test:
@@ -367,18 +368,29 @@ class GenericTranslator(object):
                                              add_name_test=False)
 
     def xpath_contains_function(self, xpath, function):
-        return xpath.add_condition('contains(string(.), %s)'
-                            % self.xpath_literal(function.arguments))
+        # Defined there, removed in later drafts:
+        # http://www.w3.org/TR/2001/CR-css3-selectors-20011113/#content-selectors
+        if function.argument_types() not in (['STRING'], ['IDENT']):
+            raise ExpressionError(
+                "Expected a single string or ident for :contains(), got %r"
+                % function.arguments)
+        value = function.arguments[0].value
+        return xpath.add_condition(
+            'contains(string(.), %s)' % self.xpath_literal(value))
 
     def xpath_lang_function(self, xpath, function):
+        if function.argument_types() not in (['STRING'], ['IDENT']):
+            raise ExpressionError(
+                "Expected a single string or ident for :lang(), got %r"
+                % function.arguments)
+        value = function.arguments[0].value
         return xpath.add_condition(
             "ancestor-or-self::*[@lang][1][starts-with(concat("
                 # XPath 1.0 has no lower-case function...
                 "translate(@%s, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "
                                "'abcdefghijklmnopqrstuvwxyz'), "
                 "'-'), %s)]"
-            % (self.lang_attribute, self.xpath_literal(
-                function.arguments.lower() + '-')))
+            % (self.lang_attribute, self.xpath_literal(value.lower() + '-')))
 
 
     # Pseudo: dispatch by pseudo-class name
