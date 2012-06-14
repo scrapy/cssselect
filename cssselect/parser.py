@@ -487,22 +487,18 @@ def parse_attrib(selector, stream):
     return Attrib(selector, namespace, attrib, op, value.value)
 
 
-def parse_series_from_tokens(tokens):
-    for token in tokens:
-        if token.type == 'STRING':
-            raise ValueError('String tokens not allowed in series.')
-    return parse_series(''.join(token.value for token in tokens))
-
-
-def parse_series(s):
+def parse_series(tokens):
     """
-    Parses things like '1n+2', or 'an+b' generally
+    Parses the arguments for :nth-child() and friends.
 
-    :raises: :class:`ValueError`
+    :raises: A list of tokens
     :returns: :``(a, b)``
 
     """
-    s = s.strip()
+    for token in tokens:
+        if token.type == 'STRING':
+            raise ValueError('String tokens not allowed in series.')
+    s = ''.join(token.value for token in tokens).strip()
     if s == 'odd':
         return (2, 1)
     elif s == 'even':

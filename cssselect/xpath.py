@@ -15,7 +15,7 @@
 import sys
 import re
 
-from cssselect.parser import parse, parse_series_from_tokens, SelectorError
+from cssselect.parser import parse, parse_series, SelectorError
 
 
 if sys.version_info[0] < 3:
@@ -330,7 +330,7 @@ class GenericTranslator(object):
     def xpath_nth_child_function(self, xpath, function, last=False,
                                  add_name_test=True):
         try:
-            a, b = parse_series_from_tokens(function.arguments)
+            a, b = parse_series(function.arguments)
         except ValueError:
             raise ExpressionError("Invalid series: '%r'" % function.arguments)
         if add_name_test:

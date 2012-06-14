@@ -435,17 +435,32 @@ class TestCssselect(unittest.TestCase):
             '''descendant-or-self::*[@aval = "'  '"]''')
 
     def test_series(self):
-        assert parse_series('1n+3') == (1, 3)
-        assert parse_series('n-5') == (1, -5)
-        assert parse_series('odd') == (2, 1)
-        assert parse_series('even') == (2, 0)
-        assert parse_series('3n') == (3, 0)
-        assert parse_series('n') == (1, 0)
-        assert parse_series('+n') == (1, 0)
-        assert parse_series('-n') == (-1, 0)
-        assert parse_series('5') == (0, 5)
-        self.assertRaises(ValueError, parse_series, 'foo')
-        self.assertRaises(ValueError, parse_series, 'n+')
+        def series(css):
+            selector, = parse(':nth-child(%s)' % css)
+            args = selector.parsed_tree.arguments
+            try:
+                return parse_series(args)
+            except ValueError:
+                return None
+
+        assert series('1n+3') == (1, 3)
+        assert series('1n +3') == (1, 3)
+        assert series('1n + 3') == (1, 3)
+        assert series('1n+ 3') == (1, 3)
+        assert series('1n-3') == (1, -3)
+        assert series('1n -3') == (1, -3)
+        assert series('1n - 3') == (1, -3)
+        assert series('1n- 3') == (1, -3)
+        assert series('n-5') == (1, -5)
+        assert series('odd') == (2, 1)
+        assert series('even') == (2, 0)
+        assert series('3n') == (3, 0)
+        assert series('n') == (1, 0)
+        assert series('+n') == (1, 0)
+        assert series('-n') == (-1, 0)
+        assert series('5') == (0, 5)
+        assert series('foo') == None
+        assert series('n+') == None
 
     def test_select(self):
         document = etree.fromstring(HTML_IDS)
