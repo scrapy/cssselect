@@ -1,6 +1,18 @@
 Changelog
 =========
 
+Version 0.7.1
+-------------
+
+Released on 2012-06-14. Code name *remember-to-test-with-tox*.
+
+0.7 broke the parser in Python 2.4 and 2.5; the tests in 2.x.
+Now all is well again.
+
+Also, pseudo-elements are now correctly made lower-case. (They are supposed
+to be case-insensitive.)
+
+
 Version 0.7
 -----------
 
