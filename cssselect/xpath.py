@@ -83,6 +83,11 @@ class XPathExpr(object):
 
 split_at_single_quotes = re.compile("('+)").split
 
+# The spec is actually more permissive than that, but don’t bother.
+# This is just for the fast path.
+# http://www.w3.org/TR/REC-xml/#NT-NameStartChar
+is_safe_name = re.compile('^[a-zA-Z_][a-zA-Z0-9_.-]*$').match
+
 
 #### Translation
 
@@ -181,7 +186,9 @@ class GenericTranslator(object):
         tree = getattr(selector, 'parsed_tree', None)
         if not tree:
             raise TypeError('Expected a parsed selector, got %r' % (selector,))
-        return (prefix or '') + _unicode(self.xpath(tree))
+        xpath = self.xpath(tree)
+        assert isinstance(xpath, XPathExpr)  # help debug a missing 'return'
+        return (prefix or '') + _unicode(xpath)
 
     @staticmethod
     def xpath_literal(s):
@@ -250,15 +257,19 @@ class GenericTranslator(object):
             name = selector.attrib.lower()
         else:
             name = selector.attrib
+        safe = is_safe_name(name)
         if selector.namespace:
-            name = '@%s:%s' % (selector.namespace, name)
+            name = '%s:%s' % (selector.namespace, name)
+            safe = safe and is_safe_name(selector.namespace)
+        if safe:
+            attrib = '@' + name
         else:
-            name = '@' + name
+            attrib = 'attribute::*[name() = %s]' % self.xpath_literal(name)
         if self.lower_case_attribute_values:
             value = selector.value.lower()
         else:
             value = selector.value
-        return method(self.xpath(selector.selector), name, value)
+        return method(self.xpath(selector.selector), attrib, value)
 
     def xpath_class(self, class_selector):
         """Translate a class selector."""
@@ -277,13 +288,20 @@ class GenericTranslator(object):
         element = selector.element
         if not element:
             element = '*'
-        elif self.lower_case_element_names:
-            element = element.lower()
+            safe = True
+        else:
+            safe = is_safe_name(element)
+            if self.lower_case_element_names:
+                element = element.lower()
         if selector.namespace:
             # Namespace prefixes are case-sensitive.
             # http://www.w3.org/TR/css3-namespace/#prefixes
             element = '%s:%s' % (selector.namespace, element)
-        return XPathExpr(element=element)
+            safe = safe and is_safe_name(selector.namespace)
+        xpath = XPathExpr(element=element)
+        if not safe:
+            xpath.add_name_test()
+        return xpath
 
 
     # CombinedSelector: dispatch by combinator

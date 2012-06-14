@@ -373,6 +373,17 @@ class TestCssselect(unittest.TestCase):
             "e/following-sibling::f")
         assert xpath('div#container p') == (
             "div[@id = 'container']/descendant-or-self::*/p")
+
+        # Invalid characters in XPath element names
+        assert xpath(r'di\a0 v') == (
+            "*[name() = 'di\xa0v']")
+        assert xpath(r'di\[v') == (
+            "*[name() = 'di[v']")
+        assert xpath(r'[h\a0 ref]') == (
+            "*[attribute::*[name() = 'h\xa0ref']]")
+        assert xpath(r'[h\]ref]') == (
+            "*[attribute::*[name() = 'h]ref']]")
+
         self.assertRaises(ExpressionError, xpath, ':first-of-type')
         self.assertRaises(ExpressionError, xpath, ':only-of-type')
         self.assertRaises(ExpressionError, xpath, ':last-of-type')
@@ -551,6 +562,9 @@ class TestCssselect(unittest.TestCase):
         assert pcss('ol :Not(li[class])') == [
             'first-li', 'second-li', 'li-div',
             'fifth-li', 'sixth-li', 'seventh-li']
+        # Invalid characters in XPath element names, should not crash
+        assert pcss(r'di\a0 v', r'div\[') == []
+        assert pcss(r'[h\a0 ref]', r'[h\]ref]') == []
 
         # HTML-specific
         assert pcss(':link', html_only=True) == [
