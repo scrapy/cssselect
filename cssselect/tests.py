@@ -39,16 +39,15 @@ else:
 class TestCssselect(unittest.TestCase):
     def test_tokenizer(self):
         tokens = [
-            repr(item).replace("u'", "'")  # Py 2/3
-            for item in tokenize(
+            _unicode(item) for item in tokenize(
                 u(r'E\ é > f [a~="y\"x"]:nth(/* fu /]* */-3.7)'))]
         assert tokens == [
-            "<IDENT 'E é' at 0>",
+            u("<IDENT 'E é' at 0>"),
             "<S ' ' at 4>",
             "<DELIM '>' at 5>",
             "<S ' ' at 6>",
             # the no-break space is not whitespace in CSS
-            r"<IDENT 'f\xa0' at 7>",
+            u("<IDENT 'f ' at 7>"),  # f\xa0
             "<DELIM '[' at 9>",
             "<IDENT 'a' at 10>",
             "<DELIM '~' at 11>",
@@ -294,7 +293,7 @@ class TestCssselect(unittest.TestCase):
 
     def test_translation(self):
         def xpath(css):
-            return str(GenericTranslator().css_to_xpath(css, prefix=''))
+            return _unicode(GenericTranslator().css_to_xpath(css, prefix=''))
 
         assert xpath('*') == "*"
         assert xpath('e') == "e"
@@ -378,11 +377,11 @@ class TestCssselect(unittest.TestCase):
 
         # Invalid characters in XPath element names
         assert xpath(r'di\a0 v') == (
-            "*[name() = 'di\xa0v']")
+            u("*[name() = 'di v']"))  # di\xa0v
         assert xpath(r'di\[v') == (
             "*[name() = 'di[v']")
         assert xpath(r'[h\a0 ref]') == (
-            "*[attribute::*[name() = 'h\xa0ref']]")
+            u("*[attribute::*[name() = 'h ref']]"))  # h\xa0ref
         assert xpath(r'[h\]ref]') == (
             "*[attribute::*[name() = 'h]ref']]")
 

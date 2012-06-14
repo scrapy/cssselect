@@ -539,7 +539,7 @@ class Token(tuple):
         return obj
 
     def __repr__(self):
-        return '<%s %r at %i>' % (self.type, self.value, self.pos)
+        return "<%s '%s' at %i>" % (self.type, self.value, self.pos)
 
     def is_delim(self, *values):
         return self.type == 'DELIM' and self.value in values
