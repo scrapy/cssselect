@@ -88,6 +88,9 @@ split_at_single_quotes = re.compile("('+)").split
 # http://www.w3.org/TR/REC-xml/#NT-NameStartChar
 is_safe_name = re.compile('^[a-zA-Z_][a-zA-Z0-9_.-]*$').match
 
+# Test that the string is not empty and does not contain whitespace
+is_non_whitespace = re.compile(r'^[^ \t\r\n\f]+$').match
+
 
 #### Translation
 
@@ -490,9 +493,12 @@ class GenericTranslator(object):
         return xpath
 
     def xpath_attrib_includes(self, xpath, name, value):
-        xpath.add_condition(
-            "%s and contains(concat(' ', normalize-space(%s), ' '), %s)"
-            % (name, name, self.xpath_literal(' '+value+' ')))
+        if is_non_whitespace(value):
+            xpath.add_condition(
+                "%s and contains(concat(' ', normalize-space(%s), ' '), %s)"
+                % (name, name, self.xpath_literal(' '+value+' ')))
+        else:
+            xpath.add_condition('0')
         return xpath
 
     def xpath_attrib_dashmatch(self, xpath, name, value):
@@ -504,19 +510,31 @@ class GenericTranslator(object):
         return xpath
 
     def xpath_attrib_prefixmatch(self, xpath, name, value):
-        return xpath.add_condition('%s and starts-with(%s, %s)' % (
-            name, name, self.xpath_literal(value)))
+        if value:
+            xpath.add_condition('%s and starts-with(%s, %s)' % (
+                name, name, self.xpath_literal(value)))
+        else:
+            xpath.add_condition('0')
+        return xpath
 
     def xpath_attrib_suffixmatch(self, xpath, name, value):
-        # Oddly there is a starts-with in XPath 1.0, but not ends-with
-        return xpath.add_condition(
-            '%s and substring(%s, string-length(%s)-%s) = %s'
-            % (name, name, name, len(value)-1, self.xpath_literal(value)))
+        if value:
+            # Oddly there is a starts-with in XPath 1.0, but not ends-with
+            xpath.add_condition(
+                '%s and substring(%s, string-length(%s)-%s) = %s'
+                % (name, name, name, len(value)-1, self.xpath_literal(value)))
+        else:
+            xpath.add_condition('0')
+        return xpath
 
     def xpath_attrib_substringmatch(self, xpath, name, value):
-        # Attribute selectors are case sensitive
-        return xpath.add_condition('%s and contains(%s, %s)' % (
-            name, name, self.xpath_literal(value)))
+        if value:
+            # Attribute selectors are case sensitive
+            xpath.add_condition('%s and contains(%s, %s)' % (
+                name, name, self.xpath_literal(value)))
+        else:
+            xpath.add_condition('0')
+        return xpath
 
 
 class HTMLTranslator(GenericTranslator):

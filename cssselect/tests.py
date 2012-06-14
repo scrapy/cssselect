@@ -502,11 +502,16 @@ class TestCssselect(unittest.TestCase):
         assert pcss('a[rel]') == ['tag-anchor', 'nofollow-anchor']
         assert pcss('a[rel="tag"]') == ['tag-anchor']
         assert pcss('a[href*="localhost"]') == ['tag-anchor']
+        assert pcss('a[href*=""]') == []
         assert pcss('a[href^="http"]') == ['tag-anchor', 'nofollow-anchor']
         assert pcss('a[href^="http:"]') == ['tag-anchor']
+        assert pcss('a[href^=""]') == []
         assert pcss('a[href$="org"]') == ['nofollow-anchor']
+        assert pcss('a[href$=""]') == []
         assert pcss('div[foobar~="bc"]', 'div[foobar~="cde"]') == [
             'foobar-div']
+        assert pcss('[foobar~="ab bc"]',
+                    '[foobar~=""]', '[foobar~=" \t"]') == []
         assert pcss('div[foobar~="cd"]') == []
         assert pcss('*[lang|="En"]', '[lang|="En-us"]') == ['second-li']
         # Attribute values are case sensitive
