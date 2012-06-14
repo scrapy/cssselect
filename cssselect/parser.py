@@ -584,7 +584,12 @@ _sub_unicode_escape = re.compile(TokenMacros.unicode_escape, re.I).sub
 _sub_newline_escape =re.compile(r'\\(?:\n|\r\n|\r|\f)').sub
 
 # Same as r'\1', but faster on CPython
-_replace_simple = operator.methodcaller('group', 1)
+if hasattr(operator, 'methodcaller'):
+    # Python 2.6+
+    _replace_simple = operator.methodcaller('group', 1)
+else:
+    def _replace_simple(match):
+        return match.group(1)
 
 def _replace_unicode(match):
     codepoint = int(match.group(1), 16)
