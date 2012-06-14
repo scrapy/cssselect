@@ -25,6 +25,11 @@ else:
     _unichr = chr
 
 
+def ascii_lower(string):
+    """Lower-case, but only in the ASCII range."""
+    return string.encode('utf8').lower().decode('utf8')
+
+
 class SelectorError(Exception):
     """Common parent for :class:`SelectorSyntaxError` and
     :class:`ExpressionError`.
@@ -52,6 +57,8 @@ class Selector(object):
     """
     def __init__(self, tree, pseudo_element=None):
         self.parsed_tree = tree
+        if pseudo_element is not None:
+            pseudo_element = ascii_lower(pseudo_element)
         #: The identifier for the pseudo-element as a string, or ``None``.
         #:
         #: +-------------------------+----------------+----------------+
@@ -114,7 +121,7 @@ class Function(object):
     """
     def __init__(self, selector, name, arguments):
         self.selector = selector
-        self.name = name
+        self.name = ascii_lower(name)
         self.arguments = arguments
 
     def __repr__(self):
@@ -137,7 +144,7 @@ class Pseudo(object):
     """
     def __init__(self, selector, ident):
         self.selector = selector
-        self.ident = ident
+        self.ident = ascii_lower(ident)
 
     def __repr__(self):
         return '%s[%r:%s]' % (
@@ -393,7 +400,8 @@ def parse_simple_selector(stream, inside_negation=False):
                 pseudo_element = stream.next_ident()
                 continue
             ident = stream.next_ident()
-            if ident in ('first-line', 'first-letter', 'before', 'after'):
+            if ident.lower() in ('first-line', 'first-letter',
+                                 'before', 'after'):
                 # Special case: CSS 2.1 pseudo-elements can have a single ':'
                 # Any new pseudo-element must have two.
                 pseudo_element = _unicode(ident)

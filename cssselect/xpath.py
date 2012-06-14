@@ -234,7 +234,7 @@ class GenericTranslator(object):
 
     def xpath_function(self, function):
         """Translate a functional pseudo-class."""
-        method = 'xpath_%s_function' % function.name.replace('-', '_').lower()
+        method = 'xpath_%s_function' % function.name.replace('-', '_')
         method = getattr(self, method, None)
         if not method:
             raise ExpressionError(
@@ -243,7 +243,7 @@ class GenericTranslator(object):
 
     def xpath_pseudo(self, pseudo):
         """Translate a pseudo-class."""
-        method = 'xpath_%s_pseudo' % pseudo.ident.replace('-', '_').lower()
+        method = 'xpath_%s_pseudo' % pseudo.ident.replace('-', '_')
         method = getattr(self, method, None)
         if not method:
             # TODO: better error message for pseudo-elements?

@@ -167,17 +167,17 @@ class TestCssselect(unittest.TestCase):
         assert parse_one(':empty') == ('Pseudo[Element[*]:empty]', None)
 
         # Special cases for CSS 2.1 pseudo-elements
-        assert parse_one(':before') == ('Element[*]', 'before')
-        assert parse_one(':after') == ('Element[*]', 'after')
-        assert parse_one(':first-line') == ('Element[*]', 'first-line')
-        assert parse_one(':first-letter') == ('Element[*]', 'first-letter')
+        assert parse_one(':BEfore') == ('Element[*]', 'before')
+        assert parse_one(':aftER') == ('Element[*]', 'after')
+        assert parse_one(':First-Line') == ('Element[*]', 'first-line')
+        assert parse_one(':First-Letter') == ('Element[*]', 'first-letter')
 
-        assert parse_one('::before') == ('Element[*]', 'before')
-        assert parse_one('::after') == ('Element[*]', 'after')
-        assert parse_one('::first-line') == ('Element[*]', 'first-line')
-        assert parse_one('::first-letter') == ('Element[*]', 'first-letter')
+        assert parse_one('::befoRE') == ('Element[*]', 'before')
+        assert parse_one('::AFter') == ('Element[*]', 'after')
+        assert parse_one('::firsT-linE') == ('Element[*]', 'first-line')
+        assert parse_one('::firsT-letteR') == ('Element[*]', 'first-letter')
 
-        assert parse_one('::selection') == ('Element[*]', 'selection')
+        assert parse_one('::Selection') == ('Element[*]', 'selection')
         assert parse_one('foo:after') == ('Element[foo]', 'after')
         assert parse_one('foo::selection') == ('Element[foo]', 'selection')
         assert parse_one('lorem#ipsum ~ a#b.c[href]:empty::selection') == (
@@ -346,13 +346,15 @@ class TestCssselect(unittest.TestCase):
             "e[last() = 1]")
         assert xpath('e:empty') == (
             "e[not(*) and not(normalize-space())]")
+        assert xpath('e:EmPTY') == (
+            "e[not(*) and not(normalize-space())]")
         assert xpath('e:root') == (
             "e[not(parent::*)]")
         assert xpath('e:hover') == (
             "e[0]")  # never matches
         assert xpath('e:contains("foo")') == (
             "e[contains(string(.), 'foo')]")
-        assert xpath('e:contains(foo)') == (
+        assert xpath('e:ConTains(foo)') == (
             "e[contains(string(.), 'foo')]")
         assert xpath('e.warning') == (
             "e[@class and contains("
@@ -361,7 +363,7 @@ class TestCssselect(unittest.TestCase):
             "e[@id = 'myid']")
         assert xpath('e:not(:nth-child(odd))') == (
             "e[not((position() -1) mod 2 = 0 and position() >= 1)]")
-        assert xpath('e:not(*)') == (
+        assert xpath('e:nOT(*)') == (
             "e[0]")  # never matches
         assert xpath('e f') == (
             "e/descendant-or-self::*/f")
