@@ -18,5 +18,5 @@ from cssselect.parser import (parse, Selector, SelectorError,
 from cssselect.xpath import GenericTranslator, HTMLTranslator, ExpressionError
 
 
-VERSION = '0.6.1'
+VERSION = '0.7'
 __version__ = VERSION

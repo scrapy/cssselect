@@ -1,6 +1,22 @@
 Changelog
 =========
 
+Version 0.7
+-----------
+
+Released on 2012-06-14.
+
+Bug fix release: see #2, #7 and #10 on GitHub.
+
+* The tokenizer and parser have been rewritten to be much closer to the
+  specified grammar. In particular, non-ASCII characters and backslash-escapes
+  are now handled correctly.
+* Special characters are protected in the output so that generated XPath
+  exrpessions should always be valid
+* The ``~=``, ``^=`` and ``*=`` attribute operators now correctly never match
+  when used with an empty string.
+
+
 Version 0.6.1
 -------------
 
