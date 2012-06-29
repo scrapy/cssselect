@@ -385,6 +385,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath(r'[h\]ref]') == (
             "*[attribute::*[name() = 'h]ref']]")
 
+        self.assertRaises(ExpressionError, xpath, u(':fİrst-child'))
         self.assertRaises(ExpressionError, xpath, ':first-of-type')
         self.assertRaises(ExpressionError, xpath, ':only-of-type')
         self.assertRaises(ExpressionError, xpath, ':last-of-type')
