@@ -454,7 +454,7 @@ class GenericTranslator(object):
         return xpath.add_condition('last() = 1')
 
     def xpath_empty_pseudo(self, xpath):
-        return xpath.add_condition("not(*) and not(normalize-space())")
+        return xpath.add_condition("not(*) and not(string-length())")
 
     def pseudo_never_matches(self, xpath):
         """Common implementation for pseudo-classes that never match."""
