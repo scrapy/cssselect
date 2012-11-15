@@ -410,12 +410,7 @@ class GenericTranslator(object):
                 % function.arguments)
         value = function.arguments[0].value
         return xpath.add_condition(
-            "ancestor-or-self::*[@lang][1][starts-with(concat("
-                # XPath 1.0 has no lower-case function...
-                "translate(@%s, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "
-                               "'abcdefghijklmnopqrstuvwxyz'), "
-                "'-'), %s)]"
-            % (self.lang_attribute, self.xpath_literal(value.lower() + '-')))
+            "lang(%s)" % (self.xpath_literal(value)))
 
 
     # Pseudo: dispatch by pseudo-class name
@@ -574,6 +569,20 @@ class HTMLTranslator(GenericTranslator):
             "(@checked "
                 "and (name(.) = 'input' or name(.) = 'command')"
                 "and (@type = 'checkbox' or @type = 'radio'))")
+
+    def xpath_lang_function(self, xpath, function):
+        if function.argument_types() not in (['STRING'], ['IDENT']):
+            raise ExpressionError(
+                "Expected a single string or ident for :lang(), got %r"
+                % function.arguments)
+        value = function.arguments[0].value
+        return xpath.add_condition(
+            "ancestor-or-self::*[@lang][1][starts-with(concat("
+                # XPath 1.0 has no lower-case function...
+                "translate(@%s, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "
+                               "'abcdefghijklmnopqrstuvwxyz'), "
+                "'-'), %s)]"
+            % (self.lang_attribute, self.xpath_literal(value.lower() + '-')))
 
     def xpath_link_pseudo(self, xpath):
         return xpath.add_condition("@href and "
