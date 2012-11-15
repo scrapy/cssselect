@@ -344,9 +344,9 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e:only-of-type') == (
             "e[last() = 1]")
         assert xpath('e:empty') == (
-            "e[not(*) and not(normalize-space())]")
+            "e[not(*) and not(string-length())]")
         assert xpath('e:EmPTY') == (
-            "e[not(*) and not(normalize-space())]")
+            "e[not(*) and not(string-length())]")
         assert xpath('e:root') == (
             "e[not(parent::*)]")
         assert xpath('e:hover') == (
@@ -575,7 +575,7 @@ class TestCssselect(unittest.TestCase):
         assert pcss('p:only-of-type') == ['paragraph']
         assert pcss('a:empty', 'a:EMpty') == ['name-anchor']
         assert pcss('li:empty') == [
-            'third-li', 'fourth-li', 'fifth-li', 'sixth-li', 'seventh-li']
+            'third-li', 'fourth-li', 'fifth-li', 'sixth-li']
         assert pcss(':root', 'html:root') == ['html']
         assert pcss('li:root', '* :root') == []
         assert pcss('*:contains("link")', ':CONtains("link")') == [
