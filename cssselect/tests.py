@@ -464,6 +464,30 @@ class TestCssselect(unittest.TestCase):
         assert series('foo') == None
         assert series('n+') == None
 
+    def test_lang(self):
+        document = etree.fromstring(XMLLANG_IDS)
+        sort_key = dict(
+            (el, count) for count, el in enumerate(document.getiterator())
+        ).__getitem__
+        css_to_xpath = GenericTranslator().css_to_xpath
+
+        def langid(selector):
+            xpath = css_to_xpath(selector)
+            items = document.xpath(xpath)
+            items.sort(key=sort_key)
+            return [element.get('id', 'nil') for element in items]
+
+        assert langid(':lang("EN")') == ['first', 'second', 'third', 'fourth']
+        assert langid(':lang("en-us")') == ['second', 'fourth']
+        assert langid(':lang(en-nz)') == ['third']
+        assert langid(':lang(fr)') == ['fifth']
+        assert langid(':lang(ru)') == ['sixth']
+        assert langid(":lang('ZH')") == ['eighth']
+        assert langid(':lang(de) :lang(zh)') == ['eighth']
+        assert langid(':lang(en), :lang(zh)') == [
+            'first', 'second', 'third', 'fourth', 'eighth']
+        assert langid(':lang(es)') == []
+
     def test_select(self):
         document = etree.fromstring(HTML_IDS)
         sort_key = dict(
@@ -674,6 +698,20 @@ class TestCssselect(unittest.TestCase):
         assert count('div[class|=dialog]') == 50 # ? Seems right
         assert count('div[class!=madeup]') == 243 # ? Seems right
         assert count('div[class~=dialog]') == 51 # ? Seems right
+
+XMLLANG_IDS = '''
+<test>
+  <a id="first" xml:lang="en">a</a>
+  <b id="second" xml:lang="en-US">b</b>
+  <c id="third" xml:lang="en-Nz">c</c>
+  <d id="fourth" xml:lang="En-us">d</d>
+  <e id="fifth" xml:lang="fr">e</e>
+  <f id="sixth" xml:lang="ru">f</f>
+  <g id="seventh" xml:lang="de">
+    <h id="eighth" xml:lang="zh"/>
+  </g>
+</test>
+'''
 
 HTML_IDS = '''
 <html id="html"><head>
