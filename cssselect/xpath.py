@@ -102,6 +102,19 @@ class GenericTranslator(object):
     of element names and attribute names.
 
     """
+    
+    ####
+    ####  HERE BE DRAGONS
+    ####
+    ####  You are welcome to hook into this to change some behavior,
+    ####  but do so at your own risks.
+    ####  Until is has recieved a lot more work and review,
+    ####  I reserve the right to change this API in backward-incompatible ways
+    ####  with any minor version of cssselect.
+    ####  See https://github.com/SimonSapin/cssselect/pull/22
+    ####  -- Simon Sapin.
+    ####
+
     combinator_mapping = {
         ' ': 'descendant',
         '>': 'child',
