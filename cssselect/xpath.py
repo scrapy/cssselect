@@ -146,6 +146,9 @@ class GenericTranslator(object):
     lower_case_attribute_names = False
     lower_case_attribute_values = False
 
+    # class used to represent and xpath expression
+    xpathexpr_cls = XPathExpr
+
     def css_to_xpath(self, css, prefix='descendant-or-self::'):
         """Translate a *group of selectors* to XPath.
 
@@ -190,7 +193,7 @@ class GenericTranslator(object):
         if not tree:
             raise TypeError('Expected a parsed selector, got %r' % (selector,))
         xpath = self.xpath(tree)
-        assert isinstance(xpath, XPathExpr)  # help debug a missing 'return'
+        assert isinstance(xpath, self.xpathexpr_cls)  # help debug a missing 'return'
         return (prefix or '') + _unicode(xpath)
 
     @staticmethod
@@ -305,7 +308,7 @@ class GenericTranslator(object):
             # http://www.w3.org/TR/css3-namespace/#prefixes
             element = '%s:%s' % (selector.namespace, element)
             safe = safe and is_safe_name(selector.namespace)
-        xpath = XPathExpr(element=element)
+        xpath = self.xpathexpr_cls(element=element)
         if not safe:
             xpath.add_name_test()
         return xpath
