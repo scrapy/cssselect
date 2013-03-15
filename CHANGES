@@ -1,6 +1,30 @@
 Changelog
 =========
 
+Version 0.8
+-----------
+
+Released on 2013-03-15.
+
+Improvements:
+
+* `#22 <https://github.com/SimonSapin/cssselect/issues/22>`_
+  Let extended translators override what XPathExpr class is used
+* `#19 <https://github.com/SimonSapin/cssselect/issues/19>`_
+  Use the built-in ``lang()`` XPath function
+  for implementing the ``:lang()`` pseudo-class
+  with XML documents.
+  This is probably faster than ``ancestor-or-self::``.
+
+Bug fixes:
+
+* `#14 <https://github.com/SimonSapin/cssselect/issues/14>`_
+  Fix non-ASCII pseudo-classes. (Invalid selector instead of crash.)
+* `#20 <https://github.com/SimonSapin/cssselect/issues/20>`_
+  As per the spec, elements containing only whitespace are not considered empty
+  for the ``:empty`` pseudo-class.
+
+
 Version 0.7.1
 -------------
 
