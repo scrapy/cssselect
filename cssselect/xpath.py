@@ -102,7 +102,7 @@ class GenericTranslator(object):
     of element names and attribute names.
 
     """
-    
+
     ####
     ####  HERE BE DRAGONS
     ####
@@ -162,6 +162,9 @@ class GenericTranslator(object):
     # class used to represent and xpath expression
     xpathexpr_cls = XPathExpr
 
+    # accept pseudo-elements in css_to_xpath
+    support_pseudo_elements = False
+
     def css_to_xpath(self, css, prefix='descendant-or-self::'):
         """Translate a *group of selectors* to XPath.
 
@@ -179,9 +182,10 @@ class GenericTranslator(object):
 
         """
         selectors = parse(css)
-        for selector in selectors:
-            if selector.pseudo_element:
-                raise ExpressionError('Pseudo-elements are not supported.')
+        if not self.support_pseudo_elements:
+            for selector in selectors:
+                if selector.pseudo_element:
+                    raise ExpressionError('Pseudo-elements are not supported.')
 
         return ' | '.join(
             self.selector_to_xpath(selector, prefix)
@@ -259,6 +263,17 @@ class GenericTranslator(object):
                 "The pseudo-class :%s() is unknown" % function.name)
         return method(self.xpath(function.selector), function)
 
+    def xpath_functionalpseudoelement(self, functional):
+        """Translate a functional pseudo-element."""
+        method = 'xpath_%s_functional_pseudo_element' % functional.name.replace('-', '_')
+        # getattr() with a non-ASCII name fails on Python 2.x
+        method = method.encode('ascii', 'replace').decode('ascii')
+        method = getattr(self, method, None)
+        if not method:
+            raise ExpressionError(
+                "The functional pseudo-element :%s() is unknown" % functional.name)
+        return method(self.xpath(functional.selector), functional)
+
     def xpath_pseudo(self, pseudo):
         """Translate a pseudo-class."""
         method = 'xpath_%s_pseudo' % pseudo.ident.replace('-', '_')
@@ -271,6 +286,17 @@ class GenericTranslator(object):
                 "The pseudo-class :%s is unknown" % pseudo.ident)
         return method(self.xpath(pseudo.selector))
 
+    def xpath_pseudoelement(self, pseudo_element):
+        """Translate a pseudo-element."""
+        method = 'xpath_%s_pseudo_element' % pseudo_element.ident.replace('-', '_')
+        # getattr() with a non-ASCII name fails on Python 2.x
+        method = method.encode('ascii', 'replace').decode('ascii')
+        method = getattr(self, method, None)
+        if not method:
+            # TODO: better error message for pseudo-elements?
+            raise ExpressionError(
+                "The pseudo-element :%s is unknown" % pseudo_element.ident)
+        return method(self.xpath(pseudo_element.selector))
 
     def xpath_attrib(self, selector):
         """Translate an attribute selector."""
