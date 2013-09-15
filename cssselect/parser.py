@@ -60,7 +60,9 @@ class Selector(object):
         if pseudo_element is not None and not isinstance(
                 pseudo_element, FunctionalPseudoElement):
             pseudo_element = ascii_lower(pseudo_element)
-        #: The identifier for the pseudo-element as a string, or ``None``.
+        #: A :class:`FunctionalPseudoElement`,
+        #: or the identifier for the pseudo-element as a string,
+        #  or ``None``.
         #:
         #: +-------------------------+----------------+----------------+
         #: |                         | Selector       | Pseudo-element |
