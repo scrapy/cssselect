@@ -24,6 +24,7 @@ from lxml import etree, html
 from cssselect import (parse, GenericTranslator, HTMLTranslator,
                        SelectorSyntaxError, ExpressionError)
 from cssselect.parser import tokenize, parse_series, _unicode
+from cssselect.xpath import XPathExpr
 
 
 if sys.version_info[0] < 3:
@@ -175,6 +176,9 @@ class TestCssselect(unittest.TestCase):
         assert parse_one('::AFter') == ('Element[*]', 'after')
         assert parse_one('::firsT-linE') == ('Element[*]', 'first-line')
         assert parse_one('::firsT-letteR') == ('Element[*]', 'first-letter')
+
+        assert parse_one('::text-content') == ('Element[*]', 'text-content')
+        assert parse_one('::attr(name)') == ("Function[Element[*]:attr(['name'])]", 'attr')
 
         assert parse_one('::Selection') == ('Element[*]', 'selection')
         assert parse_one('foo:after') == ('Element[foo]', 'after')
@@ -399,6 +403,51 @@ class TestCssselect(unittest.TestCase):
         self.assertRaises(TypeError, GenericTranslator().css_to_xpath, 4)
         self.assertRaises(TypeError, GenericTranslator().selector_to_xpath,
             'foo')
+
+    def test_custom_translation(self):
+        class CustomTranslator(GenericTranslator):
+            support_pseudo_elements=True
+
+            # functional pseudo-class:
+            # elements that have a certain number of attributes
+            def xpath_nb_attr_function(self, xpath, function):
+                nb_attributes = int(function.arguments[0].value)
+                return xpath.add_condition(
+                    "count(@*)=%d" % nb_attributes)
+
+            # pseudo-class:
+            # elements that have 5 attributes
+            def xpath_five_attributes_pseudo(self, xpath):
+                return xpath.add_condition("count(@*)=5")
+
+            # functional pseudo-element:
+            # element's attribute by name
+            def xpath_attr_functional_pseudo_element(self, xpath, function):
+                attribute_name = function.arguments[0].value
+                other = XPathExpr('@%s' % attribute_name, '', )
+                return xpath.join('/', other)
+
+            # pseudo-element:
+            # element's text() nodes
+            def xpath_text_node_pseudo_element(self, xpath):
+                other = XPathExpr('text()', '', )
+                return xpath.join('/', other)
+
+            # pseudo-element:
+            # element's href attribute
+            def xpath_attr_href_pseudo_element(self, xpath):
+                other = XPathExpr('@href', '', )
+                return xpath.join('/', other)
+
+        def xpath(css):
+            return _unicode(CustomTranslator().css_to_xpath(css))
+
+        assert xpath(':five-attributes') == "descendant-or-self::*[count(@*)=5]"
+        assert xpath(':nb-attr(3)') == "descendant-or-self::*[count(@*)=3]"
+        assert xpath('::attr(href)') == "descendant-or-self::*/@href"
+        assert xpath('::text-node') == "descendant-or-self::*/text()"
+        assert xpath('::attr-href') == "descendant-or-self::*/@href"
+        assert xpath('p img::attr(src)') == "descendant-or-self::p/descendant-or-self::*/img/@src"
 
     def test_unicode(self):
         if sys.version_info[0] < 3:

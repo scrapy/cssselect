@@ -138,6 +138,18 @@ class Function(object):
         return a, b, c
 
 
+class FunctionalPseudoElement(Function):
+    """
+    Represents selector::name(expr)
+    """
+    def __repr__(self):
+        return '%s[%r:%s(%r)]' % (
+            Function.__name__, self.selector, self.name,
+            [token.value for token in self.arguments])
+    def specificity(self):
+        return self.selector.specificity()
+
+
 class Pseudo(object):
     """
     Represents selector:ident
@@ -154,6 +166,16 @@ class Pseudo(object):
         a, b, c = self.selector.specificity()
         b += 1
         return a, b, c
+
+
+class PseudoElement(Pseudo):
+    """
+    Represents selector::ident
+    """
+    def __repr__(self):
+        return self.selector.__repr__()
+    def specificity(self):
+        return self.selector.specificity()
 
 
 class Negation(object):
@@ -395,19 +417,36 @@ def parse_simple_selector(stream, inside_negation=False):
             result = parse_attrib(result, stream)
         elif peek == ('DELIM', ':'):
             stream.next()
+            dbl_column = False
             if stream.peek() == ('DELIM', ':'):
                 stream.next()
-                pseudo_element = stream.next_ident()
-                continue
+                dbl_column = True
             ident = stream.next_ident()
-            if ident.lower() in ('first-line', 'first-letter',
-                                 'before', 'after'):
+            if (not dbl_column and
+                ident.lower() in ('first-line', 'first-letter',
+                                 'before', 'after')):
                 # Special case: CSS 2.1 pseudo-elements can have a single ':'
                 # Any new pseudo-element must have two.
                 pseudo_element = _unicode(ident)
+                result = PseudoElement(result, ident)
                 continue
+            # http://www.w3.org/TR/selectors/#pseudo-classes
+            # A pseudo-class always consists of a "colon" (:)
+            # followed by the name of the pseudo-class
+            # and optionally by a value between parentheses.
+            #
+            # http://www.w3.org/TR/selectors/#pseudo-elements
+            # A pseudo-element is made of two colons (::)
+            # followed by the name of the pseudo-element.
+            # This :: notation is introduced by the current document
+            # in order to establish a discrimination
+            # between pseudo-classes and pseudo-elements.
             if stream.peek() != ('DELIM', '('):
-                result = Pseudo(result, ident)
+                if dbl_column:
+                    pseudo_element = _unicode(ident)
+                    result = PseudoElement(result, ident)
+                else:
+                    result = Pseudo(result, ident)
                 continue
             stream.next()
             stream.skip_whitespace()
@@ -440,7 +479,11 @@ def parse_simple_selector(stream, inside_negation=False):
                 if not arguments:
                     raise SelectorSyntaxError(
                         "Expected at least one argument, got %s" % (next,))
-                result = Function(result, ident, arguments)
+                if dbl_column:
+                    pseudo_element = _unicode(ident)
+                    result = FunctionalPseudoElement(result, ident, arguments)
+                else:
+                    result = Function(result, ident, arguments)
         else:
             raise SelectorSyntaxError(
                 "Expected selector, got %s" % (peek,))
