@@ -219,9 +219,7 @@ class GenericTranslator(object):
         but can be overridden by sub-classes.
 
         """
-        if pseudo_element:
-            raise ExpressionError('Pseudo-elements are not supported.')
-        return xpath
+        raise ExpressionError('Pseudo-elements are not supported.')
 
     @staticmethod
     def xpath_literal(s):
