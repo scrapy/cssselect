@@ -226,7 +226,9 @@ class GenericTranslator(object):
     def xpath(self, parsed_selector):
         """Translate any parsed selector object."""
         type_name = type(parsed_selector).__name__
-        method = getattr(self, 'xpath_%s' % type_name.lower())
+        method = getattr(self, 'xpath_%s' % type_name.lower(), None)
+        if method is None:
+            raise ExpressionError('%s is not supported.' %  type_name)
         return method(parsed_selector)
 
 
