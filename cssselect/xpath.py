@@ -419,7 +419,7 @@ class GenericTranslator(object):
                 % function.arguments)
         value = function.arguments[0].value
         return xpath.add_condition(
-            'contains(string(.), %s)' % self.xpath_literal(value))
+            'contains(., %s)' % self.xpath_literal(value))
 
     def xpath_lang_function(self, xpath, function):
         if function.argument_types() not in (['STRING'], ['IDENT']):

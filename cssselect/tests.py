@@ -352,9 +352,9 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e:hover') == (
             "e[0]")  # never matches
         assert xpath('e:contains("foo")') == (
-            "e[contains(string(.), 'foo')]")
+            "e[contains(., 'foo')]")
         assert xpath('e:ConTains(foo)') == (
-            "e[contains(string(.), 'foo')]")
+            "e[contains(., 'foo')]")
         assert xpath('e.warning') == (
             "e[@class and contains("
                "concat(' ', normalize-space(@class), ' '), ' warning ')]")
