@@ -26,6 +26,12 @@ else:
     _unicode = str
 
 
+def _unicode_safe_getattr(obj, name, default=None):
+    # getattr() with a non-ASCII name fails on Python 2.x
+    name = name.encode('ascii', 'replace').decode('ascii')
+    return getattr(obj, name, default)
+
+
 class ExpressionError(SelectorError, RuntimeError):
     """Unknown or unsupported selector (eg. pseudo-class)."""
 
@@ -178,14 +184,9 @@ class GenericTranslator(object):
             The equivalent XPath 1.0 expression as an Unicode string.
 
         """
-        selectors = parse(css)
-        for selector in selectors:
-            if selector.pseudo_element:
-                raise ExpressionError('Pseudo-elements are not supported.')
-
         return ' | '.join(
             self.selector_to_xpath(selector, prefix)
-            for selector in selectors)
+            for selector in parse(css))
 
     def selector_to_xpath(self, selector, prefix='descendant-or-self::'):
         """Translate a parsed selector to XPath.
@@ -207,7 +208,20 @@ class GenericTranslator(object):
             raise TypeError('Expected a parsed selector, got %r' % (selector,))
         xpath = self.xpath(tree)
         assert isinstance(xpath, self.xpathexpr_cls)  # help debug a missing 'return'
+        if selector.pseudo_element:
+            xpath = self.xpath_pseudo_element(xpath, selector.pseudo_element)
         return (prefix or '') + _unicode(xpath)
+
+    def xpath_pseudo_element(self, xpath, pseudo_element):
+        """Translate a pseudo-element.
+
+        Defaults to not supporting pseudo-elements at all,
+        but can be overridden by sub-classes.
+
+        """
+        if pseudo_element:
+            raise ExpressionError('Pseudo-elements are not supported.')
+        return xpath
 
     @staticmethod
     def xpath_literal(s):
@@ -253,9 +267,7 @@ class GenericTranslator(object):
     def xpath_function(self, function):
         """Translate a functional pseudo-class."""
         method = 'xpath_%s_function' % function.name.replace('-', '_')
-        # getattr() with a non-ASCII name fails on Python 2.x
-        method = method.encode('ascii', 'replace').decode('ascii')
-        method = getattr(self, method, None)
+        method = _unicode_safe_getattr(self, method, None)
         if not method:
             raise ExpressionError(
                 "The pseudo-class :%s() is unknown" % function.name)
@@ -264,9 +276,7 @@ class GenericTranslator(object):
     def xpath_pseudo(self, pseudo):
         """Translate a pseudo-class."""
         method = 'xpath_%s_pseudo' % pseudo.ident.replace('-', '_')
-        # getattr() with a non-ASCII name fails on Python 2.x
-        method = method.encode('ascii', 'replace').decode('ascii')
-        method = getattr(self, method, None)
+        method = _unicode_safe_getattr(self, method, None)
         if not method:
             # TODO: better error message for pseudo-elements?
             raise ExpressionError(

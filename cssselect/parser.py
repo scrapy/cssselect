@@ -57,7 +57,8 @@ class Selector(object):
     """
     def __init__(self, tree, pseudo_element=None):
         self.parsed_tree = tree
-        if pseudo_element is not None:
+        if pseudo_element is not None and not isinstance(
+                pseudo_element, FunctionalPseudoElement):
             pseudo_element = ascii_lower(pseudo_element)
         #: The identifier for the pseudo-element as a string, or ``None``.
         #:
@@ -78,6 +79,8 @@ class Selector(object):
         self.pseudo_element = pseudo_element
 
     def __repr__(self):
+        if isinstance(self.pseudo_element, FunctionalPseudoElement):
+            pseudo_element = repr(self.pseudo_element)
         if self.pseudo_element:
             pseudo_element = '::%s' % self.pseudo_element
         else:
@@ -108,6 +111,28 @@ class Class(object):
     def __repr__(self):
         return '%s[%r.%s]' % (
             self.__class__.__name__, self.selector, self.class_name)
+
+    def specificity(self):
+        a, b, c = self.selector.specificity()
+        b += 1
+        return a, b, c
+
+
+class FunctionalPseudoElement(object):
+    """
+    Represents selector::name(expr)
+    """
+    def __init__(self, name, arguments):
+        self.name = ascii_lower(name)
+        self.arguments = arguments
+
+    def __repr__(self):
+        return '%s[::%s(%r)]' % (
+            self.__class__.__name__, self.name,
+            [token.value for token in self.arguments])
+
+    def argument_types(self):
+        return [token.type for token in self.arguments]
 
     def specificity(self):
         a, b, c = self.selector.specificity()
@@ -398,6 +423,10 @@ def parse_simple_selector(stream, inside_negation=False):
             if stream.peek() == ('DELIM', ':'):
                 stream.next()
                 pseudo_element = stream.next_ident()
+                if stream.peek() == ('DELIM', '('):
+                    stream.next()
+                    pseudo_element = FunctionalPseudoElement(
+                        pseudo_element, parse_arguments(stream))
                 continue
             ident = stream.next_ident()
             if ident.lower() in ('first-line', 'first-letter',
@@ -425,22 +454,7 @@ def parse_simple_selector(stream, inside_negation=False):
                     raise SelectorSyntaxError("Expected ')', got %s" % (next,))
                 result = Negation(result, argument)
             else:
-                arguments = []
-                while 1:
-                    stream.skip_whitespace()
-                    next = stream.next()
-                    if next.type in ('IDENT', 'STRING', 'NUMBER') or next in [
-                            ('DELIM', '+'), ('DELIM', '-')]:
-                        arguments.append(next)
-                    elif next == ('DELIM', ')'):
-                        break
-                    else:
-                        raise SelectorSyntaxError(
-                            "Expected an argument, got %s" % (next,))
-                if not arguments:
-                    raise SelectorSyntaxError(
-                        "Expected at least one argument, got %s" % (next,))
-                result = Function(result, ident, arguments)
+                result = Function(result, ident, parse_arguments(stream))
         else:
             raise SelectorSyntaxError(
                 "Expected selector, got %s" % (peek,))
@@ -448,6 +462,21 @@ def parse_simple_selector(stream, inside_negation=False):
         raise SelectorSyntaxError(
             "Expected selector, got %s" % (stream.peek(),))
     return result, pseudo_element
+
+
+def parse_arguments(stream):
+    arguments = []
+    while 1:
+        stream.skip_whitespace()
+        next = stream.next()
+        if next.type in ('IDENT', 'STRING', 'NUMBER') or next in [
+                ('DELIM', '+'), ('DELIM', '-')]:
+            arguments.append(next)
+        elif next == ('DELIM', ')'):
+            return arguments
+        else:
+            raise SelectorSyntaxError(
+                "Expected an argument, got %s" % (next,))
 
 
 def parse_attrib(selector, stream):

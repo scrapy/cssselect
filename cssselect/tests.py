@@ -23,7 +23,9 @@ import unittest
 from lxml import etree, html
 from cssselect import (parse, GenericTranslator, HTMLTranslator,
                        SelectorSyntaxError, ExpressionError)
-from cssselect.parser import tokenize, parse_series, _unicode
+from cssselect.parser import (tokenize, parse_series, _unicode,
+                              FunctionalPseudoElement)
+from cssselect.xpath import _unicode_safe_getattr, XPathExpr
 
 
 if sys.version_info[0] < 3:
@@ -150,6 +152,7 @@ class TestCssselect(unittest.TestCase):
             result = []
             for selector in parse(css):
                 pseudo = selector.pseudo_element
+                pseudo = _unicode(pseudo) if pseudo else pseudo
                 # No Symbol here
                 assert pseudo is None or type(pseudo) is _unicode
                 selector = repr(selector.parsed_tree).replace("(u'", "('")
@@ -175,6 +178,10 @@ class TestCssselect(unittest.TestCase):
         assert parse_one('::AFter') == ('Element[*]', 'after')
         assert parse_one('::firsT-linE') == ('Element[*]', 'first-line')
         assert parse_one('::firsT-letteR') == ('Element[*]', 'first-letter')
+
+        assert parse_one('::text-content') == ('Element[*]', 'text-content')
+        assert parse_one('::attr(name)') == (
+            "Element[*]", "FunctionalPseudoElement[::attr(['name'])]")
 
         assert parse_one('::Selection') == ('Element[*]', 'selection')
         assert parse_one('foo:after') == ('Element[foo]', 'after')
@@ -264,8 +271,6 @@ class TestCssselect(unittest.TestCase):
             "Expected ident or '*', got <DELIM '#' at 1>")
         assert get_error('[foo=#]') == (
             "Expected string or ident, got <DELIM '#' at 5>")
-        assert get_error(':nth-child()') == (
-            "Expected at least one argument, got <DELIM ')' at 11>")
         assert get_error('[href]a') == (
             "Expected selector, got <IDENT 'a' at 6>")
         assert get_error('[rel=stylesheet]') == None
@@ -435,6 +440,71 @@ class TestCssselect(unittest.TestCase):
             '''descendant-or-self::*[@aval = "'  '"]''')
         assert css_to_xpath('*[aval="\'\\20\r\n \'"]') == (
             '''descendant-or-self::*[@aval = "'  '"]''')
+
+    def test_xpath_pseudo_elements(self):
+        class CustomTranslator(GenericTranslator):
+            def xpath_pseudo_element(self, xpath, pseudo_element):
+                if isinstance(pseudo_element, FunctionalPseudoElement):
+                    method = 'xpath_%s_functional_pseudo_element' % (
+                        pseudo_element.name.replace('-', '_'))
+                    method = _unicode_safe_getattr(self, method, None)
+                    if not method:
+                        raise ExpressionError(
+                            "The functional pseudo-element ::%s() is unknown"
+                        % functional.name)
+                    xpath = method(xpath, pseudo_element.arguments)
+                else:
+                    method = 'xpath_%s_simple_pseudo_element' % (
+                        pseudo_element.replace('-', '_'))
+                    method = _unicode_safe_getattr(self, method, None)
+                    if not method:
+                        raise ExpressionError(
+                            "The pseudo-element ::%s is unknown"
+                            % pseudo_element)
+                    xpath = method(xpath)
+                return xpath
+
+            # functional pseudo-class:
+            # elements that have a certain number of attributes
+            def xpath_nb_attr_function(self, xpath, function):
+                nb_attributes = int(function.arguments[0].value)
+                return xpath.add_condition(
+                    "count(@*)=%d" % nb_attributes)
+
+            # pseudo-class:
+            # elements that have 5 attributes
+            def xpath_five_attributes_pseudo(self, xpath):
+                return xpath.add_condition("count(@*)=5")
+
+            # functional pseudo-element:
+            # element's attribute by name
+            def xpath_attr_functional_pseudo_element(self, xpath, arguments):
+                attribute_name = arguments[0].value
+                other = XPathExpr('@%s' % attribute_name, '', )
+                return xpath.join('/', other)
+
+            # pseudo-element:
+            # element's text() nodes
+            def xpath_text_node_simple_pseudo_element(self, xpath):
+                other = XPathExpr('text()', '', )
+                return xpath.join('/', other)
+
+            # pseudo-element:
+            # element's href attribute
+            def xpath_attr_href_simple_pseudo_element(self, xpath):
+                other = XPathExpr('@href', '', )
+                return xpath.join('/', other)
+
+        def xpath(css):
+            return _unicode(CustomTranslator().css_to_xpath(css))
+
+        assert xpath(':five-attributes') == "descendant-or-self::*[count(@*)=5]"
+        assert xpath(':nb-attr(3)') == "descendant-or-self::*[count(@*)=3]"
+        assert xpath('::attr(href)') == "descendant-or-self::*/@href"
+        assert xpath('::text-node') == "descendant-or-self::*/text()"
+        assert xpath('::attr-href') == "descendant-or-self::*/@href"
+        assert xpath('p img::attr(src)') == (
+            "descendant-or-self::p/descendant-or-self::*/img/@src")
 
     def test_series(self):
         def series(css):
