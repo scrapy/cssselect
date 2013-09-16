@@ -451,7 +451,7 @@ class TestCssselect(unittest.TestCase):
                     if not method:
                         raise ExpressionError(
                             "The functional pseudo-element ::%s() is unknown"
-                        % functional.name)
+                        % pseudo_element.name)
                     xpath = method(xpath, pseudo_element.arguments)
                 else:
                     method = 'xpath_%s_simple_pseudo_element' % (
