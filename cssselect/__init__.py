@@ -13,8 +13,8 @@
 
 """
 
-from cssselect.parser import (parse, Selector, SelectorError,
-                              SelectorSyntaxError)
+from cssselect.parser import (parse, Selector, FunctionalPseudoElement,
+                              SelectorError, SelectorSyntaxError)
 from cssselect.xpath import GenericTranslator, HTMLTranslator, ExpressionError
 
 

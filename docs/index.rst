@@ -54,6 +54,8 @@ is a group of two selectors.
 .. autoclass:: Selector()
     :members:
 
+.. autoclass:: FunctionalPseudoElement
+
 .. autoclass:: GenericTranslator
     :members: css_to_xpath, selector_to_xpath
 

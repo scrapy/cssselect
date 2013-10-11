@@ -64,18 +64,20 @@ class Selector(object):
         #: or the identifier for the pseudo-element as a string,
         #  or ``None``.
         #:
-        #: +-------------------------+----------------+----------------+
-        #: |                         | Selector       | Pseudo-element |
-        #: +=========================+================+================+
-        #: | CSS3 syntax             | ``a::before``  | ``'before'``   |
-        #: +-------------------------+----------------+----------------+
-        #: | Older syntax            | ``a:before``   | ``'before'``   |
-        #: +-------------------------+----------------+----------------+
-        #: | From the Lists3_ draft, | ``li::marker`` | ``'marker'``   |
-        #: | not in Selectors3       |                |                |
-        #: +-------------------------+----------------+----------------+
-        #: | Invalid pseudo-class    | ``li:marker``  | ``None``       |
-        #: +-------------------------+----------------+----------------+
+        #: +-------------------------+----------------+--------------------------------+
+        #: |                         | Selector       | Pseudo-element                 |
+        #: +=========================+================+================================+
+        #: | CSS3 syntax             | ``a::before``  | ``'before'``                   |
+        #: +-------------------------+----------------+--------------------------------+
+        #: | Older syntax            | ``a:before``   | ``'before'``                   |
+        #: +-------------------------+----------------+--------------------------------+
+        #: | From the Lists3_ draft, | ``li::marker`` | ``'marker'``                   |
+        #: | not in Selectors3       |                |                                |
+        #: +-------------------------+----------------+--------------------------------+
+        #: | Invalid pseudo-class    | ``li:marker``  | ``None``                       |
+        #: +-------------------------+----------------+--------------------------------+
+        #: | Functinal               | ``a::foo(2)``  | ``FunctionalPseudoElement(…)`` |
+        #: +-------------------------+----------------+--------------------------------+
         #:
         #: .. _Lists3: http://www.w3.org/TR/2011/WD-css3-lists-20110524/#marker-pseudoelement
         self.pseudo_element = pseudo_element
@@ -122,7 +124,20 @@ class Class(object):
 
 class FunctionalPseudoElement(object):
     """
-    Represents selector::name(expr)
+    Represents selector::name(arguments)
+
+    .. attribute:: name
+
+        The name (identifier) of the pseudo-element, as a string.
+
+    .. attribute:: arguments
+
+        The arguments of the pseudo-element, as a list of tokens.
+
+        **Note:** tokens are not part of the public API,
+        and may change between cssselect versions.
+        Use at your own risks.
+
     """
     def __init__(self, name, arguments):
         self.name = ascii_lower(name)
