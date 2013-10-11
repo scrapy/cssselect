@@ -1,6 +1,14 @@
 Changelog
 =========
 
+Version 0.9
+-----------
+
+Released on 2013-10-11.
+
+Add parser support for :attr:`functional pseudo-elements <Selector.pseudo_element>`.
+
+
 Version 0.8
 -----------
 
