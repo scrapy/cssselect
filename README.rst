@@ -17,7 +17,7 @@ extracted as a stand-alone project.
 Quick facts:
 
 * Free software: BSD licensed
-* Compatible with Python 2.4+ and 3.x
+* Compatible with Python 2.5+ and 3.2+
 * Latest documentation `on python.org <http://packages.python.org/cssselect/>`_
 * Source, issues and pull requests `on Github
   <https://github.com/SimonSapin/cssselect/>`_
