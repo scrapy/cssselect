@@ -85,7 +85,7 @@ class Selector(object):
     def __repr__(self):
         if isinstance(self.pseudo_element, FunctionalPseudoElement):
             pseudo_element = repr(self.pseudo_element)
-        if self.pseudo_element:
+        elif self.pseudo_element:
             pseudo_element = '::%s' % self.pseudo_element
         else:
             pseudo_element = ''
