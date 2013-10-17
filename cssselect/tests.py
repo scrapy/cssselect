@@ -196,6 +196,21 @@ class TestCssselect(unittest.TestCase):
             ('Element[bar]', None),
             ('Element[baz]', 'after')]
 
+        # Special cases for CSS 2.1 pseudo-elements are ignored by default
+        for pseudo in ('after', 'before', 'first-line', 'first-letter'):
+            selector, = parse('e:%s' % pseudo)
+            assert selector.pseudo_element == pseudo
+            assert GenericTranslator().selector_to_xpath(selector, prefix='') == "e"
+
+        # Pseudo Elements are ignored by default, but if allowed they are not
+        # supported by GenericTranslator
+        tr = GenericTranslator()
+        selector, = parse('e::foo')
+        assert selector.pseudo_element == 'foo'
+        assert tr.selector_to_xpath(selector, prefix='') == "e"
+        self.assertRaises(ExpressionError, tr.selector_to_xpath, selector,
+                          translate_pseudo_elements=True)
+
     def test_specificity(self):
         def specificity(css):
             selectors = parse(css)
@@ -379,11 +394,6 @@ class TestCssselect(unittest.TestCase):
             "e/following-sibling::f")
         assert xpath('div#container p') == (
             "div[@id = 'container']/descendant-or-self::*/p")
-
-        selector, = parse('e:after')
-        assert selector.pseudo_element == 'after'
-        # Pseudo-element is ignored:
-        assert GenericTranslator().selector_to_xpath(selector, prefix='') == "e"
 
         # Invalid characters in XPath element names
         assert xpath(r'di\a0 v') == (
