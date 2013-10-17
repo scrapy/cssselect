@@ -184,19 +184,23 @@ class GenericTranslator(object):
             The equivalent XPath 1.0 expression as an Unicode string.
 
         """
-        return ' | '.join(
-            self.selector_to_xpath(selector, prefix)
-            for selector in parse(css))
+        return ' | '.join(self.selector_to_xpath(selector, prefix,
+                                                 translate_pseudo_elements=True)
+                          for selector in parse(css))
 
-    def selector_to_xpath(self, selector, prefix='descendant-or-self::'):
+    def selector_to_xpath(self, selector, prefix='descendant-or-self::',
+                          translate_pseudo_elements=False):
         """Translate a parsed selector to XPath.
 
-        The :attr:`~Selector.pseudo_element` attribute of the selector
-        is ignored. It is the caller's responsibility to reject selectors
-        with pseudo-elements, or to account for them somehow.
 
         :param selector:
             A parsed :class:`Selector` object.
+        :param translate_pseudo_elements:
+            Unless this is set to ``True`` (as :meth:`css_to_xpath` does),
+            the :attr:`~Selector.pseudo_element` attribute of the selector
+            is ignored.
+            It is the caller's responsibility to reject selectors
+            with pseudo-elements, or to account for them somehow.
         :raises:
             :class:`ExpressionError` on unknown/unsupported selectors.
         :returns:
@@ -208,7 +212,7 @@ class GenericTranslator(object):
             raise TypeError('Expected a parsed selector, got %r' % (selector,))
         xpath = self.xpath(tree)
         assert isinstance(xpath, self.xpathexpr_cls)  # help debug a missing 'return'
-        if selector.pseudo_element:
+        if translate_pseudo_elements and selector.pseudo_element:
             xpath = self.xpath_pseudo_element(xpath, selector.pseudo_element)
         return (prefix or '') + _unicode(xpath)
 

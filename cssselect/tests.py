@@ -380,6 +380,11 @@ class TestCssselect(unittest.TestCase):
         assert xpath('div#container p') == (
             "div[@id = 'container']/descendant-or-self::*/p")
 
+        selector, = parse('e:after')
+        assert selector.pseudo_element == 'after'
+        # Pseudo-element is ignored:
+        assert GenericTranslator().selector_to_xpath(selector, prefix='') == "e"
+
         # Invalid characters in XPath element names
         assert xpath(r'di\a0 v') == (
             u("*[name() = 'di v']"))  # di\xa0v
