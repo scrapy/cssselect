@@ -1,14 +1,21 @@
 Changelog
 =========
 
-Version 0.10
-------------
+Version 0.9.1
+-------------
 
-Not released yet.
+Released on 2013-10-17.
 
-Drop official support for Python 2.4 and 3.1, as testing was becoming difficult.
-Nothing will break overnight, but future releases may on may not work on these versions.
-Older releases will remain available on PyPI.
+* **Backward incompatible change from 0.9**:
+  :meth:`~GenericTranslator.selector_to_xpath` defaults to
+  ignoring pseudo-elements,
+  as it did in 0.8 and previous versions.
+  (:meth:`~GenericTranslator.css_to_xpath` doesn’t change.)
+* Drop official support for Python 2.4 and 3.1,
+  as testing was becoming difficult.
+  Nothing will break overnight,
+  but future releases may on may not work on these versions.
+  Older releases will remain available on PyPI.
 
 
 Version 0.9
@@ -16,7 +23,13 @@ Version 0.9
 
 Released on 2013-10-11.
 
-Add parser support for :attr:`functional pseudo-elements <Selector.pseudo_element>`.
+Add parser support for :attr:`functional
+pseudo-elements <Selector.pseudo_element>`.
+
+*Update:*
+This version accidentally introduced a **backward incompatible** change:
+:meth:`~GenericTranslator.selector_to_xpath` defaults to
+rejecting pseudo-elements instead of ignoring them.
 
 
 Version 0.8
