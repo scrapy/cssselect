@@ -684,7 +684,7 @@ def tokenize(s):
             if end_pos == len_s:
                 raise SelectorSyntaxError('Unclosed string at %s' % pos)
             if s[end_pos] != quote:
-                raise SelectorSyntaxError('Invalid string at %s' % next_pos)
+                raise SelectorSyntaxError('Invalid string at %s' % pos)
             value = _sub_simple_escape(_replace_simple,
                     _sub_unicode_escape(_replace_unicode,
                     _sub_newline_escape('', match.group())))
