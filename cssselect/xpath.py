@@ -176,6 +176,9 @@ class GenericTranslator(object):
 
         :param css:
             A *group of selectors* as an Unicode string.
+        :param prefix:
+            This string is prepended to the XPath expression for each selector.
+            The default makes selectors scoped to the context node’s subtree.
         :raises:
             :class:`SelectorSyntaxError` on invalid selectors,
             :class:`ExpressionError` on unknown/unsupported selectors,
@@ -195,6 +198,9 @@ class GenericTranslator(object):
 
         :param selector:
             A parsed :class:`Selector` object.
+        :param prefix:
+            This string is prepended to the resulting XPath expression.
+            The default makes selectors scoped to the context node’s subtree.
         :param translate_pseudo_elements:
             Unless this is set to ``True`` (as :meth:`css_to_xpath` does),
             the :attr:`~Selector.pseudo_element` attribute of the selector
