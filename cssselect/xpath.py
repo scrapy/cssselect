@@ -379,37 +379,81 @@ class GenericTranslator(object):
         if add_name_test:
             xpath.add_name_test()
         xpath.add_star_prefix()
-        if a == 0:
-            if last:
-                b = 'last() - %s' % b
-            return xpath.add_condition('position() = %s' % b)
+        # non-last
+        # --------
+        #    position() = an+b
+        # -> position() - b = an
+        #
+        # if a < 0:
+        #    position() - b <= 0
+        # -> position() <= b
+        #
+        # last
+        # ----
+        #    last() - position() = an+b -1
+        # -> last() - position() - b +1 = an
+        #
+        # if a < 0:
+        #    last() - position() - b +1 <= 0
+        # -> position() >= last() - b +1
+        #
+        # -b +1 = -(b-1)
         if last:
-            # FIXME: I'm not sure if this is right
-            a = -a
-            b = -b
+            b = b - 1
         if b > 0:
             b_neg = str(-b)
         else:
             b_neg = '+%s' % (-b)
+        if a == 0:
+            if last:
+                # http://www.w3.org/TR/selectors/#nth-last-child-pseudo
+                # The :nth-last-child(an+b) pseudo-class notation represents
+                # an element that has an+b-1 siblings after it in the document tree
+                #
+                #    last() - position() = an+b-1
+                # -> position() = last() -b +1 (for a==0)
+                #
+                if b == 0:
+                    b = 'last()'
+                else:
+                    b = 'last() %s' % b_neg
+            return xpath.add_condition('position() = %s' % b)
         if a != 1:
-            expr = ['(position() %s) mod %s = 0' % (b_neg, a)]
+            # last() - position() - b +1 = an
+            if last:
+                left = 'last() - position()'
+            # position() - b = an
+            else:
+                left = 'position()'
+            if b != 0:
+                left = '%s %s' % (left, b_neg)
+            if last or b != 0:
+                left = '(%s)' % left
+            expr = ['%s mod %s = 0' % (left, a)]
         else:
             expr = []
-        if b >= 0:
-            expr.append('position() >= %s' % b)
-        elif b < 0 and last:
-            expr.append('position() < (last() %s)' % b)
+        if last:
+            if b == 0:
+                right = 'last()'
+            else:
+                right = 'last() %s' % b_neg
+            if a > 0:
+                expr.append('(position() <= %s)' % right)
+            else:
+                expr.append('(position() >= %s)' % right)
+        else:
+            # position() > 0 so if b < 0, then position() > b
+            # also, position() >= 1 always
+            if b > 1:
+                if a > 0:
+                    expr.append('position() >= %s' % b)
+                else:
+                    expr.append('position() <= %s' % b)
+
         expr = ' and '.join(expr)
         if expr:
             xpath.add_condition(expr)
         return xpath
-        # FIXME: handle an+b, odd, even
-        # an+b means every-a, plus b, e.g., 2n+1 means odd
-        # 0n+b means b
-        # n+0 means a=1, i.e., all elements
-        # an means every a elements, i.e., 2n means even
-        # -n means -1n
-        # -1n+6 means elements 6 and previous
 
     def xpath_nth_last_child_function(self, xpath, function):
         return self.xpath_nth_child_function(xpath, function, last=True)
