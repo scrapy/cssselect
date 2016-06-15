@@ -1,6 +1,17 @@
 Changelog
 =========
 
+Version 0.9.2
+-------------
+
+Released on 2016-06-15.
+
+* Distribute as universal wheel.
+* Add support for Python 3.3, 3.4 and 3.5.
+* Drop support for Python 2.5 as testing is getting difficult.
+* Improve tests on pseudo-elements.
+
+
 Version 0.9.1
 -------------
 
