@@ -21,12 +21,12 @@ setup(
     version=VERSION,
     author='Ian Bicking',
     author_email='ianb@colorstudy.com',
-    maintainer='Simon Sapin',
-    maintainer_email='simon.sapin@exyr.org',
+    maintainer='Paul Tremberth',
+    maintainer_email='paul.tremberth@gmail.com',
     description=
         'cssselect parses CSS3 Selectors and translates them to XPath 1.0',
     long_description=README,
-    url='http://packages.python.org/cssselect/',
+    url='https://pythonhosted.org/cssselect/',
     license='BSD',
     packages=['cssselect'],
     classifiers=[
@@ -39,6 +39,9 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.2',
+        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
     ],
     **extra_kwargs
 )
