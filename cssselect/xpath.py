@@ -1,4 +1,4 @@
-# coding: utf-8
+# -*- coding: utf-8 -*-
 """
     cssselect.xpath
     ===============
@@ -108,7 +108,7 @@ class GenericTranslator(object):
     of element names and attribute names.
 
     """
-    
+
     ####
     ####  HERE BE DRAGONS
     ####
