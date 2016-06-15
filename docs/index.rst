@@ -139,7 +139,7 @@ and their signature. You can look at the `source code`_ to see how it works.
 However, be aware that this API is not very stable yet. It might change
 and break your sub-class.
 
-.. _source code: https://github.com/SimonSapin/cssselect/blob/master/cssselect/xpath.py
+.. _source code: https://github.com/scrapy/cssselect/blob/master/cssselect/xpath.py
 
 
 Namespaces
