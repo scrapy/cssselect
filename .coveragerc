@@ -1,5 +1,6 @@
 [run]
 branch = True
+source = cssselect
 
 [report]
 exclude_lines =

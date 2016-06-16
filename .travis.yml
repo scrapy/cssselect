@@ -10,5 +10,13 @@ python:
 
 install:
   - pip install --use-mirrors lxml -e .
+  - pip install -U codecov pytest-cov
+  - if [[ $TRAVIS_PYTHON_VERSION == '3.2' ]];
+    then pip uninstall -y coverage && pip install "coverage<4";
+    fi
 
-script: py.test
+script:
+  py.test --cov-report term --cov=cssselect
+
+after_success:
+  codecov
