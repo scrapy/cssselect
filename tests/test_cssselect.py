@@ -657,7 +657,6 @@ class TestCssselect(unittest.TestCase):
         assert pcss('li:nth-child(+2n+1)', 'li:nth-child(odd)') == [
             'first-li', 'third-li', 'fifth-li', 'seventh-li']
         assert pcss('li:nth-child(2n+4)') == ['fourth-li', 'sixth-li']
-        # FIXME: I'm not 100% sure this is right:
         assert pcss('li:nth-child(3n+1)') == [
             'first-li', 'fourth-li', 'seventh-li']
         assert pcss('li:nth-child(-n+3)') == [
