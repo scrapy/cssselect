@@ -347,9 +347,15 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e:nth-last-child(2n)') == (
             "*/*[name() = 'e' and ("
                "(last() - position() +1) mod 2 = 0 and (position() <= last() +1))]")
+        assert xpath('e:nth-last-child(2n+1)') == (
+            "*/*[name() = 'e' and ("
+               "(last() - position()) mod 2 = 0 and (position() <= last()))]")
         assert xpath('e:nth-last-child(2n+2)') == (
             "*/*[name() = 'e' and ("
                "(last() - position() -1) mod 2 = 0 and (position() <= last() -1))]")
+        assert xpath('e:nth-last-child(3n+1)') == (
+            "*/*[name() = 'e' and ("
+               "(last() - position()) mod 3 = 0 and (position() <= last()))]")
         # represents the two last e elements
         assert xpath('e:nth-last-child(-n+2)') == (
             "*/*[name() = 'e' and ("
@@ -661,8 +667,12 @@ class TestCssselect(unittest.TestCase):
         assert pcss('li:nth-last-child(1)') == ['seventh-li']
         assert pcss('li:nth-last-child(2n)', 'li:nth-last-child(even)') == [
             'second-li', 'fourth-li', 'sixth-li']
+        assert pcss('li:nth-last-child(2n+1)') == [
+            'first-li', 'third-li', 'fifth-li', 'seventh-li']
         assert pcss('li:nth-last-child(2n+2)') == [
             'second-li', 'fourth-li', 'sixth-li']
+        assert pcss('li:nth-last-child(3n+1)') == [
+            'first-li', 'fourth-li', 'seventh-li']
         assert pcss('ol:first-of-type') == ['first-ol']
         assert pcss('ol:nth-child(1)') == []
         assert pcss('ol:nth-of-type(2)') == ['second-ol']
