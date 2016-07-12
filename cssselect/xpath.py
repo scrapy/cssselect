@@ -376,79 +376,102 @@ class GenericTranslator(object):
             a, b = parse_series(function.arguments)
         except ValueError:
             raise ExpressionError("Invalid series: '%r'" % function.arguments)
+
+        # for the siblings count node-test,
+        # `add_name_test` boolean is inverted and somewhat counter-intuitive:
+        #
+        # nth_of_type() calls nth_child(add_name_test=False)
         if add_name_test:
+            nodetest = '*'
             xpath.add_name_test()
+        else:
+            nodetest  = '%s' % xpath.element
+
         xpath.add_star_prefix()
-        # non-last
-        # --------
-        #    position() = an+b
-        # -> position() - b = an
+
+        # From https://www.w3.org/TR/css3-selectors/#structural-pseudos:
+        #
+        # :nth-child(an+b)
+        #       an+b-1 siblings before
+        #
+        # :nth-last-child(an+b)
+        #       an+b-1 siblings after
+        #
+        # :nth-of-type(an+b)
+        #       an+b-1 siblings with the same expanded element name before
+        #
+        # :nth-last-of-type(an+b)
+        #       an+b-1 siblings with the same expanded element name after
+        #
+        # So,
+        # for :nth-child and :nth-of-type
+        #
+        #    count(preceding-sibling::<nodetest>) = an+b-1
+        #
+        # for :nth-last-child and :nth-last-of-type
+        #
+        #    count(following-sibling::<nodetest>) = an+b-1
+        #
+        # therefore,
+        #    count(...) - (b-1) ≡ 0 (mod a)
+        #
+        # if a == 0:
+        # ~~~~~~~~~~
+        #    count(...) = b-1
         #
         # if a < 0:
-        #    position() - b <= 0
-        # -> position() <= b
+        # ~~~~~~~~~
+        #    count(...) - b +1 <= 0
+        # -> count(...) <= b-1
         #
-        # last
-        # ----
-        #    last() - position() = an+b -1
-        # -> last() - position() - b +1 = an
-        #
-        # if a < 0:
-        #    last() - position() - b +1 <= 0
-        # -> position() >= last() - b +1
-        #
-        # -b +1 = -(b-1)
-        if last:
-            b = b - 1
-        if b > 0:
-            b_neg = str(-b)
+        # if a > 0:
+        # ~~~~~~~~~
+        #    count(...) - b +1 >= 0
+        # -> count(...) >= b-1
+
+        # count siblings before or after the element
+        if not last:
+            siblings_count = 'count(preceding-sibling::%s)' % nodetest
         else:
-            b_neg = '+%s' % (-b)
+            siblings_count = 'count(following-sibling::%s)' % nodetest
+
+        # work with b-1 instead
+        b = b - 1
+
+        # if a == 0:
+        # ~~~~~~~~~~
+        #    count(...) = b-1
         if a == 0:
-            if last:
-                # http://www.w3.org/TR/selectors/#nth-last-child-pseudo
-                # The :nth-last-child(an+b) pseudo-class notation represents
-                # an element that has an+b-1 siblings after it in the document tree
-                #
-                #    last() - position() = an+b-1
-                # -> position() = last() -b +1 (for a==0)
-                #
-                if b == 0:
-                    b = 'last()'
-                else:
-                    b = 'last() %s' % b_neg
-            return xpath.add_condition('position() = %s' % b)
-        if a != 1:
-            # last() - position() - b +1 = an
-            if last:
-                left = 'last() - position()'
-            # position() - b = an
-            else:
-                left = 'position()'
-            if b != 0:
-                left = '%s %s' % (left, b_neg)
-            if last or b != 0:
-                left = '(%s)' % left
-            expr = ['%s mod %s = 0' % (left, a)]
-        else:
+            return xpath.add_condition('%s = %s' % (siblings_count, b))
+
+        # special case for operations modulo 1
+        if abs(a) == 1:
             expr = []
-        if last:
-            if b == 0:
-                right = 'last()'
-            else:
-                right = 'last() %s' % b_neg
-            if a > 0:
-                expr.append('(position() <= %s)' % right)
-            else:
-                expr.append('(position() >= %s)' % right)
         else:
-            # position() > 0 so if b < 0, then position() > b
-            # also, position() >= 1 always
-            if b > 1:
-                if a > 0:
-                    expr.append('position() >= %s' % b)
+            # count(...) - (b-1) ≡ 0 (mod a)
+            left = siblings_count
+            b_neg = -b
+
+            # this is to simplify things like "(... +3) % -3"
+            if a != 0:
+                b_neg = b_neg % abs(a)
+
+            if b_neg != 0:
+                if b_neg < 0:
+                    b_neg = str(b_neg)
                 else:
-                    expr.append('position() <= %s' % b)
+                    b_neg = '+%s' % (b_neg)
+                left = '(%s %s)' % (left, b_neg)
+
+            expr = ['%s mod %s = 0' % (left, a)]
+
+        if a > 0:
+            # siblings count is always > 0
+            # so the following predicate only matter for b > 0
+            if b > 0:
+                expr.append('%s >= %s' % (siblings_count, b))
+        else:
+            expr.append('%s <= %s' % (siblings_count, b))
 
         expr = ' and '.join(expr)
         if expr:
