@@ -441,23 +441,22 @@ class GenericTranslator(object):
         if a == 0:
             return xpath.add_condition('%s = %s' % (siblings_count, b))
 
-        # special case for operations modulo 1
+        # operations modulo 1 or -1 are simpler, one only needs to verify:
+        # count(...) - (b-1) = 0, 1, 2, 3, etc., i.e. count(...) >= (b-1)
+        # or
+        # count(...) - (b-1) = 0, -1, -2, -3, etc., , i.e. count(...) <= (b-1)
         if abs(a) == 1:
             expr = []
         else:
             # count(...) - (b-1) ≡ 0 (mod a)
             left = siblings_count
-            b_neg = -b
 
-            # this is to simplify things like "(... +3) % -3"
-            if a != 0:
-                b_neg = b_neg % abs(a)
+            # use modulo on 2nd term -(b-1) to simplify things like "(... +6) % -3",
+            # and also make it positive with |a|
+            b_neg = (-b) % abs(a)
 
             if b_neg != 0:
-                if b_neg < 0:
-                    b_neg = str(b_neg)
-                else:
-                    b_neg = '+%s' % (b_neg)
+                b_neg = '+%s' % (b_neg)
                 left = '(%s %s)' % (left, b_neg)
 
             expr = ['%s mod %s = 0' % (left, a)]
