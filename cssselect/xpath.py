@@ -462,8 +462,8 @@ class GenericTranslator(object):
             expr = ['%s mod %s = 0' % (left, a)]
 
         if a > 0:
-            # siblings count is always > 0
-            # so the following predicate only matter for b > 0
+            # siblings count is always >= 0,
+            # so the following predicate only matters for b > 0
             if b > 0:
                 expr.append('%s >= %s' % (siblings_count, b))
         else:
