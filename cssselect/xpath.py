@@ -351,7 +351,7 @@ class GenericTranslator(object):
 
     def xpath_descendant_combinator(self, left, right):
         """right is a child, grand-child or further descendant of left"""
-        return left.join('/descendant-or-self::*/', right)
+        return left.join('/descendant::', right)
 
     def xpath_child_combinator(self, left, right):
         """right is an immediate child of left"""
@@ -383,11 +383,8 @@ class GenericTranslator(object):
         # nth_of_type() calls nth_child(add_name_test=False)
         if add_name_test:
             nodetest = '*'
-            xpath.add_name_test()
         else:
             nodetest  = '%s' % xpath.element
-
-        xpath.add_star_prefix()
 
         # From https://www.w3.org/TR/css3-selectors/#structural-pseudos:
         #
@@ -522,39 +519,31 @@ class GenericTranslator(object):
         return xpath.add_condition("not(parent::*)")
 
     def xpath_first_child_pseudo(self, xpath):
-        xpath.add_star_prefix()
-        xpath.add_name_test()
-        return xpath.add_condition('position() = 1')
+        return xpath.add_condition('count(preceding-sibling::*) = 0')
 
     def xpath_last_child_pseudo(self, xpath):
-        xpath.add_star_prefix()
-        xpath.add_name_test()
-        return xpath.add_condition('position() = last()')
+        return xpath.add_condition('count(following-sibling::*) = 0')
 
     def xpath_first_of_type_pseudo(self, xpath):
         if xpath.element == '*':
             raise ExpressionError(
                 "*:first-of-type is not implemented")
-        xpath.add_star_prefix()
-        return xpath.add_condition('position() = 1')
+        return xpath.add_condition('count(preceding-sibling::%s) = 0' % xpath.element)
 
     def xpath_last_of_type_pseudo(self, xpath):
         if xpath.element == '*':
             raise ExpressionError(
                 "*:last-of-type is not implemented")
-        xpath.add_star_prefix()
-        return xpath.add_condition('position() = last()')
+        return xpath.add_condition('count(following-sibling::%s) = 0' % xpath.element)
 
     def xpath_only_child_pseudo(self, xpath):
-        xpath.add_name_test()
-        xpath.add_star_prefix()
-        return xpath.add_condition('last() = 1')
+        return xpath.add_condition('count(parent::*/child::*) = 1')
 
     def xpath_only_of_type_pseudo(self, xpath):
         if xpath.element == '*':
             raise ExpressionError(
                 "*:only-of-type is not implemented")
-        return xpath.add_condition('last() = 1')
+        return xpath.add_condition('count(parent::*/child::%s) = 1' % xpath.element)
 
     def xpath_empty_pseudo(self, xpath):
         return xpath.add_condition("not(*) and not(string-length())")
