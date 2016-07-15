@@ -377,15 +377,6 @@ class GenericTranslator(object):
         except ValueError:
             raise ExpressionError("Invalid series: '%r'" % function.arguments)
 
-        # for the siblings count node-test,
-        # `add_name_test` boolean is inverted and somewhat counter-intuitive:
-        #
-        # nth_of_type() calls nth_child(add_name_test=False)
-        if add_name_test:
-            nodetest = '*'
-        else:
-            nodetest  = '%s' % xpath.element
-
         # From https://www.w3.org/TR/css3-selectors/#structural-pseudos:
         #
         # :nth-child(an+b)
@@ -426,52 +417,85 @@ class GenericTranslator(object):
         #    count(...) - b +1 >= 0
         # -> count(...) >= b-1
 
+        # work with b-1 instead
+        b_min_1 = b - 1
+
+        # early-exit condition 1:
+        # ~~~~~~~~~~~~~~~~~~~~~~~
+        # for a == 1, nth-*(an+b) means n+b-1 siblings before/after,
+        # and since n ∈ {0, 1, 2, ...}, if b-1<=0,
+        # there is always an "n" matching any number of siblings (maybe none)
+        if a == 1 and b_min_1 <=0:
+            return xpath
+
+        # early-exit condition 2:
+        # ~~~~~~~~~~~~~~~~~~~~~~~
+        # an+b-1 siblings with a<0 and (b-1)<0 is not possible
+        if a < 0 and b_min_1 < 0:
+            return xpath.add_condition('0')
+
+        # `add_name_test` boolean is inverted and somewhat counter-intuitive:
+        #
+        # nth_of_type() calls nth_child(add_name_test=False)
+        if add_name_test:
+            nodetest = '*'
+        else:
+            nodetest  = '%s' % xpath.element
+
         # count siblings before or after the element
         if not last:
             siblings_count = 'count(preceding-sibling::%s)' % nodetest
         else:
             siblings_count = 'count(following-sibling::%s)' % nodetest
 
-        # work with b-1 instead
-        b = b - 1
-
+        # special case of fixed position: nth-*(0n+b)
         # if a == 0:
         # ~~~~~~~~~~
-        #    count(...) = b-1
+        #    count(***-sibling::***) = b-1
         if a == 0:
-            return xpath.add_condition('%s = %s' % (siblings_count, b))
+            return xpath.add_condition('%s = %s' % (siblings_count, b_min_1))
+
+        expr = []
+
+        if a > 0:
+            # siblings count, an+b-1, is always >= 0,
+            # so if a>0, and (b-1)<=0, an "n" exists to satisfy this,
+            # therefore, the predicate is only interesting if (b-1)>0
+            if b_min_1 > 0:
+                expr.append('%s >= %s' % (siblings_count, b_min_1))
+        else:
+            # if a<0, and (b-1)<0, no "n" satisfies this,
+            # this is tested above as an early exist condition
+            # otherwise,
+            expr.append('%s <= %s' % (siblings_count, b_min_1))
 
         # operations modulo 1 or -1 are simpler, one only needs to verify:
-        # count(...) - (b-1) = 0, 1, 2, 3, etc., i.e. count(...) >= (b-1)
-        # or
-        # count(...) - (b-1) = 0, -1, -2, -3, etc., , i.e. count(...) <= (b-1)
-        if abs(a) == 1:
-            expr = []
-        else:
-            # count(...) - (b-1) ≡ 0 (mod a)
+        #
+        # - either:
+        # count(***-sibling::***) - (b-1) = n = 0, 1, 2, 3, etc.,
+        #   i.e. count(***-sibling::***) >= (b-1)
+        #
+        # - or:
+        # count(***-sibling::***) - (b-1) = -n = 0, -1, -2, -3, etc.,
+        #   i.e. count(***-sibling::***) <= (b-1)
+        # we we just did above.
+        #
+        if abs(a) != 1:
+            # count(***-sibling::***) - (b-1) ≡ 0 (mod a)
             left = siblings_count
 
-            # use modulo on 2nd term -(b-1) to simplify things like "(... +6) % -3",
+            # apply "modulo a" on 2nd term, -(b-1),
+            # to simplify things like "(... +6) % -3",
             # and also make it positive with |a|
-            b_neg = (-b) % abs(a)
+            b_neg = (-b_min_1) % abs(a)
 
             if b_neg != 0:
                 b_neg = '+%s' % (b_neg)
                 left = '(%s %s)' % (left, b_neg)
 
-            expr = ['%s mod %s = 0' % (left, a)]
+            expr.append('%s mod %s = 0' % (left, a))
 
-        if a > 0:
-            # siblings count is always >= 0,
-            # so the following predicate only matters for b > 0
-            if b > 0:
-                expr.append('%s >= %s' % (siblings_count, b))
-        else:
-            expr.append('%s <= %s' % (siblings_count, b))
-
-        expr = ' and '.join(expr)
-        if expr:
-            xpath.add_condition(expr)
+        xpath.add_condition(' and '.join(expr))
         return xpath
 
     def xpath_nth_last_child_function(self, xpath, function):

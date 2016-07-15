@@ -334,15 +334,37 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e[hreflang|="en"]') == (
             "e[@hreflang and ("
                "@hreflang = 'en' or starts-with(@hreflang, 'en-'))]")
+
+        # --- nth-* and nth-last-* -------------------------------------
         assert xpath('e:nth-child(1)') == (
             "e[count(preceding-sibling::*) = 0]")
+
+        # always true
+        assert xpath('e:nth-child(n)') == (
+            "e")
+        assert xpath('e:nth-child(n+1)') == (
+            "e")
+        # always true too
+        assert xpath('e:nth-child(n-10)') == (
+            "e")
+        # b=2 is the limit...
+        assert xpath('e:nth-child(n+2)') == (
+            "e[count(preceding-sibling::*) >= 1]")
+        # always false
+        assert xpath('e:nth-child(-n)') == (
+            "e[0]")
+        # equivalent to first child
+        assert xpath('e:nth-child(-n+1)') == (
+            "e[count(preceding-sibling::*) <= 0]")
+
         assert xpath('e:nth-child(3n+2)') == (
-            "e[(count(preceding-sibling::*) +2) mod 3 = 0 and "
-              "count(preceding-sibling::*) >= 1]")
+            "e[count(preceding-sibling::*) >= 1 and "
+              "(count(preceding-sibling::*) +2) mod 3 = 0]")
         assert xpath('e:nth-child(3n-2)') == (
             "e[count(preceding-sibling::*) mod 3 = 0]")
         assert xpath('e:nth-child(-n+6)') == (
             "e[count(preceding-sibling::*) <= 5]")
+
         assert xpath('e:nth-last-child(1)') == (
             "e[count(following-sibling::*) = 0]")
         assert xpath('e:nth-last-child(2n)') == (
@@ -350,13 +372,14 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e:nth-last-child(2n+1)') == (
             "e[count(following-sibling::*) mod 2 = 0]")
         assert xpath('e:nth-last-child(2n+2)') == (
-            "e[(count(following-sibling::*) +1) mod 2 = 0 and "
-              "count(following-sibling::*) >= 1]")
+            "e[count(following-sibling::*) >= 1 and "
+              "(count(following-sibling::*) +1) mod 2 = 0]")
         assert xpath('e:nth-last-child(3n+1)') == (
             "e[count(following-sibling::*) mod 3 = 0]")
         # represents the two last e elements
         assert xpath('e:nth-last-child(-n+2)') == (
             "e[count(following-sibling::*) <= 1]")
+
         assert xpath('e:nth-of-type(1)') == (
             "e[count(preceding-sibling::e) = 0]")
         assert xpath('e:nth-last-of-type(1)') == (
@@ -365,6 +388,7 @@ class TestCssselect(unittest.TestCase):
             "div/descendant::e[count(following-sibling::e) = 0]"
                "/descendant::*[@class and contains("
                "concat(' ', normalize-space(@class), ' '), ' aclass ')]")
+
         assert xpath('e:first-child') == (
             "e[count(preceding-sibling::*) = 0]")
         assert xpath('e:last-child') == (
@@ -648,6 +672,16 @@ class TestCssselect(unittest.TestCase):
         assert pcss(':lang("EN")', '*:lang(en-US)', html_only=True) == [
             'second-li', 'li-div']
         assert pcss(':lang("e")', html_only=True) == []
+
+        # --- nth-* and nth-last-* -------------------------------------
+
+        # select nothing
+        assert pcss('li:nth-child(-n)') == []
+        # select all children
+        assert pcss('li:nth-child(n)') == [
+            'first-li', 'second-li', 'third-li', 'fourth-li',
+            'fifth-li', 'sixth-li', 'seventh-li']
+
         assert pcss('li:nth-child(3)',
                     '#first-li ~ :nth-child(3)') == ['third-li']
         assert pcss('li:nth-child(10)') == []
