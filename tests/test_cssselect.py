@@ -334,35 +334,73 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e[hreflang|="en"]') == (
             "e[@hreflang and ("
                "@hreflang = 'en' or starts-with(@hreflang, 'en-'))]")
+
+        # --- nth-* and nth-last-* -------------------------------------
         assert xpath('e:nth-child(1)') == (
-            "*/*[name() = 'e' and (position() = 1)]")
+            "e[count(preceding-sibling::*) = 0]")
+
+        # always true
+        assert xpath('e:nth-child(n)') == (
+            "e")
+        assert xpath('e:nth-child(n+1)') == (
+            "e")
+        # always true too
+        assert xpath('e:nth-child(n-10)') == (
+            "e")
+        # b=2 is the limit...
+        assert xpath('e:nth-child(n+2)') == (
+            "e[count(preceding-sibling::*) >= 1]")
+        # always false
+        assert xpath('e:nth-child(-n)') == (
+            "e[0]")
+        # equivalent to first child
+        assert xpath('e:nth-child(-n+1)') == (
+            "e[count(preceding-sibling::*) <= 0]")
+
+        assert xpath('e:nth-child(3n+2)') == (
+            "e[count(preceding-sibling::*) >= 1 and "
+              "(count(preceding-sibling::*) +2) mod 3 = 0]")
+        assert xpath('e:nth-child(3n-2)') == (
+            "e[count(preceding-sibling::*) mod 3 = 0]")
+        assert xpath('e:nth-child(-n+6)') == (
+            "e[count(preceding-sibling::*) <= 5]")
+
         assert xpath('e:nth-last-child(1)') == (
-            "*/*[name() = 'e' and (position() = last() - 1)]")
+            "e[count(following-sibling::*) = 0]")
+        assert xpath('e:nth-last-child(2n)') == (
+            "e[(count(following-sibling::*) +1) mod 2 = 0]")
+        assert xpath('e:nth-last-child(2n+1)') == (
+            "e[count(following-sibling::*) mod 2 = 0]")
         assert xpath('e:nth-last-child(2n+2)') == (
-            "*/*[name() = 'e' and ("
-               "(position() +2) mod -2 = 0 and position() < (last() -2))]")
+            "e[count(following-sibling::*) >= 1 and "
+              "(count(following-sibling::*) +1) mod 2 = 0]")
+        assert xpath('e:nth-last-child(3n+1)') == (
+            "e[count(following-sibling::*) mod 3 = 0]")
+        # represents the two last e elements
+        assert xpath('e:nth-last-child(-n+2)') == (
+            "e[count(following-sibling::*) <= 1]")
+
         assert xpath('e:nth-of-type(1)') == (
-            "*/e[position() = 1]")
+            "e[count(preceding-sibling::e) = 0]")
         assert xpath('e:nth-last-of-type(1)') == (
-            "*/e[position() = last() - 1]")
-        assert xpath('e:nth-last-of-type(1)') == (
-            "*/e[position() = last() - 1]")
+            "e[count(following-sibling::e) = 0]")
         assert xpath('div e:nth-last-of-type(1) .aclass') == (
-            "div/descendant-or-self::*/e[position() = last() - 1]"
-               "/descendant-or-self::*/*[@class and contains("
+            "div/descendant::e[count(following-sibling::e) = 0]"
+               "/descendant::*[@class and contains("
                "concat(' ', normalize-space(@class), ' '), ' aclass ')]")
+
         assert xpath('e:first-child') == (
-            "*/*[name() = 'e' and (position() = 1)]")
+            "e[count(preceding-sibling::*) = 0]")
         assert xpath('e:last-child') == (
-            "*/*[name() = 'e' and (position() = last())]")
+            "e[count(following-sibling::*) = 0]")
         assert xpath('e:first-of-type') == (
-            "*/e[position() = 1]")
+            "e[count(preceding-sibling::e) = 0]")
         assert xpath('e:last-of-type') == (
-            "*/e[position() = last()]")
+            "e[count(following-sibling::e) = 0]")
         assert xpath('e:only-child') == (
-            "*/*[name() = 'e' and (last() = 1)]")
+            "e[count(parent::*/child::*) = 1]")
         assert xpath('e:only-of-type') == (
-            "e[last() = 1]")
+            "e[count(parent::*/child::e) = 1]")
         assert xpath('e:empty') == (
             "e[not(*) and not(string-length())]")
         assert xpath('e:EmPTY') == (
@@ -381,19 +419,21 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e#myid') == (
             "e[@id = 'myid']")
         assert xpath('e:not(:nth-child(odd))') == (
-            "e[not((position() -1) mod 2 = 0 and position() >= 1)]")
+            "e[not(count(preceding-sibling::*) mod 2 = 0)]")
         assert xpath('e:nOT(*)') == (
             "e[0]")  # never matches
         assert xpath('e f') == (
-            "e/descendant-or-self::*/f")
+            "e/descendant::f")
         assert xpath('e > f') == (
             "e/f")
         assert xpath('e + f') == (
             "e/following-sibling::*[name() = 'f' and (position() = 1)]")
         assert xpath('e ~ f') == (
             "e/following-sibling::f")
+        assert xpath('e ~ f:nth-child(3)') == (
+            "e/following-sibling::f[count(preceding-sibling::*) = 2]")
         assert xpath('div#container p') == (
-            "div[@id = 'container']/descendant-or-self::*/p")
+            "div[@id = 'container']/descendant::p")
 
         # Invalid characters in XPath element names
         assert xpath(r'di\a0 v') == (
@@ -519,7 +559,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath('::text-node') == "descendant-or-self::*/text()"
         assert xpath('::attr-href') == "descendant-or-self::*/@href"
         assert xpath('p img::attr(src)') == (
-            "descendant-or-self::p/descendant-or-self::*/img/@src")
+            "descendant-or-self::p/descendant::img/@src")
 
     def test_series(self):
         def series(css):
@@ -632,7 +672,18 @@ class TestCssselect(unittest.TestCase):
         assert pcss(':lang("EN")', '*:lang(en-US)', html_only=True) == [
             'second-li', 'li-div']
         assert pcss(':lang("e")', html_only=True) == []
-        assert pcss('li:nth-child(3)') == ['third-li']
+
+        # --- nth-* and nth-last-* -------------------------------------
+
+        # select nothing
+        assert pcss('li:nth-child(-n)') == []
+        # select all children
+        assert pcss('li:nth-child(n)') == [
+            'first-li', 'second-li', 'third-li', 'fourth-li',
+            'fifth-li', 'sixth-li', 'seventh-li']
+
+        assert pcss('li:nth-child(3)',
+                    '#first-li ~ :nth-child(3)') == ['third-li']
         assert pcss('li:nth-child(10)') == []
         assert pcss('li:nth-child(2n)', 'li:nth-child(even)',
                     'li:nth-child(2n+0)') == [
@@ -640,19 +691,36 @@ class TestCssselect(unittest.TestCase):
         assert pcss('li:nth-child(+2n+1)', 'li:nth-child(odd)') == [
             'first-li', 'third-li', 'fifth-li', 'seventh-li']
         assert pcss('li:nth-child(2n+4)') == ['fourth-li', 'sixth-li']
-        # FIXME: I'm not 100% sure this is right:
         assert pcss('li:nth-child(3n+1)') == [
             'first-li', 'fourth-li', 'seventh-li']
-        assert pcss('li:nth-last-child(0)') == [
-            'seventh-li']
+        assert pcss('li:nth-child(-n+3)') == [
+            'first-li', 'second-li', 'third-li']
+        assert pcss('li:nth-child(-2n+4)') == ['second-li', 'fourth-li']
+        assert pcss('li:nth-last-child(0)') == []
+        assert pcss('li:nth-last-child(1)') == ['seventh-li']
         assert pcss('li:nth-last-child(2n)', 'li:nth-last-child(even)') == [
             'second-li', 'fourth-li', 'sixth-li']
-        assert pcss('li:nth-last-child(2n+2)') == ['second-li', 'fourth-li']
+        assert pcss('li:nth-last-child(2n+1)') == [
+            'first-li', 'third-li', 'fifth-li', 'seventh-li']
+        assert pcss('li:nth-last-child(2n+2)') == [
+            'second-li', 'fourth-li', 'sixth-li']
+        assert pcss('li:nth-last-child(3n+1)') == [
+            'first-li', 'fourth-li', 'seventh-li']
         assert pcss('ol:first-of-type') == ['first-ol']
         assert pcss('ol:nth-child(1)') == []
         assert pcss('ol:nth-of-type(2)') == ['second-ol']
-        # FIXME: like above', '(1) or (2)?
-        assert pcss('ol:nth-last-of-type(1)') == ['first-ol']
+        assert pcss('ol:nth-last-of-type(1)') == ['second-ol']
+
+        # "+" and "~" tests
+        assert pcss('ol#first-ol li + li:nth-child(4)') == ['fourth-li']
+        assert pcss('li + li:nth-child(1)') == []
+        assert pcss('li ~ li:nth-child(2n+1)') == [
+            'third-li', 'fifth-li', 'seventh-li'
+        ]   # all but the first
+        assert pcss('li ~ li:nth-last-child(2n+1)') == [
+            'third-li', 'fifth-li', 'seventh-li'
+        ]   # all but the first
+
         assert pcss('span:only-child') == ['foobar-span']
         assert pcss('li div:only-child') == ['li-div']
         assert pcss('div *:only-child') == ['li-div', 'foobar-span']
@@ -693,6 +761,8 @@ class TestCssselect(unittest.TestCase):
         assert pcss('ol :Not(li[class])') == [
             'first-li', 'second-li', 'li-div',
             'fifth-li', 'sixth-li', 'seventh-li']
+        assert pcss('ol.a.b.c > li.c:nth-child(3)') == ['third-li']
+
         # Invalid characters in XPath element names, should not crash
         assert pcss(r'di\a0 v', r'div\[') == []
         assert pcss(r'[h\a0 ref]', r'[h\]ref]') == []

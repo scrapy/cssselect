@@ -351,7 +351,7 @@ class GenericTranslator(object):
 
     def xpath_descendant_combinator(self, left, right):
         """right is a child, grand-child or further descendant of left"""
-        return left.join('/descendant-or-self::*/', right)
+        return left.join('/descendant::', right)
 
     def xpath_child_combinator(self, left, right):
         """right is an immediate child of left"""
@@ -376,40 +376,127 @@ class GenericTranslator(object):
             a, b = parse_series(function.arguments)
         except ValueError:
             raise ExpressionError("Invalid series: '%r'" % function.arguments)
+
+        # From https://www.w3.org/TR/css3-selectors/#structural-pseudos:
+        #
+        # :nth-child(an+b)
+        #       an+b-1 siblings before
+        #
+        # :nth-last-child(an+b)
+        #       an+b-1 siblings after
+        #
+        # :nth-of-type(an+b)
+        #       an+b-1 siblings with the same expanded element name before
+        #
+        # :nth-last-of-type(an+b)
+        #       an+b-1 siblings with the same expanded element name after
+        #
+        # So,
+        # for :nth-child and :nth-of-type
+        #
+        #    count(preceding-sibling::<nodetest>) = an+b-1
+        #
+        # for :nth-last-child and :nth-last-of-type
+        #
+        #    count(following-sibling::<nodetest>) = an+b-1
+        #
+        # therefore,
+        #    count(...) - (b-1) ≡ 0 (mod a)
+        #
+        # if a == 0:
+        # ~~~~~~~~~~
+        #    count(...) = b-1
+        #
+        # if a < 0:
+        # ~~~~~~~~~
+        #    count(...) - b +1 <= 0
+        # -> count(...) <= b-1
+        #
+        # if a > 0:
+        # ~~~~~~~~~
+        #    count(...) - b +1 >= 0
+        # -> count(...) >= b-1
+
+        # work with b-1 instead
+        b_min_1 = b - 1
+
+        # early-exit condition 1:
+        # ~~~~~~~~~~~~~~~~~~~~~~~
+        # for a == 1, nth-*(an+b) means n+b-1 siblings before/after,
+        # and since n ∈ {0, 1, 2, ...}, if b-1<=0,
+        # there is always an "n" matching any number of siblings (maybe none)
+        if a == 1 and b_min_1 <=0:
+            return xpath
+
+        # early-exit condition 2:
+        # ~~~~~~~~~~~~~~~~~~~~~~~
+        # an+b-1 siblings with a<0 and (b-1)<0 is not possible
+        if a < 0 and b_min_1 < 0:
+            return xpath.add_condition('0')
+
+        # `add_name_test` boolean is inverted and somewhat counter-intuitive:
+        #
+        # nth_of_type() calls nth_child(add_name_test=False)
         if add_name_test:
-            xpath.add_name_test()
-        xpath.add_star_prefix()
+            nodetest = '*'
+        else:
+            nodetest  = '%s' % xpath.element
+
+        # count siblings before or after the element
+        if not last:
+            siblings_count = 'count(preceding-sibling::%s)' % nodetest
+        else:
+            siblings_count = 'count(following-sibling::%s)' % nodetest
+
+        # special case of fixed position: nth-*(0n+b)
+        # if a == 0:
+        # ~~~~~~~~~~
+        #    count(***-sibling::***) = b-1
         if a == 0:
-            if last:
-                b = 'last() - %s' % b
-            return xpath.add_condition('position() = %s' % b)
-        if last:
-            # FIXME: I'm not sure if this is right
-            a = -a
-            b = -b
-        if b > 0:
-            b_neg = str(-b)
+            return xpath.add_condition('%s = %s' % (siblings_count, b_min_1))
+
+        expr = []
+
+        if a > 0:
+            # siblings count, an+b-1, is always >= 0,
+            # so if a>0, and (b-1)<=0, an "n" exists to satisfy this,
+            # therefore, the predicate is only interesting if (b-1)>0
+            if b_min_1 > 0:
+                expr.append('%s >= %s' % (siblings_count, b_min_1))
         else:
-            b_neg = '+%s' % (-b)
-        if a != 1:
-            expr = ['(position() %s) mod %s = 0' % (b_neg, a)]
-        else:
-            expr = []
-        if b >= 0:
-            expr.append('position() >= %s' % b)
-        elif b < 0 and last:
-            expr.append('position() < (last() %s)' % b)
-        expr = ' and '.join(expr)
-        if expr:
-            xpath.add_condition(expr)
+            # if a<0, and (b-1)<0, no "n" satisfies this,
+            # this is tested above as an early exist condition
+            # otherwise,
+            expr.append('%s <= %s' % (siblings_count, b_min_1))
+
+        # operations modulo 1 or -1 are simpler, one only needs to verify:
+        #
+        # - either:
+        # count(***-sibling::***) - (b-1) = n = 0, 1, 2, 3, etc.,
+        #   i.e. count(***-sibling::***) >= (b-1)
+        #
+        # - or:
+        # count(***-sibling::***) - (b-1) = -n = 0, -1, -2, -3, etc.,
+        #   i.e. count(***-sibling::***) <= (b-1)
+        # we we just did above.
+        #
+        if abs(a) != 1:
+            # count(***-sibling::***) - (b-1) ≡ 0 (mod a)
+            left = siblings_count
+
+            # apply "modulo a" on 2nd term, -(b-1),
+            # to simplify things like "(... +6) % -3",
+            # and also make it positive with |a|
+            b_neg = (-b_min_1) % abs(a)
+
+            if b_neg != 0:
+                b_neg = '+%s' % (b_neg)
+                left = '(%s %s)' % (left, b_neg)
+
+            expr.append('%s mod %s = 0' % (left, a))
+
+        xpath.add_condition(' and '.join(expr))
         return xpath
-        # FIXME: handle an+b, odd, even
-        # an+b means every-a, plus b, e.g., 2n+1 means odd
-        # 0n+b means b
-        # n+0 means a=1, i.e., all elements
-        # an means every a elements, i.e., 2n means even
-        # -n means -1n
-        # -1n+6 means elements 6 and previous
 
     def xpath_nth_last_child_function(self, xpath, function):
         return self.xpath_nth_child_function(xpath, function, last=True)
@@ -455,39 +542,31 @@ class GenericTranslator(object):
         return xpath.add_condition("not(parent::*)")
 
     def xpath_first_child_pseudo(self, xpath):
-        xpath.add_star_prefix()
-        xpath.add_name_test()
-        return xpath.add_condition('position() = 1')
+        return xpath.add_condition('count(preceding-sibling::*) = 0')
 
     def xpath_last_child_pseudo(self, xpath):
-        xpath.add_star_prefix()
-        xpath.add_name_test()
-        return xpath.add_condition('position() = last()')
+        return xpath.add_condition('count(following-sibling::*) = 0')
 
     def xpath_first_of_type_pseudo(self, xpath):
         if xpath.element == '*':
             raise ExpressionError(
                 "*:first-of-type is not implemented")
-        xpath.add_star_prefix()
-        return xpath.add_condition('position() = 1')
+        return xpath.add_condition('count(preceding-sibling::%s) = 0' % xpath.element)
 
     def xpath_last_of_type_pseudo(self, xpath):
         if xpath.element == '*':
             raise ExpressionError(
                 "*:last-of-type is not implemented")
-        xpath.add_star_prefix()
-        return xpath.add_condition('position() = last()')
+        return xpath.add_condition('count(following-sibling::%s) = 0' % xpath.element)
 
     def xpath_only_child_pseudo(self, xpath):
-        xpath.add_name_test()
-        xpath.add_star_prefix()
-        return xpath.add_condition('last() = 1')
+        return xpath.add_condition('count(parent::*/child::*) = 1')
 
     def xpath_only_of_type_pseudo(self, xpath):
         if xpath.element == '*':
             raise ExpressionError(
                 "*:only-of-type is not implemented")
-        return xpath.add_condition('last() = 1')
+        return xpath.add_condition('count(parent::*/child::%s) = 1' % xpath.element)
 
     def xpath_empty_pseudo(self, xpath):
         return xpath.add_condition("not(*) and not(string-length())")
