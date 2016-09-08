@@ -9,7 +9,7 @@ python:
   - "3.5"
 
 install:
-  - pip install --use-mirrors lxml -e .
+  - pip install lxml -e .
   - pip install -U codecov pytest-cov
   - if [[ $TRAVIS_PYTHON_VERSION == '3.2' ]];
     then pip uninstall -y coverage && pip install "coverage<4";
