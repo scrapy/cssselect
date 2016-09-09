@@ -12,7 +12,7 @@ install:
   - pip install lxml -e .
   - pip install -U codecov pytest-cov
   - if [[ $TRAVIS_PYTHON_VERSION == '3.2' ]];
-    then pip uninstall -y coverage && pip install "coverage<4";
+    then pip uninstall -y coverage pytest && pip install "coverage<4" && pip install "pytest<3";
     fi
 
 script:
