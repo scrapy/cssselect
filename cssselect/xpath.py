@@ -351,7 +351,7 @@ class GenericTranslator(object):
 
     def xpath_descendant_combinator(self, left, right):
         """right is a child, grand-child or further descendant of left"""
-        return left.join('/descendant::', right)
+        return left.join('/descendant-or-self::*/', right)
 
     def xpath_child_combinator(self, left, right):
         """right is an immediate child of left"""

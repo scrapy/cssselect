@@ -385,8 +385,8 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e:nth-last-of-type(1)') == (
             "e[count(following-sibling::e) = 0]")
         assert xpath('div e:nth-last-of-type(1) .aclass') == (
-            "div/descendant::e[count(following-sibling::e) = 0]"
-               "/descendant::*[@class and contains("
+            "div/descendant-or-self::*/e[count(following-sibling::e) = 0]"
+               "/descendant-or-self::*/*[@class and contains("
                "concat(' ', normalize-space(@class), ' '), ' aclass ')]")
 
         assert xpath('e:first-child') == (
@@ -423,7 +423,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e:nOT(*)') == (
             "e[0]")  # never matches
         assert xpath('e f') == (
-            "e/descendant::f")
+            "e/descendant-or-self::*/f")
         assert xpath('e > f') == (
             "e/f")
         assert xpath('e + f') == (
@@ -433,7 +433,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e ~ f:nth-child(3)') == (
             "e/following-sibling::f[count(preceding-sibling::*) = 2]")
         assert xpath('div#container p') == (
-            "div[@id = 'container']/descendant::p")
+            "div[@id = 'container']/descendant-or-self::*/p")
 
         # Invalid characters in XPath element names
         assert xpath(r'di\a0 v') == (
@@ -559,7 +559,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath('::text-node') == "descendant-or-self::*/text()"
         assert xpath('::attr-href') == "descendant-or-self::*/@href"
         assert xpath('p img::attr(src)') == (
-            "descendant-or-self::p/descendant::img/@src")
+            "descendant-or-self::p/descendant-or-self::*/img/@src")
 
     def test_series(self):
         def series(css):
