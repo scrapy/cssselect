@@ -3,7 +3,6 @@ language: python
 python:
   - "2.6"
   - "2.7"
-  - "3.2"
   - "3.3"
   - "3.4"
   - "3.5"
@@ -11,9 +10,6 @@ python:
 install:
   - pip install lxml -e .
   - pip install -U codecov pytest-cov
-  - if [[ $TRAVIS_PYTHON_VERSION == '3.2' ]];
-    then pip uninstall -y coverage pytest && pip install "coverage<4" && pip install "pytest<3";
-    fi
 
 script:
   py.test --cov-report term --cov=cssselect
