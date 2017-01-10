@@ -1,12 +1,11 @@
 language: python
-
 python:
-  - "2.6"
-  - "2.7"
-  - "3.3"
-  - "3.4"
-  - "3.5"
-  - "3.6"
+  - '2.6'
+  - '2.7'
+  - '3.3'
+  - '3.4'
+  - '3.5'
+  - '3.6'
 
 install:
   - pip install lxml -e .
@@ -17,3 +16,13 @@ script:
 
 after_success:
   codecov
+
+deploy:
+  provider: pypi
+  distributions: sdist bdist_wheel
+  user: redapple
+  password:
+    secure: T1PBD+ocIGwHMbBHPqzu7UZxpkB0w98KtEIkNzLXNQcF7JpjugZNwz4xX2xVhi8yvUQ257VtLSKpIOT2FWxrfLrgTZKbTd6Q7V5Lf3HKzLomOKUKMAd54gsOuismE27CT/SHbexskACgwVwkyG9Y3dlG6m/ZBgqoPAGaJrScjEU=
+  on:
+    tags: true
+    repo: scrapy/cssselect
