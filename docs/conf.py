@@ -43,7 +43,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'cssselect'
-copyright = '2012, Simon Sapin'
+copyright = '2012-2017, Simon Sapin, Scrapy developers'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
