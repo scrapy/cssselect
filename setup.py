@@ -26,7 +26,7 @@ setup(
     description=
         'cssselect parses CSS3 Selectors and translates them to XPath 1.0',
     long_description=README,
-    url='https://pythonhosted.org/cssselect/',
+    url='https://github.com/scrapy/cssselect',
     license='BSD',
     packages=['cssselect'],
     classifiers=[
