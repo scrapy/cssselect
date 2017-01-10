@@ -20,6 +20,7 @@ after_success:
 deploy:
   provider: pypi
   distributions: sdist bdist_wheel
+  skip_upload_docs: true
   user: redapple
   password:
     secure: T1PBD+ocIGwHMbBHPqzu7UZxpkB0w98KtEIkNzLXNQcF7JpjugZNwz4xX2xVhi8yvUQ257VtLSKpIOT2FWxrfLrgTZKbTd6Q7V5Lf3HKzLomOKUKMAd54gsOuismE27CT/SHbexskACgwVwkyG9Y3dlG6m/ZBgqoPAGaJrScjEU=
