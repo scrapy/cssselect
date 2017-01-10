@@ -26,3 +26,4 @@ deploy:
   on:
     tags: true
     repo: scrapy/cssselect
+    condition: "$TRAVIS_PYTHON_VERSION == '3.6'"
