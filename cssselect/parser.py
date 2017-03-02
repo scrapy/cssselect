@@ -617,7 +617,7 @@ def _compile(pattern):
     return re.compile(pattern % vars(TokenMacros), re.IGNORECASE).match
 
 _match_whitespace = _compile(r'[ \t\r\n\f]+')
-_match_number = _compile('[+-]?(?:[0-9]*\.[0-9]+|[0-9]+)')
+_match_number = _compile(r'[+-]?(?:[0-9]*\.[0-9]+|[0-9]+)')
 _match_hash = _compile('#(?:%(nmchar)s)+')
 _match_ident = _compile('-?(?:%(nmstart)s)(?:%(nmchar)s)*')
 _match_string_by_quote = {
