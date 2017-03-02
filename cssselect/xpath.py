@@ -233,7 +233,10 @@ class GenericTranslator(object):
 
     @staticmethod
     def xpath_literal(s):
-        s = _unicode(s)
+        try:
+            s = _unicode(s)
+        except UnicodeDecodeError:
+            s = s.decode('utf-8', 'ignore')
         if "'" not in s:
             s = "'%s'" % s
         elif '"' not in s:
