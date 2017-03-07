@@ -244,6 +244,37 @@ class TestCssselect(unittest.TestCase):
         assert specificity('#lorem + foo#ipsum:first-child > bar:first-line'
             ) == (2, 1, 3)
 
+    def test_css_export(self):
+        def css2css(css, res=None):
+            selectors = parse(css)
+            assert len(selectors) == 1
+            assert selectors[0].css() == (res or css)
+
+        css2css('*')
+        css2css(' foo', 'foo')
+        css2css('Foo', 'Foo')
+        css2css(':empty ', ':empty')
+        css2css(':before', '::before')
+        css2css(':beFOre', '::before')
+        css2css('*:before', '::before')
+        css2css(':nth-child(2)')
+        css2css('.bar')
+        css2css('[baz]')
+        css2css('[baz="4"]', "[baz='4']")
+        css2css('[baz^="4"]', "[baz^='4']")
+        css2css('#lipsum')
+        css2css(':not(*)')
+        css2css(':not(foo)')
+        css2css(':not(*.foo)')
+        css2css(':not(*[foo])')
+        css2css(':not(*:empty)')
+        css2css(':not(*#foo)')
+        css2css('foo:empty')
+        css2css('foo::before')
+        css2css('foo:empty::before')
+        css2css('::name(arg + "val" - 3)', "::name(arg+'val'-3)")
+        css2css('#lorem + foo#ipsum:first-child > bar::first-line')
+
     def test_parse_errors(self):
         def get_error(css):
             try:
