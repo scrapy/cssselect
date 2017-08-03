@@ -14,6 +14,7 @@
 
 import sys
 import re
+import functools
 
 from cssselect.parser import parse, parse_series, SelectorError
 
@@ -168,6 +169,7 @@ class GenericTranslator(object):
     # class used to represent and xpath expression
     xpathexpr_cls = XPathExpr
 
+    @functools.lru_cache(maxsize=256)
     def css_to_xpath(self, css, prefix='descendant-or-self::'):
         """Translate a *group of selectors* to XPath.
 
