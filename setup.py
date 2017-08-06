@@ -2,6 +2,8 @@
 
 import re
 import os.path
+import sys
+import setuptools
 try:
     from setuptools import setup
     extra_kwargs = {'test_suite': 'cssselect.tests'}
@@ -9,6 +11,14 @@ except ImportError:
     from distutils.core import setup
     extra_kwargs = {}
 
+INSTALL_REQUIRES = []
+EXTRAS_REQUIRE = {}
+
+if int(setuptools.__version__.split(".", 1)[0]) < 18:
+    if sys.version_info[0:2] < (3, 0):
+        INSTALL_REQUIRES.append("functools32")
+else:
+    EXTRAS_REQUIRE[":python_version<'3.0'"] = ["functools32"]
 
 ROOT = os.path.dirname(__file__)
 README = open(os.path.join(ROOT, 'README.rst')).read()
@@ -29,6 +39,8 @@ setup(
     url='https://github.com/scrapy/cssselect',
     license='BSD',
     packages=['cssselect'],
+    install_requires=INSTALL_REQUIRES,
+    extras_require=EXTRAS_REQUIRE,
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
