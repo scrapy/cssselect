@@ -116,7 +116,7 @@ class GenericTranslator(object):
     ####
     ####  You are welcome to hook into this to change some behavior,
     ####  but do so at your own risks.
-    ####  Until is has received a lot more work and review,
+    ####  Until it has received a lot more work and review,
     ####  I reserve the right to change this API in backward-incompatible ways
     ####  with any minor version of cssselect.
     ####  See https://github.com/scrapy/cssselect/pull/22
