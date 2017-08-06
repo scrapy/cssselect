@@ -19,9 +19,11 @@ from cssselect.parser import parse, parse_series, SelectorError
 
 
 if sys.version_info[0] < 3:
+    import functools32 as functools
     _basestring = basestring
     _unicode = unicode
 else:
+    import functools
     _basestring = str
     _unicode = str
 
@@ -168,6 +170,7 @@ class GenericTranslator(object):
     # class used to represent and xpath expression
     xpathexpr_cls = XPathExpr
 
+    @functools.lru_cache(maxsize=256)
     def css_to_xpath(self, css, prefix='descendant-or-self::'):
         """Translate a *group of selectors* to XPath.
 
