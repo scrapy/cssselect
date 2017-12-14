@@ -288,12 +288,12 @@ class TestCssselect(unittest.TestCase):
             "Expected string or ident, got <DELIM '#' at 5>")
         assert get_error('[href]a') == (
             "Expected selector, got <IDENT 'a' at 6>")
-        assert get_error('[rel=stylesheet]') == None
+        assert get_error('[rel=stylesheet]') is None
         assert get_error('[rel:stylesheet]') == (
             "Operator expected, got <DELIM ':' at 4>")
         assert get_error('[rel=stylesheet') == (
             "Expected ']', got <EOF at 15>")
-        assert get_error(':lang(fr)') == None
+        assert get_error(':lang(fr)') is None
         assert get_error(':lang(fr') == (
             "Expected an argument, got <EOF at 8>")
         assert get_error(':contains("foo') == (
@@ -586,8 +586,8 @@ class TestCssselect(unittest.TestCase):
         assert series('+n') == (1, 0)
         assert series('-n') == (-1, 0)
         assert series('5') == (0, 5)
-        assert series('foo') == None
-        assert series('n+') == None
+        assert series('foo') is None
+        assert series('n+') is None
 
     def test_lang(self):
         document = etree.fromstring(XMLLANG_IDS)
