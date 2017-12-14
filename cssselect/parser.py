@@ -552,14 +552,14 @@ def parse_series(tokens):
             raise ValueError('String tokens not allowed in series.')
     s = ''.join(token.value for token in tokens).strip()
     if s == 'odd':
-        return (2, 1)
+        return 2, 1
     elif s == 'even':
-        return (2, 0)
+        return 2, 0
     elif s == 'n':
-        return (1, 0)
+        return 1, 0
     if 'n' not in s:
         # Just b
-        return (0, int(s))
+        return 0, int(s)
     a, b = s.split('n', 1)
     if not a:
         a = 1
@@ -571,7 +571,7 @@ def parse_series(tokens):
         b = 0
     else:
         b = int(b)
-    return (a, b)
+    return a, b
 
 
 #### Token objects
