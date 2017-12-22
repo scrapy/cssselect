@@ -17,9 +17,9 @@ extracted as a stand-alone project.
 Quick facts:
 
 * Free software: BSD licensed
-* Compatible with Python 2.6+ and 3.3+
+* Compatible with Python 2.7 and 3.3+
 * Latest documentation `on Read the Docs <https://cssselect.readthedocs.io/>`_
-* Source, issues and pull requests `on Github
+* Source, issues and pull requests `on GitHub
   <https://github.com/scrapy/cssselect>`_
 * Releases `on PyPI <http://pypi.python.org/pypi/cssselect>`_
 * Install with ``pip install cssselect``

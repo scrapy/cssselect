@@ -358,8 +358,6 @@ def parse(css):
 #        message = "%s at %s -> %r" % (
 #            e, stream.used, stream.peek())
 #        e.msg = message
-#        if sys.version_info < (2,6):
-#            e.message = message
 #        e.args = tuple([message])
 #        raise
 
@@ -554,14 +552,14 @@ def parse_series(tokens):
             raise ValueError('String tokens not allowed in series.')
     s = ''.join(token.value for token in tokens).strip()
     if s == 'odd':
-        return (2, 1)
+        return 2, 1
     elif s == 'even':
-        return (2, 0)
+        return 2, 0
     elif s == 'n':
-        return (1, 0)
+        return 1, 0
     if 'n' not in s:
         # Just b
-        return (0, int(s))
+        return 0, int(s)
     a, b = s.split('n', 1)
     if not a:
         a = 1
@@ -573,7 +571,7 @@ def parse_series(tokens):
         b = 0
     else:
         b = int(b)
-    return (a, b)
+    return a, b
 
 
 #### Token objects
@@ -630,12 +628,7 @@ _sub_unicode_escape = re.compile(TokenMacros.unicode_escape, re.I).sub
 _sub_newline_escape =re.compile(r'\\(?:\n|\r\n|\r|\f)').sub
 
 # Same as r'\1', but faster on CPython
-if hasattr(operator, 'methodcaller'):
-    # Python 2.6+
-    _replace_simple = operator.methodcaller('group', 1)
-else:
-    def _replace_simple(match):
-        return match.group(1)
+_replace_simple = operator.methodcaller('group', 1)
 
 def _replace_unicode(match):
     codepoint = int(match.group(1), 16)

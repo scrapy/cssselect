@@ -490,7 +490,7 @@ class GenericTranslator(object):
             b_neg = (-b_min_1) % abs(a)
 
             if b_neg != 0:
-                b_neg = '+%s' % (b_neg)
+                b_neg = '+%s' % b_neg
                 left = '(%s %s)' % (left, b_neg)
 
             expr.append('%s mod %s = 0' % (left, a))
