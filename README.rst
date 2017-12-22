@@ -17,7 +17,7 @@ extracted as a stand-alone project.
 Quick facts:
 
 * Free software: BSD licensed
-* Compatible with Python 2.7 and 3.3+
+* Compatible with Python 2.7 and 3.4+
 * Latest documentation `on Read the Docs <https://cssselect.readthedocs.io/>`_
 * Source, issues and pull requests `on GitHub
   <https://github.com/scrapy/cssselect>`_
