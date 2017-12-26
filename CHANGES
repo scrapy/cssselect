@@ -1,6 +1,15 @@
 Changelog
 =========
 
+Version 1.0.2
+-------------
+
+Released on 2017-12-26.
+
+* Drop support for Python 2.6 and Python 3.3.
+* Fix deprecation warning in Python 3.6.
+* Minor cleanups.
+
 Version 1.0.1
 -------------
 
