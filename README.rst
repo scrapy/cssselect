@@ -2,6 +2,22 @@
 cssselect: CSS Selectors for Python
 ===================================
 
+.. image:: https://img.shields.io/pypi/v/cssselect.svg
+   :target: https://pypi.python.org/pypi/cssselect
+   :alt: PyPI Version
+
+.. image:: https://img.shields.io/pypi/pyversions/cssselect.svg
+   :target: https://pypi.python.org/pypi/cssselect
+   :alt: Supported Python Versions
+
+.. image:: https://img.shields.io/travis/scrapy/cssselect/master.svg
+   :target: https://travis-ci.org/scrapy/cssselect
+   :alt: Build Status
+
+.. image:: https://img.shields.io/codecov/c/github/scrapy/cssselect/master.svg
+   :target: https://codecov.io/github/scrapy/cssselect?branch=master
+   :alt: Coverage report
+
 *cssselect* parses `CSS3 Selectors`_ and translate them to `XPath 1.0`_
 expressions. Such expressions can be used in lxml_ or another XPath engine
 to find the matching elements in an XML or HTML document.
