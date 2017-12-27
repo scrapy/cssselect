@@ -1,27 +1,23 @@
 language: python
 python:
-  - '2.7'
-  - '3.4'
-  - '3.5'
-  - '3.6'
-
+- '2.7'
+- '3.4'
+- '3.5'
+- '3.6'
 install:
-  - pip install lxml -e .
-  - pip install -U codecov pytest-cov
-
+- pip install lxml -e .
+- pip install -U codecov pytest-cov
 script:
-  py.test --cov-report term --cov=cssselect
-
+- py.test --cov-report term --cov=cssselect
 after_success:
-  codecov
-
+- codecov
 deploy:
   provider: pypi
   distributions: sdist bdist_wheel
   skip_upload_docs: true
-  user: redapple
+  user: scrapy
   password:
-    secure: T1PBD+ocIGwHMbBHPqzu7UZxpkB0w98KtEIkNzLXNQcF7JpjugZNwz4xX2xVhi8yvUQ257VtLSKpIOT2FWxrfLrgTZKbTd6Q7V5Lf3HKzLomOKUKMAd54gsOuismE27CT/SHbexskACgwVwkyG9Y3dlG6m/ZBgqoPAGaJrScjEU=
+    secure: UjCXD1ZfqgFcCs4ciPMJDaOQefV3ZOKZ8/dTZxcoaQlE1lr6CkaN6CfTdD50SX2M9uCNWvEcYnvs6U4SizgZ27MYzFWuHonED2alHKy4AtrxCEHD/+lGo9d18cNjLMPDZateX/lITjGiZ4rmYZNuA6wmA4P/bTmdazbSufcmMqY=
   on:
     tags: true
     repo: scrapy/cssselect
