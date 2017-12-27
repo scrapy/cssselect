@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Version 1.0.3
+-------------
+
+Released on 2017-12-27.
+
+* Fix artifact uploads to pypi
+
 Version 1.0.2
 -------------
 
