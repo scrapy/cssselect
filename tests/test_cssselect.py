@@ -550,6 +550,11 @@ class TestCssselect(unittest.TestCase):
                 other = XPathExpr('@href', '', )
                 return xpath.join('/', other)
 
+            # pseudo-element:
+            # used to demonstrate operator precedence
+            def xpath_first_or_second_pseudo(self, xpath):
+                return xpath.add_condition("@id = 'first' or @id = 'second'")
+
         def xpath(css):
             return _unicode(CustomTranslator().css_to_xpath(css))
 
@@ -561,6 +566,25 @@ class TestCssselect(unittest.TestCase):
         assert xpath('::attr-href') == "descendant-or-self::*/@href"
         assert xpath('p img::attr(src)') == (
             "descendant-or-self::p/descendant-or-self::*/img/@src")
+        assert xpath(':first-or-second[href]') == (
+            "descendant-or-self::*[(@id = 'first' or @id = 'second') "
+            "and (@href)]")
+
+        assert str(XPathExpr('', '', condition='@href')) == "[(@href)]"
+
+        document = etree.fromstring(OPERATOR_PRECEDENCE_IDS)
+        sort_key = dict(
+            (el, count) for count, el in enumerate(document.getiterator())
+        ).__getitem__
+        def operator_id(selector):
+            xpath = CustomTranslator().css_to_xpath(selector)
+            items = document.xpath(xpath)
+            items.sort(key=sort_key)
+            return [element.get('id', 'nil') for element in items]
+
+        assert operator_id(':first-or-second') == ['first', 'second']
+        assert operator_id(':first-or-second[href]') == ['second']
+        assert operator_id('[href]:first-or-second') == ['second']
 
     def test_series(self):
         def series(css):
@@ -854,6 +878,14 @@ class TestCssselect(unittest.TestCase):
         assert count('div[class|=dialog]') == 50 # ? Seems right
         assert count('div[class!=madeup]') == 243 # ? Seems right
         assert count('div[class~=dialog]') == 51 # ? Seems right
+
+OPERATOR_PRECEDENCE_IDS = '''
+<html>
+  <a id="first"></a>
+  <a id="second" href="#"></a>
+  <a id="third" href="#"></a>
+</html>
+'''
 
 XMLLANG_IDS = '''
 <test>
