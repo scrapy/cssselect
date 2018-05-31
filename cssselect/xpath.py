@@ -43,7 +43,7 @@ class XPathExpr(object):
     def __init__(self, path='', element='*', condition='', star_prefix=False):
         self.path = path
         self.element = element
-        self.condition = condition
+        self.condition = '(%s)' % condition if condition else ''
 
     def __str__(self):
         path =  _unicode(self.path) + _unicode(self.element)
@@ -58,7 +58,7 @@ class XPathExpr(object):
         if self.condition:
             self.condition = '%s and (%s)' % (self.condition, condition)
         else:
-            self.condition = condition
+            self.condition = '(%s)' % condition
         return self
 
     def add_name_test(self):

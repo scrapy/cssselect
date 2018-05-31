@@ -319,25 +319,25 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e') == "e"
         assert xpath('*|e') == "e"
         assert xpath('e|f') == "e:f"
-        assert xpath('e[foo]') == "e[@foo]"
-        assert xpath('e[foo|bar]') == "e[@foo:bar]"
-        assert xpath('e[foo="bar"]') == "e[@foo = 'bar']"
+        assert xpath('e[foo]') == "e[(@foo)]"
+        assert xpath('e[foo|bar]') == "e[(@foo:bar)]"
+        assert xpath('e[foo="bar"]') == "e[(@foo = 'bar')]"
         assert xpath('e[foo~="bar"]') == (
-            "e[@foo and contains("
-               "concat(' ', normalize-space(@foo), ' '), ' bar ')]")
+            "e[(@foo and contains("
+               "concat(' ', normalize-space(@foo), ' '), ' bar '))]")
         assert xpath('e[foo^="bar"]') == (
-            "e[@foo and starts-with(@foo, 'bar')]")
+            "e[(@foo and starts-with(@foo, 'bar'))]")
         assert xpath('e[foo$="bar"]') == (
-            "e[@foo and substring(@foo, string-length(@foo)-2) = 'bar']")
+            "e[(@foo and substring(@foo, string-length(@foo)-2) = 'bar')]")
         assert xpath('e[foo*="bar"]') == (
-            "e[@foo and contains(@foo, 'bar')]")
+            "e[(@foo and contains(@foo, 'bar'))]")
         assert xpath('e[hreflang|="en"]') == (
-            "e[@hreflang and ("
-               "@hreflang = 'en' or starts-with(@hreflang, 'en-'))]")
+            "e[(@hreflang and ("
+               "@hreflang = 'en' or starts-with(@hreflang, 'en-')))]")
 
         # --- nth-* and nth-last-* -------------------------------------
         assert xpath('e:nth-child(1)') == (
-            "e[count(preceding-sibling::*) = 0]")
+            "e[(count(preceding-sibling::*) = 0)]")
 
         # always true
         assert xpath('e:nth-child(n)') == (
@@ -349,101 +349,101 @@ class TestCssselect(unittest.TestCase):
             "e")
         # b=2 is the limit...
         assert xpath('e:nth-child(n+2)') == (
-            "e[count(preceding-sibling::*) >= 1]")
+            "e[(count(preceding-sibling::*) >= 1)]")
         # always false
         assert xpath('e:nth-child(-n)') == (
-            "e[0]")
+            "e[(0)]")
         # equivalent to first child
         assert xpath('e:nth-child(-n+1)') == (
-            "e[count(preceding-sibling::*) <= 0]")
+            "e[(count(preceding-sibling::*) <= 0)]")
 
         assert xpath('e:nth-child(3n+2)') == (
-            "e[count(preceding-sibling::*) >= 1 and "
-              "(count(preceding-sibling::*) +2) mod 3 = 0]")
+            "e[(count(preceding-sibling::*) >= 1 and "
+              "(count(preceding-sibling::*) +2) mod 3 = 0)]")
         assert xpath('e:nth-child(3n-2)') == (
-            "e[count(preceding-sibling::*) mod 3 = 0]")
+            "e[(count(preceding-sibling::*) mod 3 = 0)]")
         assert xpath('e:nth-child(-n+6)') == (
-            "e[count(preceding-sibling::*) <= 5]")
+            "e[(count(preceding-sibling::*) <= 5)]")
 
         assert xpath('e:nth-last-child(1)') == (
-            "e[count(following-sibling::*) = 0]")
+            "e[(count(following-sibling::*) = 0)]")
         assert xpath('e:nth-last-child(2n)') == (
-            "e[(count(following-sibling::*) +1) mod 2 = 0]")
+            "e[((count(following-sibling::*) +1) mod 2 = 0)]")
         assert xpath('e:nth-last-child(2n+1)') == (
-            "e[count(following-sibling::*) mod 2 = 0]")
+            "e[(count(following-sibling::*) mod 2 = 0)]")
         assert xpath('e:nth-last-child(2n+2)') == (
-            "e[count(following-sibling::*) >= 1 and "
-              "(count(following-sibling::*) +1) mod 2 = 0]")
+            "e[(count(following-sibling::*) >= 1 and "
+              "(count(following-sibling::*) +1) mod 2 = 0)]")
         assert xpath('e:nth-last-child(3n+1)') == (
-            "e[count(following-sibling::*) mod 3 = 0]")
+            "e[(count(following-sibling::*) mod 3 = 0)]")
         # represents the two last e elements
         assert xpath('e:nth-last-child(-n+2)') == (
-            "e[count(following-sibling::*) <= 1]")
+            "e[(count(following-sibling::*) <= 1)]")
 
         assert xpath('e:nth-of-type(1)') == (
-            "e[count(preceding-sibling::e) = 0]")
+            "e[(count(preceding-sibling::e) = 0)]")
         assert xpath('e:nth-last-of-type(1)') == (
-            "e[count(following-sibling::e) = 0]")
+            "e[(count(following-sibling::e) = 0)]")
         assert xpath('div e:nth-last-of-type(1) .aclass') == (
-            "div/descendant-or-self::*/e[count(following-sibling::e) = 0]"
-               "/descendant-or-self::*/*[@class and contains("
-               "concat(' ', normalize-space(@class), ' '), ' aclass ')]")
+            "div/descendant-or-self::*/e[(count(following-sibling::e) = 0)]"
+               "/descendant-or-self::*/*[(@class and contains("
+               "concat(' ', normalize-space(@class), ' '), ' aclass '))]")
 
         assert xpath('e:first-child') == (
-            "e[count(preceding-sibling::*) = 0]")
+            "e[(count(preceding-sibling::*) = 0)]")
         assert xpath('e:last-child') == (
-            "e[count(following-sibling::*) = 0]")
+            "e[(count(following-sibling::*) = 0)]")
         assert xpath('e:first-of-type') == (
-            "e[count(preceding-sibling::e) = 0]")
+            "e[(count(preceding-sibling::e) = 0)]")
         assert xpath('e:last-of-type') == (
-            "e[count(following-sibling::e) = 0]")
+            "e[(count(following-sibling::e) = 0)]")
         assert xpath('e:only-child') == (
-            "e[count(parent::*/child::*) = 1]")
+            "e[(count(parent::*/child::*) = 1)]")
         assert xpath('e:only-of-type') == (
-            "e[count(parent::*/child::e) = 1]")
+            "e[(count(parent::*/child::e) = 1)]")
         assert xpath('e:empty') == (
-            "e[not(*) and not(string-length())]")
+            "e[(not(*) and not(string-length()))]")
         assert xpath('e:EmPTY') == (
-            "e[not(*) and not(string-length())]")
+            "e[(not(*) and not(string-length()))]")
         assert xpath('e:root') == (
-            "e[not(parent::*)]")
+            "e[(not(parent::*))]")
         assert xpath('e:hover') == (
-            "e[0]")  # never matches
+            "e[(0)]")  # never matches
         assert xpath('e:contains("foo")') == (
-            "e[contains(., 'foo')]")
+            "e[(contains(., 'foo'))]")
         assert xpath('e:ConTains(foo)') == (
-            "e[contains(., 'foo')]")
+            "e[(contains(., 'foo'))]")
         assert xpath('e.warning') == (
-            "e[@class and contains("
-               "concat(' ', normalize-space(@class), ' '), ' warning ')]")
+            "e[(@class and contains("
+               "concat(' ', normalize-space(@class), ' '), ' warning '))]")
         assert xpath('e#myid') == (
-            "e[@id = 'myid']")
+            "e[(@id = 'myid')]")
         assert xpath('e:not(:nth-child(odd))') == (
-            "e[not(count(preceding-sibling::*) mod 2 = 0)]")
+            "e[(not((count(preceding-sibling::*) mod 2 = 0)))]")
         assert xpath('e:nOT(*)') == (
-            "e[0]")  # never matches
+            "e[(0)]")  # never matches
         assert xpath('e f') == (
             "e/descendant-or-self::*/f")
         assert xpath('e > f') == (
             "e/f")
         assert xpath('e + f') == (
-            "e/following-sibling::*[name() = 'f' and (position() = 1)]")
+            "e/following-sibling::*[(name() = 'f') and (position() = 1)]")
         assert xpath('e ~ f') == (
             "e/following-sibling::f")
         assert xpath('e ~ f:nth-child(3)') == (
-            "e/following-sibling::f[count(preceding-sibling::*) = 2]")
+            "e/following-sibling::f[(count(preceding-sibling::*) = 2)]")
         assert xpath('div#container p') == (
-            "div[@id = 'container']/descendant-or-self::*/p")
+            "div[(@id = 'container')]/descendant-or-self::*/p")
 
         # Invalid characters in XPath element names
         assert xpath(r'di\a0 v') == (
-            u("*[name() = 'di v']"))  # di\xa0v
+            u("*[(name() = 'di v')]"))  # di\xa0v
         assert xpath(r'di\[v') == (
-            "*[name() = 'di[v']")
+            "*[(name() = 'di[v')]")
         assert xpath(r'[h\a0 ref]') == (
-            u("*[attribute::*[name() = 'h ref']]"))  # h\xa0ref
+            u("*[(attribute::*[name() = 'h ref'])]"))  # h\xa0ref
         assert xpath(r'[h\]ref]') == (
-            "*[attribute::*[name() = 'h]ref']]")
+            "*[(attribute::*[name() = 'h]ref'])]")
 
         self.assertRaises(ExpressionError, xpath, u(':fİrst-child'))
         self.assertRaises(ExpressionError, xpath, ':first-of-type')
@@ -470,31 +470,31 @@ class TestCssselect(unittest.TestCase):
         assert css[1:] in xpath
         xpath = xpath.encode('ascii', 'xmlcharrefreplace').decode('ASCII')
         assert xpath == (
-            "descendant-or-self::*[@class and contains("
-            "concat(' ', normalize-space(@class), ' '), ' a&#193;b ')]")
+            "descendant-or-self::*[(@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' a&#193;b '))]")
 
     def test_quoting(self):
         css_to_xpath = GenericTranslator().css_to_xpath
         assert css_to_xpath('*[aval="\'"]') == (
-            '''descendant-or-self::*[@aval = "'"]''')
+            '''descendant-or-self::*[(@aval = "'")]''')
         assert css_to_xpath('*[aval="\'\'\'"]') == (
-            """descendant-or-self::*[@aval = "'''"]""")
+            """descendant-or-self::*[(@aval = "'''")]""")
         assert css_to_xpath('*[aval=\'"\']') == (
-            '''descendant-or-self::*[@aval = '"']''')
+            '''descendant-or-self::*[(@aval = '"')]''')
         assert css_to_xpath('*[aval=\'"""\']') == (
-            '''descendant-or-self::*[@aval = '"""']''')
+            '''descendant-or-self::*[(@aval = '"""')]''')
 
     def test_unicode_escapes(self):
         # \22 == '"'  \20 == ' '
         css_to_xpath = GenericTranslator().css_to_xpath
         assert css_to_xpath(r'*[aval="\'\22\'"]') == (
-            '''descendant-or-self::*[@aval = concat("'",'"',"'")]''')
+            '''descendant-or-self::*[(@aval = concat("'",'"',"'"))]''')
         assert css_to_xpath(r'*[aval="\'\22 2\'"]') == (
-            '''descendant-or-self::*[@aval = concat("'",'"2',"'")]''')
+            '''descendant-or-self::*[(@aval = concat("'",'"2',"'"))]''')
         assert css_to_xpath(r'*[aval="\'\20  \'"]') == (
-            '''descendant-or-self::*[@aval = "'  '"]''')
+            '''descendant-or-self::*[(@aval = "'  '")]''')
         assert css_to_xpath('*[aval="\'\\20\r\n \'"]') == (
-            '''descendant-or-self::*[@aval = "'  '"]''')
+            '''descendant-or-self::*[(@aval = "'  '")]''')
 
     def test_xpath_pseudo_elements(self):
         class CustomTranslator(GenericTranslator):
@@ -553,8 +553,9 @@ class TestCssselect(unittest.TestCase):
         def xpath(css):
             return _unicode(CustomTranslator().css_to_xpath(css))
 
-        assert xpath(':five-attributes') == "descendant-or-self::*[count(@*)=5]"
-        assert xpath(':nb-attr(3)') == "descendant-or-self::*[count(@*)=3]"
+        assert xpath(':five-attributes') == (
+            "descendant-or-self::*[(count(@*)=5)]")
+        assert xpath(':nb-attr(3)') == "descendant-or-self::*[(count(@*)=3)]"
         assert xpath('::attr(href)') == "descendant-or-self::*/@href"
         assert xpath('::text-node') == "descendant-or-self::*/text()"
         assert xpath('::attr-href') == "descendant-or-self::*/@href"
