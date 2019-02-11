@@ -92,16 +92,16 @@ class Selector(object):
         return '%s[%r%s]' % (
             self.__class__.__name__, self.parsed_tree, pseudo_element)
 
-    def css(self):
+    def canonical(self):
         """Return a CSS representation for this selector (a string)
         """
         if isinstance(self.pseudo_element, FunctionalPseudoElement):
-            pseudo_element = '::%s' % self.pseudo_element.css()
+            pseudo_element = '::%s' % self.pseudo_element.canonical()
         elif self.pseudo_element:
             pseudo_element = '::%s' % self.pseudo_element
         else:
             pseudo_element = ''
-        res = '%s%s' % (self.parsed_tree.css(), pseudo_element)
+        res = '%s%s' % (self.parsed_tree.canonical(), pseudo_element)
         if len(res) > 1:
             res = res.lstrip('*')
         return res
@@ -130,8 +130,8 @@ class Class(object):
         return '%s[%r.%s]' % (
             self.__class__.__name__, self.selector, self.class_name)
 
-    def css(self):
-        return '%s.%s' % (self.selector.css(), self.class_name)
+    def canonical(self):
+        return '%s.%s' % (self.selector.canonical(), self.class_name)
 
     def specificity(self):
         a, b, c = self.selector.specificity()
@@ -168,7 +168,7 @@ class FunctionalPseudoElement(object):
     def argument_types(self):
         return [token.type for token in self.arguments]
 
-    def css(self):
+    def canonical(self):
         args = ''.join(token.css() for token in self.arguments)
         return '%s(%s)' % (self.name, args)
 
@@ -195,9 +195,9 @@ class Function(object):
     def argument_types(self):
         return [token.type for token in self.arguments]
 
-    def css(self):
+    def canonical(self):
         args = ''.join(token.css() for token in self.arguments)
-        return '%s:%s(%s)' % (self.selector.css(), self.name, args)
+        return '%s:%s(%s)' % (self.selector.canonical(), self.name, args)
 
     def specificity(self):
         a, b, c = self.selector.specificity()
@@ -217,8 +217,8 @@ class Pseudo(object):
         return '%s[%r:%s]' % (
             self.__class__.__name__, self.selector, self.ident)
 
-    def css(self):
-        return '%s:%s' % (self.selector.css(), self.ident)
+    def canonical(self):
+        return '%s:%s' % (self.selector.canonical(), self.ident)
 
     def specificity(self):
         a, b, c = self.selector.specificity()
@@ -238,9 +238,11 @@ class Negation(object):
         return '%s[%r:not(%r)]' % (
             self.__class__.__name__, self.selector, self.subselector)
 
-    def css(self):
-        return '%s:not(%s)' % (self.selector.css(),
-            self.subselector.css())
+    def canonical(self):
+        subsel = self.subselector.canonical()
+        if len(subsel) > 1:
+            subsel = subsel.lstrip('*')
+        return '%s:not(%s)' % (self.selector.canonical(), subsel)
 
     def specificity(self):
         a1, b1, c1 = self.selector.specificity()
@@ -272,7 +274,7 @@ class Attrib(object):
                 self.__class__.__name__, self.selector, attrib,
                 self.operator, self.value.value)
 
-    def css(self):
+    def canonical(self):
         if self.namespace:
             attrib = '%s|%s' % (self.namespace, self.attrib)
         else:
@@ -283,7 +285,7 @@ class Attrib(object):
         else:
             op = '%s%s%s' % (attrib, self.operator, self.value.css())
 
-        return '%s[%s]' % (self.selector.css(), op)
+        return '%s[%s]' % (self.selector.canonical(), op)
 
     def specificity(self):
         a, b, c = self.selector.specificity()
@@ -303,9 +305,9 @@ class Element(object):
         self.element = element
 
     def __repr__(self):
-        return '%s[%s]' % (self.__class__.__name__, self.css())
+        return '%s[%s]' % (self.__class__.__name__, self.canonical())
 
-    def css(self):
+    def canonical(self):
         element = self.element or '*'
         if self.namespace:
             element = '%s|%s' % (self.namespace, element)
@@ -330,8 +332,8 @@ class Hash(object):
         return '%s[%r#%s]' % (
             self.__class__.__name__, self.selector, self.id)
 
-    def css(self):
-        return '%s#%s' % (self.selector.css(), self.id)
+    def canonical(self):
+        return '%s#%s' % (self.selector.canonical(), self.id)
 
     def specificity(self):
         a, b, c = self.selector.specificity()
@@ -354,9 +356,12 @@ class CombinedSelector(object):
         return '%s[%r %s %r]' % (
             self.__class__.__name__, self.selector, comb, self.subselector)
 
-    def css(self):
-        return '%s %s %s' % (self.selector.css(),
-            self.combinator, self.subselector.css())
+    def canonical(self):
+        subsel = self.subselector.canonical()
+        if len(subsel) > 1:
+            subsel = subsel.lstrip('*')
+        return '%s %s %s' % (
+            self.selector.canonical(), self.combinator, subsel)
 
     def specificity(self):
         a1, b1, c1 = self.selector.specificity()
