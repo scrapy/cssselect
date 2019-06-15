@@ -42,7 +42,7 @@ class TestCssselect(unittest.TestCase):
     def test_tokenizer(self):
         tokens = [
             _unicode(item) for item in tokenize(
-                u(r'E\ é > f [a~="y\"x"]:nth(/* fu /]* */-3.7)'))]
+                u(r'E\ é > f [a~="y\"x"]:nth(/* fu /]* */-3.7)<'))]
         assert tokens == [
             u("<IDENT 'E é' at 0>"),
             "<S ' ' at 4>",
@@ -61,7 +61,8 @@ class TestCssselect(unittest.TestCase):
             "<DELIM '(' at 24>",
             "<NUMBER '-3.7' at 37>",
             "<DELIM ')' at 41>",
-            "<EOF at 42>",
+            "<DELIM '<' at 42>",
+            "<EOF at 43>",
         ]
 
     def test_parser(self):
@@ -146,6 +147,18 @@ class TestCssselect(unittest.TestCase):
             'Negation[Element[div]:not(Class[Element[div].foo])]']
         assert parse_many('td ~ th') == [
             'CombinedSelector[Element[td] ~ Element[th]]']
+        # assert parse_many('<') == ['Element[<]']
+        # assert parse_many('<> foo') == [
+        #     'CombinedSelector[Element[<] > Element[foo]]'
+        # ]
+        # assert parse_many('<> foo bar > div') == [
+        #     'CombinedSelector[CombinedSelector[CombinedSelector[Element[<] > Element[foo]] '
+        #     '<followed> Element[bar]] > Element[div]]'
+        # ]
+        # assert parse_many('<> #foo #bar') == [
+        #     'CombinedSelector[CombinedSelector[Element[<] > Hash[Element[*]#foo]] '
+        #     '<followed> Hash[Element[*]#bar]]'
+        # ]
 
     def test_pseudo_elements(self):
         def parse_pseudo(css):
@@ -310,6 +323,12 @@ class TestCssselect(unittest.TestCase):
             "Got pseudo-element ::before inside :not() at 12")
         assert get_error(':not(:not(a))') == (
             "Got nested :not()")
+        assert get_error('<> div <> header') == (
+            'Got immediate child pseudo-element "<>" not at the start of a selector'
+        )
+        assert get_error('< div p') == (
+            'Got incomplete immediate child pseudo-element "<>" (no ">")')
+        assert get_error('> div p') == ("Expected selector, got <DELIM '>' at 0>")
 
     def test_translation(self):
         def xpath(css):
@@ -483,6 +502,8 @@ class TestCssselect(unittest.TestCase):
             '''descendant-or-self::*[@aval = '"']''')
         assert css_to_xpath('*[aval=\'"""\']') == (
             '''descendant-or-self::*[@aval = '"""']''')
+        assert css_to_xpath('<> div[dataimg="<testmessage>"]') == (
+            "child::div[@dataimg = '<testmessage>']")
 
     def test_unicode_escapes(self):
         # \22 == '"'  \20 == ' '
@@ -672,6 +693,11 @@ class TestCssselect(unittest.TestCase):
         assert pcss(':lang("EN")', '*:lang(en-US)', html_only=True) == [
             'second-li', 'li-div']
         assert pcss(':lang("e")', html_only=True) == []
+        assert pcss('<> div') == []
+        assert pcss('<> body') == ['nil']
+        assert pcss('<> body > div') == ['outer-div', 'foobar-div']
+        assert pcss('<> head') == ['nil']
+        assert pcss('<> html') == []
 
         # --- nth-* and nth-last-* -------------------------------------
 
@@ -853,6 +879,7 @@ class TestCssselect(unittest.TestCase):
         assert count('div[class|=dialog]') == 50 # ? Seems right
         assert count('div[class!=madeup]') == 243 # ? Seems right
         assert count('div[class~=dialog]') == 51 # ? Seems right
+        assert count('<> div') == 1
 
 XMLLANG_IDS = '''
 <test>
