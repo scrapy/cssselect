@@ -344,7 +344,6 @@ class GenericTranslator(object):
             element = '*'
             safe = True
         if element == '<':
-            element = '<'
             safe = True
         else:
             safe = is_safe_name(element)
