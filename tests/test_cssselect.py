@@ -147,18 +147,17 @@ class TestCssselect(unittest.TestCase):
             'Negation[Element[div]:not(Class[Element[div].foo])]']
         assert parse_many('td ~ th') == [
             'CombinedSelector[Element[td] ~ Element[th]]']
-        # assert parse_many('<') == ['Element[<]']
-        # assert parse_many('<> foo') == [
-        #     'CombinedSelector[Element[<] > Element[foo]]'
-        # ]
-        # assert parse_many('<> foo bar > div') == [
-        #     'CombinedSelector[CombinedSelector[CombinedSelector[Element[<] > Element[foo]] '
-        #     '<followed> Element[bar]] > Element[div]]'
-        # ]
-        # assert parse_many('<> #foo #bar') == [
-        #     'CombinedSelector[CombinedSelector[Element[<] > Hash[Element[*]#foo]] '
-        #     '<followed> Hash[Element[*]#bar]]'
-        # ]
+        assert parse_many('<> foo') == [
+            'CombinedSelector[Element[<] > Element[foo]]'
+        ]
+        assert parse_many('<> foo bar > div') == [
+            'CombinedSelector[CombinedSelector[CombinedSelector[Element[<] > Element[foo]] '
+            '<followed> Element[bar]] > Element[div]]'
+        ]
+        assert parse_many('<> #foo #bar') == [
+            'CombinedSelector[CombinedSelector[Element[<] > Hash[Element[*]#foo]] '
+            '<followed> Hash[Element[*]#bar]]'
+        ]
 
     def test_pseudo_elements(self):
         def parse_pseudo(css):
