@@ -187,6 +187,14 @@ class GenericTranslator(object):
             The equivalent XPath 1.0 expression as an Unicode string.
 
         """
+        # no prefix if css immediate children (example: css "^ > div" to xpath "./div")
+        child_re = r'^[ \t\r\n\f]*\^[ \t\r\n\f]*>'
+        if re.match(child_re, css):
+            prefix = ''
+            # prefix = 'child::'
+            # css = re.sub(child_re, '', css)
+            # print('*' * 50)
+            # print(css)
         return ' | '.join(self.selector_to_xpath(selector, prefix,
                                                  translate_pseudo_elements=True)
                           for selector in parse(css))
@@ -331,6 +339,9 @@ class GenericTranslator(object):
         element = selector.element
         if not element:
             element = '*'
+            safe = True
+        if element == '^':
+            element = '.'
             safe = True
         else:
             safe = is_safe_name(element)

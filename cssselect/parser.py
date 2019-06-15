@@ -400,8 +400,8 @@ def parse_simple_selector(stream, inside_negation=False):
     stream.skip_whitespace()
     selector_start = len(stream.used)
     peek = stream.peek()
-    if peek.type == 'IDENT' or peek == ('DELIM', '*'):
-        if peek.type == 'IDENT':
+    if peek.type == 'IDENT' or peek == ('DELIM', '*') or peek == ('DELIM', '^'):
+        if peek.type == 'IDENT' or peek == ('DELIM', '^'):
             namespace = stream.next().value
         else:
             stream.next()
