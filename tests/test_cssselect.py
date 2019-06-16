@@ -42,7 +42,7 @@ class TestCssselect(unittest.TestCase):
     def test_tokenizer(self):
         tokens = [
             _unicode(item) for item in tokenize(
-                u(r'E\ é > f [a~="y\"x"]:nth(/* fu /]* */-3.7)<'))]
+                u(r'E\ é > f [a~="y\"x"]:nth(/* fu /]* */-3.7)'))]
         assert tokens == [
             u("<IDENT 'E é' at 0>"),
             "<S ' ' at 4>",
@@ -61,8 +61,7 @@ class TestCssselect(unittest.TestCase):
             "<DELIM '(' at 24>",
             "<NUMBER '-3.7' at 37>",
             "<DELIM ')' at 41>",
-            "<DELIM '<' at 42>",
-            "<EOF at 43>",
+            "<EOF at 42>",
         ]
 
     def test_parser(self):
@@ -162,7 +161,6 @@ class TestCssselect(unittest.TestCase):
             'Hash[Element[*]#foo]] <followed> Hash[Element[*]#bar]]'
         ]
 
-    # TODO ADD TESTS
     def test_pseudo_elements(self):
         def parse_pseudo(css):
             result = []
@@ -332,6 +330,9 @@ class TestCssselect(unittest.TestCase):
         assert get_error(':not(:not(a))') == (
             "Got nested :not()")
         assert get_error(':scope > div :scope header') == (
+            'Got immediate child pseudo-element ":scope" not at the start of a selector'
+        )
+        assert get_error('div :scope header') == (
             'Got immediate child pseudo-element ":scope" not at the start of a selector'
         )
         assert get_error('> div p') == ("Expected selector, got <DELIM '>' at 0>")
