@@ -220,18 +220,7 @@ class GenericTranslator(object):
         assert isinstance(xpath, self.xpathexpr_cls)  # help debug a missing 'return'
         if translate_pseudo_elements and selector.pseudo_element:
             xpath = self.xpath_pseudo_element(xpath, selector.pseudo_element)
-
-        unicode_xpath = _unicode(xpath)
-        # CSS immediate children (CSS "<> div" to XPath "child::div" or "./div")
-        # Works only at the start of a selector
-        # Needed to get immediate children of a processed selector in Scrapy
-        # product = response.css('.product')
-        # name = product.css('<> div')
-        child_re = r'^[ \t\r\n\f]*\<[ \t\r\n\f]*\/'
-        if re.match(child_re, unicode_xpath):
-            prefix = 'child::'
-            unicode_xpath = re.sub(child_re, '', unicode_xpath)
-        return (prefix or '') + unicode_xpath
+        return (prefix or '') + _unicode(xpath)
 
     def xpath_pseudo_element(self, xpath, pseudo_element):
         """Translate a pseudo-element.
@@ -342,8 +331,6 @@ class GenericTranslator(object):
         element = selector.element
         if not element:
             element = '*'
-            safe = True
-        if element == '<':
             safe = True
         else:
             safe = is_safe_name(element)
@@ -553,6 +540,14 @@ class GenericTranslator(object):
 
     def xpath_root_pseudo(self, xpath):
         return xpath.add_condition("not(parent::*)")
+
+    # CSS immediate children (CSS ":scope > div" to XPath "child::div" or "./div")
+    # Works only at the start of a selector
+    # Needed to get immediate children of a processed selector in Scrapy
+    # for product in response.css('.product'):
+    #     description = product.css(':scope > div::text').get()
+    def xpath_scope_pseudo(self, xpath):
+        return xpath.add_condition("1")
 
     def xpath_first_child_pseudo(self, xpath):
         return xpath.add_condition('count(preceding-sibling::*) = 0')

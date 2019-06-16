@@ -400,22 +400,9 @@ def parse_simple_selector(stream, inside_negation=False):
     stream.skip_whitespace()
     selector_start = len(stream.used)
     peek = stream.peek()
-    if peek.type == 'IDENT' or peek == ('DELIM', '*') or peek == ('DELIM', '<'):
+    if peek.type == 'IDENT' or peek == ('DELIM', '*'):
         if peek.type == 'IDENT':
             namespace = stream.next().value
-        elif peek == ('DELIM', '<'):
-            if not (len(stream.used) == 0 or
-                    (len(stream.used) == 1 and stream.used[0].type == 'S')):
-                raise SelectorSyntaxError(
-                    'Got immediate child pseudo-element "<>" not at the start of a selector'
-                )
-            namespace = stream.next().value
-            stream.skip_whitespace()
-            peek = stream.peek()
-            if not peek == ('DELIM', '>'):
-                raise SelectorSyntaxError(
-                    'Got incomplete immediate child pseudo-element "<>" (no ">")'
-                )
         else:
             stream.next()
             namespace = None
@@ -465,6 +452,13 @@ def parse_simple_selector(stream, inside_negation=False):
                 continue
             if stream.peek() != ('DELIM', '('):
                 result = Pseudo(result, ident)
+                if result.ident == 'scope':
+                    if not (len(stream.used) == 2 or
+                            (len(stream.used) == 3
+                             and stream.used[0].type == 'S')):
+                        raise SelectorSyntaxError(
+                            'Got immediate child pseudo-element ":scope" '
+                            'not at the start of a selector')
                 continue
             stream.next()
             stream.skip_whitespace()
