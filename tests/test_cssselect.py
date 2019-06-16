@@ -150,6 +150,9 @@ class TestCssselect(unittest.TestCase):
         assert parse_many(':scope > foo') == [
             'CombinedSelector[Pseudo[Element[*]:scope] > Element[foo]]'
         ]
+        assert parse_many(' :scope > foo') == [
+            'CombinedSelector[Pseudo[Element[*]:scope] > Element[foo]]'
+        ]
         assert parse_many(':scope > foo bar > div') == [
             'CombinedSelector[CombinedSelector[CombinedSelector[Pseudo[Element[*]:scope] > '
             'Element[foo]] <followed> Element[bar]] > Element[div]]'
@@ -205,10 +208,14 @@ class TestCssselect(unittest.TestCase):
                 'Pseudo[Attrib[Class[Hash[Element[a]#b].c][href]]:empty]]',
             'selection')
 
-        parse_pseudo('foo:before, bar, baz:after') == [
-            ('Element[foo]', 'before'),
-            ('Element[bar]', None),
-            ('Element[baz]', 'after')]
+        assert parse_pseudo(':scope > div, foo bar') == [
+            ('CombinedSelector[Pseudo[Element[*]:scope] > Element[div]]', None),
+            ('CombinedSelector[Element[foo] <followed> Element[bar]]', None)
+        ]
+        assert parse_pseudo('foo:before, bar, baz:after') == [
+            ('Element[foo]', 'before'), ('Element[bar]', None),
+            ('Element[baz]', 'after')
+        ]
 
         # Special cases for CSS 2.1 pseudo-elements are ignored by default
         for pseudo in ('after', 'before', 'first-line', 'first-letter'):
