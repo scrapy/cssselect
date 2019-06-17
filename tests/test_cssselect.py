@@ -178,6 +178,12 @@ class TestCssselect(unittest.TestCase):
             assert len(result) == 1
             return result[0]
 
+        def test_pseudo_repr(css):
+            result = parse(css)
+            assert len(result) == 1
+            selector = result[0]
+            return selector.parsed_tree.__repr__()
+
         assert parse_one('foo') == ('Element[foo]', None)
         assert parse_one('*') == ('Element[*]', None)
         assert parse_one(':empty') == ('Pseudo[Element[*]:empty]', None)
@@ -205,7 +211,6 @@ class TestCssselect(unittest.TestCase):
             'CombinedSelector[Hash[Element[lorem]#ipsum] ~ '
                 'Pseudo[Attrib[Class[Hash[Element[a]#b].c][href]]:empty]]',
             'selection')
-
         assert parse_pseudo(':scope > div, foo bar') == [
             ('CombinedSelector[Pseudo[Element[*]:scope] > Element[div]]', None),
             ('CombinedSelector[Element[foo] <followed> Element[bar]]', None)
@@ -229,6 +234,11 @@ class TestCssselect(unittest.TestCase):
         assert tr.selector_to_xpath(selector, prefix='') == "e"
         self.assertRaises(ExpressionError, tr.selector_to_xpath, selector,
                           translate_pseudo_elements=True)
+
+        # Special test for the unicode symbols and ':scope' element if check
+        # Errors if use repr() instead of __repr__()
+        assert test_pseudo_repr(u':fİrst-child') == u'Pseudo[Element[*]:fİrst-child]'
+        assert test_pseudo_repr(':scope') == 'Pseudo[Element[*]:scope]'
 
     def test_specificity(self):
         def specificity(css):

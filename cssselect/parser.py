@@ -452,8 +452,7 @@ def parse_simple_selector(stream, inside_negation=False):
                 continue
             if stream.peek() != ('DELIM', '('):
                 result = Pseudo(result, ident)
-                if result.ident == 'scope' and repr(
-                        result) == 'Pseudo[Element[*]:scope]':
+                if result.__repr__() == 'Pseudo[Element[*]:scope]':
                     if not (len(stream.used) == 2 or
                             (len(stream.used) == 3
                              and stream.used[0].type == 'S')):
