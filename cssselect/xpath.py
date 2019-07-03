@@ -541,6 +541,14 @@ class GenericTranslator(object):
     def xpath_root_pseudo(self, xpath):
         return xpath.add_condition("not(parent::*)")
 
+    # CSS immediate children (CSS ":scope > div" to XPath "child::div" or "./div")
+    # Works only at the start of a selector
+    # Needed to get immediate children of a processed selector in Scrapy
+    # for product in response.css('.product'):
+    #     description = product.css(':scope > div::text').get()
+    def xpath_scope_pseudo(self, xpath):
+        return xpath.add_condition("1")
+
     def xpath_first_child_pseudo(self, xpath):
         return xpath.add_condition('count(preceding-sibling::*) = 0')
 
