@@ -430,6 +430,9 @@ def parse_simple_selector(stream, inside_negation=False):
         elif peek == ('DELIM', '.'):
             stream.next()
             result = Class(result, stream.next_ident())
+        elif peek == ('DELIM', '|'):
+            stream.next()
+            result = Element(None, stream.next_ident())
         elif peek == ('DELIM', '['):
             stream.next()
             result = parse_attrib(result, stream)
