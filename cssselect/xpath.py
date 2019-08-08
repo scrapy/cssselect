@@ -308,10 +308,12 @@ class GenericTranslator(object):
             attrib = '@' + name
         else:
             attrib = 'attribute::*[name() = %s]' % self.xpath_literal(name)
-        if self.lower_case_attribute_values:
-            value = selector.value.lower()
+        if selector.value is None:
+            value = None
+        elif self.lower_case_attribute_values:
+            value = selector.value.value.lower()
         else:
-            value = selector.value
+            value = selector.value.value
         return method(self.xpath(selector.selector), attrib, value)
 
     def xpath_class(self, class_selector):
