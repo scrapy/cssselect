@@ -5,8 +5,7 @@ python:
 - '3.5'
 - '3.6'
 install:
-- pip install lxml -e .
-- pip install -U codecov pytest-cov
+- pip install -r tests/requirements.txt -e .
 script:
 - py.test --cov-report term --cov=cssselect
 after_success:
