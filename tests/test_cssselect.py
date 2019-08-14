@@ -81,6 +81,7 @@ class TestCssselect(unittest.TestCase):
         assert parse_many('*') == ['Element[*]']
         assert parse_many('*|*') == ['Element[*]']
         assert parse_many('*|foo') == ['Element[foo]']
+        assert parse_many('|foo') == ['Element[foo]']
         assert parse_many('foo|*') == ['Element[foo|*]']
         assert parse_many('foo|bar') == ['Element[foo|bar]']
         # This will never match, but it is valid:
@@ -146,6 +147,20 @@ class TestCssselect(unittest.TestCase):
             'Negation[Element[div]:not(Class[Element[div].foo])]']
         assert parse_many('td ~ th') == [
             'CombinedSelector[Element[td] ~ Element[th]]']
+        assert parse_many(':scope > foo') == [
+            'CombinedSelector[Pseudo[Element[*]:scope] > Element[foo]]'
+        ]
+        assert parse_many(' :scope > foo') == [
+            'CombinedSelector[Pseudo[Element[*]:scope] > Element[foo]]'
+        ]
+        assert parse_many(':scope > foo bar > div') == [
+            'CombinedSelector[CombinedSelector[CombinedSelector[Pseudo[Element[*]:scope] > '
+            'Element[foo]] <followed> Element[bar]] > Element[div]]'
+        ]
+        assert parse_many(':scope > #foo #bar') == [
+            'CombinedSelector[CombinedSelector[Pseudo[Element[*]:scope] > '
+            'Hash[Element[*]#foo]] <followed> Hash[Element[*]#bar]]'
+        ]
 
     def test_pseudo_elements(self):
         def parse_pseudo(css):
@@ -164,9 +179,16 @@ class TestCssselect(unittest.TestCase):
             assert len(result) == 1
             return result[0]
 
+        def test_pseudo_repr(css):
+            result = parse(css)
+            assert len(result) == 1
+            selector = result[0]
+            return selector.parsed_tree.__repr__()
+
         assert parse_one('foo') == ('Element[foo]', None)
         assert parse_one('*') == ('Element[*]', None)
         assert parse_one(':empty') == ('Pseudo[Element[*]:empty]', None)
+        assert parse_one(':scope') == ('Pseudo[Element[*]:scope]', None)
 
         # Special cases for CSS 2.1 pseudo-elements
         assert parse_one(':BEfore') == ('Element[*]', 'before')
@@ -190,11 +212,14 @@ class TestCssselect(unittest.TestCase):
             'CombinedSelector[Hash[Element[lorem]#ipsum] ~ '
                 'Pseudo[Attrib[Class[Hash[Element[a]#b].c][href]]:empty]]',
             'selection')
-
-        parse_pseudo('foo:before, bar, baz:after') == [
-            ('Element[foo]', 'before'),
-            ('Element[bar]', None),
-            ('Element[baz]', 'after')]
+        assert parse_pseudo(':scope > div, foo bar') == [
+            ('CombinedSelector[Pseudo[Element[*]:scope] > Element[div]]', None),
+            ('CombinedSelector[Element[foo] <followed> Element[bar]]', None)
+        ]
+        assert parse_pseudo('foo:before, bar, baz:after') == [
+            ('Element[foo]', 'before'), ('Element[bar]', None),
+            ('Element[baz]', 'after')
+        ]
 
         # Special cases for CSS 2.1 pseudo-elements are ignored by default
         for pseudo in ('after', 'before', 'first-line', 'first-letter'):
@@ -210,6 +235,11 @@ class TestCssselect(unittest.TestCase):
         assert tr.selector_to_xpath(selector, prefix='') == "e"
         self.assertRaises(ExpressionError, tr.selector_to_xpath, selector,
                           translate_pseudo_elements=True)
+
+        # Special test for the unicode symbols and ':scope' element if check
+        # Errors if use repr() instead of __repr__()
+        assert test_pseudo_repr(u':fİrst-child') == u'Pseudo[Element[*]:fİrst-child]'
+        assert test_pseudo_repr(':scope') == 'Pseudo[Element[*]:scope]'
 
     def test_specificity(self):
         def specificity(css):
@@ -243,6 +273,39 @@ class TestCssselect(unittest.TestCase):
 
         assert specificity('#lorem + foo#ipsum:first-child > bar:first-line'
             ) == (2, 1, 3)
+
+    def test_css_export(self):
+        def css2css(css, res=None):
+            selectors = parse(css)
+            assert len(selectors) == 1
+            assert selectors[0].canonical() == (res or css)
+
+        css2css('*')
+        css2css(' foo', 'foo')
+        css2css('Foo', 'Foo')
+        css2css(':empty ', ':empty')
+        css2css(':before', '::before')
+        css2css(':beFOre', '::before')
+        css2css('*:before', '::before')
+        css2css(':nth-child(2)')
+        css2css('.bar')
+        css2css('[baz]')
+        css2css('[baz="4"]', "[baz='4']")
+        css2css('[baz^="4"]', "[baz^='4']")
+        css2css("[ns|attr='4']")
+        css2css('#lipsum')
+        css2css(':not(*)')
+        css2css(':not(foo)')
+        css2css(':not(*.foo)', ':not(.foo)')
+        css2css(':not(*[foo])', ':not([foo])')
+        css2css(':not(:empty)')
+        css2css(':not(#foo)')
+        css2css('foo:empty')
+        css2css('foo::before')
+        css2css('foo:empty::before')
+        css2css('::name(arg + "val" - 3)', "::name(arg+'val'-3)")
+        css2css('#lorem + foo#ipsum:first-child > bar::first-line')
+        css2css('foo > *')
 
     def test_parse_errors(self):
         def get_error(css):
@@ -310,6 +373,13 @@ class TestCssselect(unittest.TestCase):
             "Got pseudo-element ::before inside :not() at 12")
         assert get_error(':not(:not(a))') == (
             "Got nested :not()")
+        assert get_error(':scope > div :scope header') == (
+            'Got immediate child pseudo-element ":scope" not at the start of a selector'
+        )
+        assert get_error('div :scope header') == (
+            'Got immediate child pseudo-element ":scope" not at the start of a selector'
+        )
+        assert get_error('> div p') == ("Expected selector, got <DELIM '>' at 0>")
 
     def test_translation(self):
         def xpath(css):
@@ -483,6 +553,8 @@ class TestCssselect(unittest.TestCase):
             '''descendant-or-self::*[(@aval = '"')]''')
         assert css_to_xpath('*[aval=\'"""\']') == (
             '''descendant-or-self::*[(@aval = '"""')]''')
+        assert css_to_xpath(':scope > div[dataimg="<testmessage>"]') == (
+            "descendant-or-self::*[1]/div[(@dataimg = '<testmessage>')]")
 
     def test_unicode_escapes(self):
         # \22 == '"'  \20 == ' '
@@ -566,6 +638,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath('::attr-href') == "descendant-or-self::*/@href"
         assert xpath('p img::attr(src)') == (
             "descendant-or-self::p/descendant-or-self::*/img/@src")
+        assert xpath(':scope') == "descendant-or-self::*[1]"
         assert xpath(':first-or-second[href]') == (
             "descendant-or-self::*[(@id = 'first' or @id = 'second') "
             "and (@href)]")
@@ -697,6 +770,11 @@ class TestCssselect(unittest.TestCase):
         assert pcss(':lang("EN")', '*:lang(en-US)', html_only=True) == [
             'second-li', 'li-div']
         assert pcss(':lang("e")', html_only=True) == []
+        assert pcss(':scope > div') == []
+        assert pcss(':scope body') == ['nil']
+        assert pcss(':scope body > div') == ['outer-div', 'foobar-div']
+        assert pcss(':scope head') == ['nil']
+        assert pcss(':scope html') == []
 
         # --- nth-* and nth-last-* -------------------------------------
 
@@ -878,6 +956,9 @@ class TestCssselect(unittest.TestCase):
         assert count('div[class|=dialog]') == 50 # ? Seems right
         assert count('div[class!=madeup]') == 243 # ? Seems right
         assert count('div[class~=dialog]') == 51 # ? Seems right
+        assert count(':scope > div') == 1
+        assert count(':scope > div > div[class=dialog]') == 1
+        assert count(':scope > div div') == 242
 
 OPERATOR_PRECEDENCE_IDS = '''
 <html>
