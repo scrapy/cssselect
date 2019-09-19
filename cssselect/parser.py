@@ -517,8 +517,13 @@ def parse_simple_selector(stream, inside_negation=False):
                 result = Pseudo(result, ident)
                 if result.__repr__() == 'Pseudo[Element[*]:scope]':
                     if not (len(stream.used) == 2 or
-                            (len(stream.used) == 3
-                             and stream.used[0].type == 'S')):
+                            (len(stream.used) == 3 and
+                             stream.used[0].type == 'S') or
+                            (len(stream.used) >= 3 and
+                             stream.used[-3].is_delim(',')) or
+                            (len(stream.used) >= 4 and
+                             stream.used[-3].type == 'S' and
+                             stream.used[-4].is_delim(','))):
                         raise SelectorSyntaxError(
                             'Got immediate child pseudo-element ":scope" '
                             'not at the start of a selector')

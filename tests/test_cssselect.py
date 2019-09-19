@@ -214,7 +214,15 @@ class TestCssselect(unittest.TestCase):
             'selection')
         assert parse_pseudo(':scope > div, foo bar') == [
             ('CombinedSelector[Pseudo[Element[*]:scope] > Element[div]]', None),
-            ('CombinedSelector[Element[foo] <followed> Element[bar]]', None)
+            ('CombinedSelector[Element[foo] <followed> Element[bar]]', None),
+        ]
+        assert parse_pseudo('foo bar, :scope > div') == [
+            ('CombinedSelector[Element[foo] <followed> Element[bar]]', None),
+            ('CombinedSelector[Pseudo[Element[*]:scope] > Element[div]]', None),
+        ]
+        assert parse_pseudo('foo bar,:scope > div') == [
+            ('CombinedSelector[Element[foo] <followed> Element[bar]]', None),
+            ('CombinedSelector[Pseudo[Element[*]:scope] > Element[div]]', None),
         ]
         assert parse_pseudo('foo:before, bar, baz:after') == [
             ('Element[foo]', 'before'), ('Element[bar]', None),
