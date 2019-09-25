@@ -145,6 +145,8 @@ class TestCssselect(unittest.TestCase):
             'Hash[Element[div]#foobar]']
         assert parse_many('div:not(div.foo)') == [
             'Negation[Element[div]:not(Class[Element[div].foo])]']
+        assert parse_many('div:has(div.foo)') == [
+            'Relation[Element[div]:has(Class[Element[div].foo])]']
         assert parse_many('td ~ th') == [
             'CombinedSelector[Element[td] ~ Element[th]]']
         assert parse_many(':scope > foo') == [
@@ -266,6 +268,13 @@ class TestCssselect(unittest.TestCase):
         assert specificity(':not(:empty)') == (0, 1, 0)
         assert specificity(':not(#foo)') == (1, 0, 0)
 
+        assert specificity(':has(*)') == (0, 0, 0)
+        assert specificity(':has(foo)') == (0, 0, 1)
+        assert specificity(':has(.foo)') == (0, 1, 0)
+        assert specificity(':has([foo])') == (0, 1, 0)
+        assert specificity(':has(:empty)') == (0, 1, 0)
+        assert specificity(':has(#foo)') == (1, 0, 0)
+
         assert specificity('foo:empty') == (0, 1, 1)
         assert specificity('foo:before') == (0, 0, 2)
         assert specificity('foo::before') == (0, 0, 2)
@@ -300,6 +309,12 @@ class TestCssselect(unittest.TestCase):
         css2css(':not(*[foo])', ':not([foo])')
         css2css(':not(:empty)')
         css2css(':not(#foo)')
+        css2css(':has(*)')
+        css2css(':has(foo)')
+        css2css(':has(*.foo)', ':has(.foo)')
+        css2css(':has(*[foo])', ':has([foo])')
+        css2css(':has(:empty)')
+        css2css(':has(#foo)')
         css2css('foo:empty')
         css2css('foo::before')
         css2css('foo:empty::before')
@@ -371,8 +386,8 @@ class TestCssselect(unittest.TestCase):
             "Got pseudo-element ::before not at the end of a selector")
         assert get_error(':not(:before)') == (
             "Got pseudo-element ::before inside :not() at 12")
-        assert get_error(':not(:not(a))') == (
-            "Got nested :not()")
+        assert get_error(':has(:before)') == (
+            "Got pseudo-element ::before inside :has() at 12")
         assert get_error(':scope > div :scope header') == (
             'Got immediate child pseudo-element ":scope" not at the start of a selector'
         )
@@ -380,6 +395,22 @@ class TestCssselect(unittest.TestCase):
             'Got immediate child pseudo-element ":scope" not at the start of a selector'
         )
         assert get_error('> div p') == ("Expected selector, got <DELIM '>' at 0>")
+
+        # Unsupported nesting
+        assert get_error(':has(:has(a))') == (
+            'Got :has() within :not() or another :has()')
+        assert get_error(':has(:not(a))') == (
+            'Got :not() within :has() or another :not()')
+        assert get_error(':not(:has(a))') == (
+            'Got :has() within :not() or another :has()')
+        assert get_error(':not(:not(a))') == (
+            'Got :not() within :has() or another :not()')
+
+        # Unsupported complex selectors
+        assert get_error(':has(a, b)') == (
+            "Expected ')', got <DELIM ',' at 6>")
+        assert get_error(':not(a, b)') == (
+            "Expected ')', got <DELIM ',' at 6>")
 
     def test_translation(self):
         def xpath(css):
@@ -490,6 +521,8 @@ class TestCssselect(unittest.TestCase):
             "e[@id = 'myid']")
         assert xpath('e:not(:nth-child(odd))') == (
             "e[not(count(preceding-sibling::*) mod 2 = 0)]")
+        assert xpath('e:has(:nth-child(odd))') == (
+            "e[count(preceding-sibling::*) mod 2 = 0]")
         assert xpath('e:nOT(*)') == (
             "e[0]")  # never matches
         assert xpath('e f') == (
@@ -839,6 +872,9 @@ class TestCssselect(unittest.TestCase):
         assert pcss('ol :Not(li[class])') == [
             'first-li', 'second-li', 'li-div',
             'fifth-li', 'sixth-li', 'seventh-li']
+        assert pcss('link:has(*)') == []
+        assert pcss('link:has([href])') == ['link-href']
+        assert pcss('ol:has(div)') == ['first-ol']
         assert pcss('ol.a.b.c > li.c:nth-child(3)') == ['third-li']
 
         # Invalid characters in XPath element names, should not crash
@@ -934,6 +970,7 @@ class TestCssselect(unittest.TestCase):
         assert count(':scope > div') == 1
         assert count(':scope > div > div[class=dialog]') == 1
         assert count(':scope > div div') == 242
+
 
 XMLLANG_IDS = '''
 <test>

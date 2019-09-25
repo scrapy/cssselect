@@ -250,6 +250,30 @@ class Negation(object):
         return a1 + a2, b1 + b2, c1 + c2
 
 
+class Relation(object):
+    """
+    Represents selector:has(subselector)
+    """
+    def __init__(self, selector, subselector):
+        self.selector = selector
+        self.subselector = subselector
+
+    def __repr__(self):
+        return '%s[%r:has(%r)]' % (
+            self.__class__.__name__, self.selector, self.subselector)
+
+    def canonical(self):
+        subsel = self.subselector.canonical()
+        if len(subsel) > 1:
+            subsel = subsel.lstrip('*')
+        return '%s:has(%s)' % (self.selector.canonical(), subsel)
+
+    def specificity(self):
+        a1, b1, c1 = self.selector.specificity()
+        a2, b2, c2 = self.subselector.specificity()
+        return a1 + a2, b1 + b2, c1 + c2
+
+
 class Attrib(object):
     """
     Represents selector[namespace|attrib operator value]
@@ -456,7 +480,7 @@ def parse_selector(stream):
     return result, pseudo_element
 
 
-def parse_simple_selector(stream, inside_negation=False):
+def parse_simple_selector(stream, nestable=True):
     stream.skip_whitespace()
     selector_start = len(stream.used)
     peek = stream.peek()
@@ -479,7 +503,7 @@ def parse_simple_selector(stream, inside_negation=False):
     while 1:
         peek = stream.peek()
         if peek.type in ('S', 'EOF') or peek.is_delim(',', '+', '>', '~') or (
-                inside_negation and peek == ('DELIM', ')')):
+                not nestable and peek == ('DELIM', ')')):
             break
         if pseudo_element:
             raise SelectorSyntaxError(
@@ -507,7 +531,8 @@ def parse_simple_selector(stream, inside_negation=False):
                         pseudo_element, parse_arguments(stream))
                 continue
             ident = stream.next_ident()
-            if ident.lower() in ('first-line', 'first-letter',
+            lowercase_indent = ident.lower()
+            if lowercase_indent in ('first-line', 'first-letter',
                                  'before', 'after'):
                 # Special case: CSS 2.1 pseudo-elements can have a single ':'
                 # Any new pseudo-element must have two.
@@ -523,13 +548,16 @@ def parse_simple_selector(stream, inside_negation=False):
                             'Got immediate child pseudo-element ":scope" '
                             'not at the start of a selector')
                 continue
+
             stream.next()
             stream.skip_whitespace()
-            if ident.lower() == 'not':
-                if inside_negation:
-                    raise SelectorSyntaxError('Got nested :not()')
+
+            if lowercase_indent == 'not':
+                if not nestable:
+                    raise SelectorSyntaxError(
+                        'Got :not() within :has() or another :not()')
                 argument, argument_pseudo_element = parse_simple_selector(
-                    stream, inside_negation=True)
+                    stream, nestable=False)
                 next = stream.next()
                 if argument_pseudo_element:
                     raise SelectorSyntaxError(
@@ -538,8 +566,25 @@ def parse_simple_selector(stream, inside_negation=False):
                 if next != ('DELIM', ')'):
                     raise SelectorSyntaxError("Expected ')', got %s" % (next,))
                 result = Negation(result, argument)
-            else:
-                result = Function(result, ident, parse_arguments(stream))
+                continue
+
+            if lowercase_indent == 'has':
+                if not nestable:
+                    raise SelectorSyntaxError(
+                        'Got :has() within :not() or another :has()')
+                argument, argument_pseudo_element = parse_simple_selector(
+                    stream, nestable=False)
+                next = stream.next()
+                if argument_pseudo_element:
+                    raise SelectorSyntaxError(
+                        'Got pseudo-element ::%s inside :has() at %s'
+                        % (argument_pseudo_element, next.pos))
+                if next != ('DELIM', ')'):
+                    raise SelectorSyntaxError("Expected ')', got %s" % (next,))
+                result = Relation(result, argument)
+                continue
+
+            result = Function(result, ident, parse_arguments(stream))
         else:
             raise SelectorSyntaxError(
                 "Expected selector, got %s" % (peek,))
