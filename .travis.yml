@@ -4,6 +4,7 @@ python:
 - '3.4'
 - '3.5'
 - '3.6'
+- '3.7'
 install:
 - pip install -r tests/requirements.txt -e .
 script:
@@ -20,4 +21,4 @@ deploy:
   on:
     tags: true
     repo: scrapy/cssselect
-    condition: "$TRAVIS_PYTHON_VERSION == '3.6'"
+    condition: "$TRAVIS_PYTHON_VERSION == '3.7'"
