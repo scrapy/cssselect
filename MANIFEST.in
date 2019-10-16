@@ -1,3 +1,4 @@
 include AUTHORS CHANGES LICENSE README.rst tox.ini .coveragerc
 recursive-include docs *
+recursive-include tests *
 prune docs/_build
