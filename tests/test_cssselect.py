@@ -428,8 +428,8 @@ class TestCssselect(unittest.TestCase):
             "e[count(preceding-sibling::*) <= 0]")
 
         assert xpath('e:nth-child(3n+2)') == (
-            "e[count(preceding-sibling::*) >= 1 and "
-              "(count(preceding-sibling::*) +2) mod 3 = 0]")
+            "e[(count(preceding-sibling::*) >= 1) and "
+              "((count(preceding-sibling::*) +2) mod 3 = 0)]")
         assert xpath('e:nth-child(3n-2)') == (
             "e[count(preceding-sibling::*) mod 3 = 0]")
         assert xpath('e:nth-child(-n+6)') == (
@@ -442,8 +442,8 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e:nth-last-child(2n+1)') == (
             "e[count(following-sibling::*) mod 2 = 0]")
         assert xpath('e:nth-last-child(2n+2)') == (
-            "e[count(following-sibling::*) >= 1 and "
-              "(count(following-sibling::*) +1) mod 2 = 0]")
+            "e[(count(following-sibling::*) >= 1) and "
+              "((count(following-sibling::*) +1) mod 2 = 0)]")
         assert xpath('e:nth-last-child(3n+1)') == (
             "e[count(following-sibling::*) mod 3 = 0]")
         # represents the two last e elements
@@ -497,7 +497,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e > f') == (
             "e/f")
         assert xpath('e + f') == (
-            "e/following-sibling::*[name() = 'f' and (position() = 1)]")
+            "e/following-sibling::*[(name() = 'f') and (position() = 1)]")
         assert xpath('e ~ f') == (
             "e/following-sibling::f")
         assert xpath('e ~ f:nth-child(3)') == (
@@ -642,7 +642,7 @@ class TestCssselect(unittest.TestCase):
             "descendant-or-self::*[(@id = 'first' or @id = 'second') "
             "and (@href)]")
 
-        assert str(XPathExpr('', '', condition='@href')) == "[(@href)]"
+        assert str(XPathExpr('', '', condition='@href')) == "[@href]"
 
         document = etree.fromstring(OPERATOR_PRECEDENCE_IDS)
         sort_key = dict(
