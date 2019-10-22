@@ -165,17 +165,9 @@ class FunctionalPseudoElement(object):
             self.__class__.__name__, self.name,
             [token.value for token in self.arguments])
 
-    def argument_types(self):
-        return [token.type for token in self.arguments]
-
     def canonical(self):
         args = ''.join(token.css() for token in self.arguments)
         return '%s(%s)' % (self.name, args)
-
-    def specificity(self):
-        a, b, c = self.selector.specificity()
-        b += 1
-        return a, b, c
 
 
 class Function(object):
