@@ -3,3 +3,4 @@ lxml;python_version!="3.4"
 lxml<=4.3.5;python_version=="3.4"
 pytest
 pytest-cov
+sybil
