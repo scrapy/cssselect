@@ -250,6 +250,28 @@ class Negation(object):
         return a1 + a2, b1 + b2, c1 + c2
 
 
+class Matching(object):
+    """
+    Represents selector:is(selector_list)
+    """
+    def __init__(self, selector, selector_list):
+        self.selector = selector
+        self.selector_list = selector_list
+
+    def __repr__(self):
+        return '%s[%r:is(%s)]' % (
+            self.__class__.__name__, self.selector, ", ".join(
+                map(repr, self.selector_list)))
+
+    def canonical(self):
+        subsel = self.subselector.canonical()
+        if len(subsel) > 1:
+            subsel = subsel.lstrip('*')
+        return '%s:not(%s)' % (self.selector.canonical(), subsel)
+
+    def specificity(self):
+        return max([x.specificity() for x in self.selector_list])
+
 class Attrib(object):
     """
     Represents selector[namespace|attrib operator value]
@@ -432,6 +454,7 @@ def parse_selector_group(stream):
         else:
             break
 
+
 def parse_selector(stream):
     result, pseudo_element = parse_simple_selector(stream)
     while 1:
@@ -538,6 +561,9 @@ def parse_simple_selector(stream, inside_negation=False):
                 if next != ('DELIM', ')'):
                     raise SelectorSyntaxError("Expected ')', got %s" % (next,))
                 result = Negation(result, argument)
+            elif ident.lower() in ('matches' 'is'):
+                selectors = parse_simple_selector_arguments(stream)
+                result = Matching(result, selectors)
             else:
                 result = Function(result, ident, parse_arguments(stream))
         else:
@@ -562,6 +588,29 @@ def parse_arguments(stream):
         else:
             raise SelectorSyntaxError(
                 "Expected an argument, got %s" % (next,))
+
+
+def parse_simple_selector_arguments(stream):
+    arguments = []
+    while 1:
+        result, pseudo_element = parse_simple_selector(stream, True)
+        if pseudo_element:
+            raise SelectorSyntaxError(
+                'Got pseudo-element ::%s inside function'
+                % (pseudo_element, ))
+        stream.skip_whitespace()
+        next = stream.next()
+        if next in (('EOF', None), ('DELIM', ',')):
+            stream.next()
+            stream.skip_whitespace()
+            arguments.append(result)
+        elif next == ('DELIM', ')'):
+            arguments.append(result)
+            break
+        else:
+            raise SelectorSyntaxError(
+                "Expected an argument, got %s" % (next,))
+    return arguments
 
 
 def parse_attrib(selector, stream):
