@@ -561,7 +561,7 @@ def parse_simple_selector(stream, inside_negation=False):
                 if next != ('DELIM', ')'):
                     raise SelectorSyntaxError("Expected ')', got %s" % (next,))
                 result = Negation(result, argument)
-            elif ident.lower() in ('matches' 'is'):
+            elif ident.lower() in ('matches', 'is'):
                 selectors = parse_simple_selector_arguments(stream)
                 result = Matching(result, selectors)
             else:
