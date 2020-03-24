@@ -307,7 +307,7 @@ class TestCssselect(unittest.TestCase):
         css2css(':not(*[foo])', ':not([foo])')
         css2css(':not(:empty)')
         css2css(':not(#foo)')
-        css2css(':is(#bar, .foo)', ':is(#bar, .foo)')
+        css2css(':is(#bar, .foo)')
         css2css(':is(:focused, :visited)')
         css2css('foo:empty')
         css2css('foo::before')
