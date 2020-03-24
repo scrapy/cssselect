@@ -382,6 +382,10 @@ class TestCssselect(unittest.TestCase):
             "Got pseudo-element ::before inside :not() at 12")
         assert get_error(':not(:not(a))') == (
             "Got nested :not()")
+        assert get_error(':is(:before)') == (
+            "Got pseudo-element ::before inside function")
+        assert get_error(':is(a b)') == (
+            "Expected an argument, got <IDENT 'b' at 6>")
         assert get_error(':scope > div :scope header') == (
             'Got immediate child pseudo-element ":scope" not at the start of a selector'
         )
