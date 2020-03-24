@@ -264,10 +264,12 @@ class Matching(object):
                 map(repr, self.selector_list)))
 
     def canonical(self):
-        subsel = self.subselector.canonical()
-        if len(subsel) > 1:
-            subsel = subsel.lstrip('*')
-        return '%s:not(%s)' % (self.selector.canonical(), subsel)
+        selector_arguments = []
+        for s in self.selector_list:
+            selarg = s.canonical()
+            selector_arguments.append(selarg.lstrip('*'))
+        return '%s:is(%s)' % (self.selector.canonical(),
+                              ", ".join(map(str, selector_arguments)))
 
     def specificity(self):
         return max([x.specificity() for x in self.selector_list])
