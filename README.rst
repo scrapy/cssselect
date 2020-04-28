@@ -30,10 +30,10 @@ Quick facts:
 
 * Source, issues and pull requests `on GitHub
   <https://github.com/scrapy/cssselect>`_
-* Releases `on PyPI <http://pypi.python.org/pypi/cssselect>`_
+* Releases `on PyPI <https://pypi.org/project/cssselect/>`_
 * Install with ``pip install cssselect``
 
 
-.. _CSS3 selectors: https://www.w3.org/TR/css3-selectors/
-.. _XPath 1.0: https://www.w3.org/TR/xpath/
-.. _lxml: http://lxml.de/
+.. _CSS3 selectors: https://www.w3.org/TR/selectors-3/
+.. _XPath 1.0: https://www.w3.org/TR/xpath/all/
+.. _lxml: https://lxml.de/
