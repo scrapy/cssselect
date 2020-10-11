@@ -180,7 +180,7 @@ class GenericTranslator(object):
             This string is prepended to the XPath expression for each selector.
             The default makes selectors scoped to the context node’s subtree.
         :raises:
-            :class:`SelectorSyntaxError` on invalid selectors,
+            :class:`~cssselect.SelectorSyntaxError` on invalid selectors,
             :class:`ExpressionError` on unknown/unsupported selectors,
             including pseudo-elements.
         :returns:
