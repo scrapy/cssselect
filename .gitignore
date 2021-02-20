@@ -3,6 +3,12 @@
 /.tox
 /MANIFEST
 /dist
+/build
 /docs/_build
 /.coverage
 .idea
+*.py[co]
+__pycache__
+
+# generated file
+/cssselect/version.py
