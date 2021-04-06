@@ -526,6 +526,9 @@ class TestCssselect(unittest.TestCase):
         self.assertRaises(ExpressionError, xpath, ':lorem-ipsum')
         self.assertRaises(ExpressionError, xpath, ':lorem(ipsum)')
         self.assertRaises(ExpressionError, xpath, '::lorem-ipsum')
+        self.assertRaises(ExpressionError, xpath, '#00FF55')
+        self.assertRaises(ExpressionError, xpath, '#--abc')
+        self.assertRaises(ExpressionError, xpath, '#-1abc')
         self.assertRaises(TypeError, GenericTranslator().css_to_xpath, 4)
         self.assertRaises(TypeError, GenericTranslator().selector_to_xpath,
             'foo')
