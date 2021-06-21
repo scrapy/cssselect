@@ -250,6 +250,30 @@ class Negation(object):
         return a1 + a2, b1 + b2, c1 + c2
 
 
+class Relation(object):
+    """
+    Represents selector:has(subselector)
+    """
+    def __init__(self, selector, subselector):
+        self.selector = selector
+        self.subselector = subselector
+
+    def __repr__(self):
+        return '%s[%r:has(%r)]' % (
+            self.__class__.__name__, self.selector, self.subselector)
+
+    def canonical(self):
+        subsel = self.subselector.canonical()
+        if len(subsel) > 1:
+            subsel = subsel.lstrip('*')
+        return '%s:has(%s)' % (self.selector.canonical(), subsel)
+
+    def specificity(self):
+        a1, b1, c1 = self.selector.specificity()
+        a2, b2, c2 = self.subselector.specificity()
+        return a1 + a2, b1 + b2, c1 + c2
+
+
 class Attrib(object):
     """
     Represents selector[namespace|attrib operator value]
@@ -538,6 +562,9 @@ def parse_simple_selector(stream, inside_negation=False):
                 if next != ('DELIM', ')'):
                     raise SelectorSyntaxError("Expected ')', got %s" % (next,))
                 result = Negation(result, argument)
+            elif ident.lower() == 'has':
+                arguments = parse_relative_selector(stream)
+                result = Relation(result, arguments)
             else:
                 result = Function(result, ident, parse_arguments(stream))
         else:
@@ -557,6 +584,24 @@ def parse_arguments(stream):
         if next.type in ('IDENT', 'STRING', 'NUMBER') or next in [
                 ('DELIM', '+'), ('DELIM', '-')]:
             arguments.append(next)
+        elif next == ('DELIM', ')'):
+            return arguments
+        else:
+            raise SelectorSyntaxError(
+                "Expected an argument, got %s" % (next,))
+
+
+def parse_relative_selector(stream):
+    arguments = []
+    stream.skip_whitespace()
+    next = stream.next()
+    if next in [('DELIM', '+'), ('DELIM', '-'), ('DELIM', '>'), ('DELIM', '~')]:
+        arguments.append(next)
+    while 1:
+        stream.skip_whitespace()
+        next = stream.next()
+        if next.type in ('IDENT', 'STRING', 'NUMBER'):
+            arguments.append(Element(element=next.value))
         elif next == ('DELIM', ')'):
             return arguments
         else:

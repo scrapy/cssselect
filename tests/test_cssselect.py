@@ -266,6 +266,13 @@ class TestCssselect(unittest.TestCase):
         assert specificity(':not(:empty)') == (0, 1, 0)
         assert specificity(':not(#foo)') == (1, 0, 0)
 
+        # assert specificity(':has(*)') == (0, 0, 0)
+        # assert specificity(':has(foo)') == (0, 0, 1)
+        # assert specificity(':has(.foo)') == (0, 1, 0)
+        # assert specificity(':has([foo])') == (0, 1, 0)
+        # assert specificity(':has(:empty)') == (0, 1, 0)
+        # assert specificity(':has(#foo)') == (1, 0, 0)
+
         assert specificity('foo:empty') == (0, 1, 1)
         assert specificity('foo:before') == (0, 0, 2)
         assert specificity('foo::before') == (0, 0, 2)
@@ -300,6 +307,12 @@ class TestCssselect(unittest.TestCase):
         css2css(':not(*[foo])', ':not([foo])')
         css2css(':not(:empty)')
         css2css(':not(#foo)')
+        # css2css(':has(*)')
+        # css2css(':has(foo)')
+        # css2css(':has(*.foo)', ':has(.foo)')
+        # css2css(':has(*[foo])', ':has([foo])')
+        # css2css(':has(:empty)')
+        # css2css(':has(#foo)')
         css2css('foo:empty')
         css2css('foo::before')
         css2css('foo:empty::before')
@@ -492,6 +505,7 @@ class TestCssselect(unittest.TestCase):
             "e[not(count(preceding-sibling::*) mod 2 = 0)]")
         assert xpath('e:nOT(*)') == (
             "e[0]")  # never matches
+        assert xpath('e:has(> f)') == 'e/f'
         assert xpath('e f') == (
             "e/descendant-or-self::*/f")
         assert xpath('e > f') == (
@@ -863,6 +877,9 @@ class TestCssselect(unittest.TestCase):
         assert pcss('ol :Not(li[class])') == [
             'first-li', 'second-li', 'li-div',
             'fifth-li', 'sixth-li', 'seventh-li']
+        # assert pcss('link:has(*)') == []
+        # assert pcss('link:has([href])') == ['link-href']
+        # assert pcss('ol:has(div)') == ['first-ol']
         assert pcss('ol.a.b.c > li.c:nth-child(3)') == ['third-li']
 
         # Invalid characters in XPath element names, should not crash

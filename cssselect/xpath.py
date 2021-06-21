@@ -272,6 +272,12 @@ class GenericTranslator(object):
         else:
             return xpath.add_condition('0')
 
+    def xpath_relation(self, relation):
+        xpath = self.xpath(relation.selector)
+        combinator, subselector, *_ = relation.subselector
+        method = getattr(self, 'xpath_%s_combinator' % self.combinator_mapping[combinator.value])
+        return method(xpath, self.xpath(subselector))
+
     def xpath_function(self, function):
         """Translate a functional pseudo-class."""
         method = 'xpath_%s_function' % function.name.replace('-', '_')
