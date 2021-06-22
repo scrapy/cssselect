@@ -274,7 +274,7 @@ class GenericTranslator(object):
 
     def xpath_relation(self, relation):
         xpath = self.xpath(relation.selector)
-        combinator, subselector, *_ = relation.subselector
+        combinator, subselector = relation.subselector
         method = getattr(self, 'xpath_%s_combinator' % self.combinator_mapping[combinator.value])
         return method(xpath, self.xpath(subselector))
 

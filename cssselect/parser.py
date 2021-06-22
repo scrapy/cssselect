@@ -597,6 +597,8 @@ def parse_relative_selector(stream):
     next = stream.next()
     if next in [('DELIM', '+'), ('DELIM', '-'), ('DELIM', '>'), ('DELIM', '~')]:
         arguments.append(next)
+    elif next.type in ('IDENT', 'STRING', 'NUMBER'):
+        arguments.append(Element(element=next.value))
     while 1:
         stream.skip_whitespace()
         next = stream.next()
