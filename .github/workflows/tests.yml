@@ -6,19 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include:
-        - python-version: 2.7
-          env:
-            TOXENV: py
-        - python-version: 3.5
-          env:
-            TOXENV: py
-        - python-version: 3.6
-          env:
-            TOXENV: py
-        - python-version: 3.7
-          env:
-            TOXENV: py
+        python-version: [3.6, 3.7, 3.8, 3.9]
 
     steps:
     - uses: actions/checkout@v2
@@ -31,8 +19,9 @@ jobs:
     - name: Run tests
       env: ${{ matrix.env }}
       run: |
+        pip install -U pip
         pip install -U tox
-        tox
+        tox -e py
 
     - name: Upload coverage report
       run: bash <(curl -s https://codecov.io/bash)
