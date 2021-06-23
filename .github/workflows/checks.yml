@@ -12,6 +12,9 @@ jobs:
             TOXENV: flake8
         - python-version: 3
           env:
+            TOXENV: pylint
+        - python-version: 3
+          env:
             TOXENV: security
 
     steps:
