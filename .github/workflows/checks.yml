@@ -9,7 +9,13 @@ jobs:
         include:
         - python-version: 3
           env:
+            TOXENV: black
+        - python-version: 3
+          env:
             TOXENV: flake8
+        - python-version: 3
+          env:
+            TOXENV: pylint
         - python-version: 3
           env:
             TOXENV: security
