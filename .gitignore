@@ -6,3 +6,5 @@
 /docs/_build
 /.coverage
 .idea
+htmlcov/
+coverage.xml
