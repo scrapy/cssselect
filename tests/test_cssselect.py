@@ -441,8 +441,8 @@ class TestCssselect(unittest.TestCase):
             "e[count(preceding-sibling::*) <= 0]")
 
         assert xpath('e:nth-child(3n+2)') == (
-            "e[count(preceding-sibling::*) >= 1 and "
-              "(count(preceding-sibling::*) +2) mod 3 = 0]")
+            "e[(count(preceding-sibling::*) >= 1) and "
+              "((count(preceding-sibling::*) +2) mod 3 = 0)]")
         assert xpath('e:nth-child(3n-2)') == (
             "e[count(preceding-sibling::*) mod 3 = 0]")
         assert xpath('e:nth-child(-n+6)') == (
@@ -455,8 +455,8 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e:nth-last-child(2n+1)') == (
             "e[count(following-sibling::*) mod 2 = 0]")
         assert xpath('e:nth-last-child(2n+2)') == (
-            "e[count(following-sibling::*) >= 1 and "
-              "(count(following-sibling::*) +1) mod 2 = 0]")
+            "e[(count(following-sibling::*) >= 1) and "
+              "((count(following-sibling::*) +1) mod 2 = 0)]")
         assert xpath('e:nth-last-child(3n+1)') == (
             "e[count(following-sibling::*) mod 3 = 0]")
         # represents the two last e elements
@@ -510,7 +510,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e > f') == (
             "e/f")
         assert xpath('e + f') == (
-            "e/following-sibling::*[name() = 'f' and (position() = 1)]")
+            "e/following-sibling::*[(name() = 'f') and (position() = 1)]")
         assert xpath('e ~ f') == (
             "e/following-sibling::f")
         assert xpath('e ~ f:nth-child(3)') == (
@@ -635,6 +635,11 @@ class TestCssselect(unittest.TestCase):
                 other = XPathExpr('@href', '', )
                 return xpath.join('/', other)
 
+            # pseudo-element:
+            # used to demonstrate operator precedence
+            def xpath_first_or_second_pseudo(self, xpath):
+                return xpath.add_condition("@id = 'first' or @id = 'second'")
+
         def xpath(css):
             return _unicode(CustomTranslator().css_to_xpath(css))
 
@@ -646,6 +651,25 @@ class TestCssselect(unittest.TestCase):
         assert xpath('p img::attr(src)') == (
             "descendant-or-self::p/descendant-or-self::*/img/@src")
         assert xpath(':scope') == "descendant-or-self::*[1]"
+        assert xpath(':first-or-second[href]') == (
+            "descendant-or-self::*[(@id = 'first' or @id = 'second') "
+            "and (@href)]")
+
+        assert str(XPathExpr('', '', condition='@href')) == "[@href]"
+
+        document = etree.fromstring(OPERATOR_PRECEDENCE_IDS)
+        sort_key = dict(
+            (el, count) for count, el in enumerate(document.getiterator())
+        ).__getitem__
+        def operator_id(selector):
+            xpath = CustomTranslator().css_to_xpath(selector)
+            items = document.xpath(xpath)
+            items.sort(key=sort_key)
+            return [element.get('id', 'nil') for element in items]
+
+        assert operator_id(':first-or-second') == ['first', 'second']
+        assert operator_id(':first-or-second[href]') == ['second']
+        assert operator_id('[href]:first-or-second') == ['second']
 
     def test_series(self):
         def series(css):
@@ -953,6 +977,14 @@ class TestCssselect(unittest.TestCase):
         assert count(':scope > div') == 1
         assert count(':scope > div > div[class=dialog]') == 1
         assert count(':scope > div div') == 242
+
+OPERATOR_PRECEDENCE_IDS = '''
+<html>
+  <a id="first"></a>
+  <a id="second" href="#"></a>
+  <a id="third" href="#"></a>
+</html>
+'''
 
 XMLLANG_IDS = '''
 <test>

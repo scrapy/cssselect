@@ -56,7 +56,7 @@ class XPathExpr(object):
 
     def add_condition(self, condition, conjuction='and'):
         if self.condition:
-            self.condition = '%s %s (%s)' % (self.condition, conjuction, condition)
+            self.condition = '(%s) %s (%s)' % (self.condition, conjuction, condition)
         else:
             self.condition = condition
         return self
@@ -180,7 +180,7 @@ class GenericTranslator(object):
             This string is prepended to the XPath expression for each selector.
             The default makes selectors scoped to the context node’s subtree.
         :raises:
-            :class:`SelectorSyntaxError` on invalid selectors,
+            :class:`~cssselect.SelectorSyntaxError` on invalid selectors,
             :class:`ExpressionError` on unknown/unsupported selectors,
             including pseudo-elements.
         :returns:
@@ -466,19 +466,19 @@ class GenericTranslator(object):
         if a == 0:
             return xpath.add_condition('%s = %s' % (siblings_count, b_min_1))
 
-        expr = []
+        expressions = []
 
         if a > 0:
             # siblings count, an+b-1, is always >= 0,
             # so if a>0, and (b-1)<=0, an "n" exists to satisfy this,
             # therefore, the predicate is only interesting if (b-1)>0
             if b_min_1 > 0:
-                expr.append('%s >= %s' % (siblings_count, b_min_1))
+                expressions.append('%s >= %s' % (siblings_count, b_min_1))
         else:
             # if a<0, and (b-1)<0, no "n" satisfies this,
             # this is tested above as an early exist condition
             # otherwise,
-            expr.append('%s <= %s' % (siblings_count, b_min_1))
+            expressions.append('%s <= %s' % (siblings_count, b_min_1))
 
         # operations modulo 1 or -1 are simpler, one only needs to verify:
         #
@@ -504,9 +504,14 @@ class GenericTranslator(object):
                 b_neg = '+%s' % b_neg
                 left = '(%s %s)' % (left, b_neg)
 
-            expr.append('%s mod %s = 0' % (left, a))
+            expressions.append('%s mod %s = 0' % (left, a))
 
-        xpath.add_condition(' and '.join(expr))
+        if len(expressions) > 1:
+            template = '(%s)'
+        else:
+            template = '%s'
+        xpath.add_condition(' and '.join(template % expression
+                                         for expression in expressions))
         return xpath
 
     def xpath_nth_last_child_function(self, xpath, function):

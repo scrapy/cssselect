@@ -10,9 +10,9 @@ cssselect: CSS Selectors for Python
    :target: https://pypi.python.org/pypi/cssselect
    :alt: Supported Python Versions
 
-.. image:: https://img.shields.io/travis/scrapy/cssselect/master.svg
-   :target: https://travis-ci.org/scrapy/cssselect
-   :alt: Build Status
+.. image:: https://github.com/scrapy/cssselect/actions/workflows/tests.yml/badge.svg
+   :target: https://github.com/scrapy/cssselect/actions/workflows/tests.yml
+   :alt: Tests
 
 .. image:: https://img.shields.io/codecov/c/github/scrapy/cssselect/master.svg
    :target: https://codecov.io/github/scrapy/cssselect?branch=master
@@ -33,7 +33,7 @@ extracted as a stand-alone project.
 Quick facts:
 
 * Free software: BSD licensed
-* Compatible with Python 2.7 and 3.4+
+* Compatible with Python 3.6+
 * Latest documentation `on Read the Docs <https://cssselect.readthedocs.io/>`_
 * Source, issues and pull requests `on GitHub
   <https://github.com/scrapy/cssselect>`_
