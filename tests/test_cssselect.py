@@ -266,12 +266,10 @@ class TestCssselect(unittest.TestCase):
         assert specificity(':not(:empty)') == (0, 1, 0)
         assert specificity(':not(#foo)') == (1, 0, 0)
 
-        # assert specificity(':has(*)') == (0, 0, 0)
-        # assert specificity(':has(foo)') == (0, 0, 1)
-        # assert specificity(':has(.foo)') == (0, 1, 0)
-        # assert specificity(':has([foo])') == (0, 1, 0)
-        # assert specificity(':has(:empty)') == (0, 1, 0)
-        # assert specificity(':has(#foo)') == (1, 0, 0)
+        assert specificity(':has(*)') == (0, 0, 0)
+        assert specificity(':has(foo)') == (0, 0, 1)
+        assert specificity(':has(> foo)') == (0, 0, 1)
+
 
         assert specificity('foo:empty') == (0, 1, 1)
         assert specificity('foo:before') == (0, 0, 2)
@@ -504,8 +502,11 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e:not(:nth-child(odd))') == (
             "e[not(count(preceding-sibling::*) mod 2 = 0)]")
         assert xpath('e:nOT(*)') == (
-            "e[0]")  # never matches
-        assert xpath('e:has(> f)') == 'e/f'
+            "e[0]")  # never matches        
+        assert xpath('e:has(> f)') == 'e[./f]'
+        assert xpath('e:has(f)') == 'e/descendant-or-self::f/ancestor-or-self::e'
+        assert xpath('e:has(~ f)') == 'e/following-sibling::f/preceding-sibling::e'
+        assert xpath('e:has(+ f)') == "e/following-sibling::*[(name() = 'f') and (position() = 1)]/preceding-sibling::*[(name() = 'e') and (position() = 1)]"
         assert xpath('e f') == (
             "e/descendant-or-self::*/f")
         assert xpath('e > f') == (

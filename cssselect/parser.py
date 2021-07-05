@@ -270,7 +270,9 @@ class Relation(object):
 
     def specificity(self):
         a1, b1, c1 = self.selector.specificity()
-        a2, b2, c2 = self.subselector.specificity()
+        a2 = b2 = c2 = 0
+        if self.subselector:
+            a2, b2, c2 = self.subselector[-1].specificity()
         return a1 + a2, b1 + b2, c1 + c2
 
 

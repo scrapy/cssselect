@@ -14,6 +14,7 @@
 
 import sys
 import re
+import copy
 
 from cssselect.parser import parse, parse_series, SelectorError
 
@@ -76,13 +77,13 @@ class XPathExpr(object):
         """
         self.path += '*/'
 
-    def join(self, combiner, other):
+    def join(self, combiner, other, closing_combiner=None):
         path = _unicode(self) + combiner
         # Any "star prefix" is redundant when joining.
         if other.path != '*/':
             path += other.path
         self.path = path
-        self.element = other.element
+        self.element = other.element + closing_combiner if closing_combiner else other.element
         self.condition = other.condition
         return self
 
@@ -274,9 +275,14 @@ class GenericTranslator(object):
 
     def xpath_relation(self, relation):
         xpath = self.xpath(relation.selector)
-        combinator, subselector = relation.subselector
-        method = getattr(self, 'xpath_%s_combinator' % self.combinator_mapping[combinator.value])
-        return method(xpath, self.xpath(subselector))
+        combinator, *subselector = relation.subselector
+        if not subselector:
+            combinator.value = ' '
+            right = self.xpath(combinator)
+        else:
+            right = self.xpath(subselector[0])
+        method = getattr(self, 'xpath_relation_%s_combinator' % self.combinator_mapping[combinator.value])
+        return method(xpath, right)
 
     def xpath_function(self, function):
         """Translate a functional pseudo-class."""
@@ -374,6 +380,29 @@ class GenericTranslator(object):
     def xpath_indirect_adjacent_combinator(self, left, right):
         """right is a sibling after left, immediately or not"""
         return left.join('/following-sibling::', right)
+
+    def xpath_relation_descendant_combinator(self, left, right):
+        """right is a child, grand-child or further descendant of left; select left"""
+        return left.join('/descendant-or-self::', right, closing_combiner='/ancestor-or-self::' + left.element)
+
+    def xpath_relation_child_combinator(self, left, right):
+        """right is an immediate child of left; select left"""
+        return left.join('[./', right, closing_combiner=']')
+
+    def xpath_relation_direct_adjacent_combinator(self, left, right):
+        """right is a sibling immediately after left; select left"""
+        left_copy = copy.copy(left)
+        xpath = left.join('/following-sibling::', right)
+        xpath.add_name_test()
+        xpath.add_condition('position() = 1')
+
+        xpath = xpath.join('/preceding-sibling::', left_copy)
+        xpath.add_name_test()
+        return xpath.add_condition('position() = 1')
+
+    def xpath_relation_indirect_adjacent_combinator(self, left, right):
+        """right is a sibling after left, immediately or not; select left"""
+        return left.join('/following-sibling::', right, closing_combiner='/preceding-sibling::'+left.element)
 
 
     # Function: dispatch by function/pseudo-class name
