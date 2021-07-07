@@ -1,5 +1,0 @@
-codecov
-lxml;python_version!="3.4"
-lxml<=4.3.5;python_version=="3.4"
-pytest >=4.6, <4.7  # 4.7 drops support for Python 2.7 and 3.4
-pytest-cov
