@@ -439,7 +439,9 @@ class GenericTranslator(object):
         # `add_name_test` boolean is inverted and somewhat counter-intuitive:
         #
         # nth_of_type() calls nth_child(add_name_test=False)
-        if add_name_test:
+        if function.of_type:
+            nodetest = self.xpath(function.of_type.parsed_tree)
+        elif add_name_test:
             nodetest = '*'
         else:
             nodetest  = '%s' % xpath.element

@@ -161,16 +161,18 @@ class FunctionalPseudoElement(object):
         self.arguments = arguments
 
     def __repr__(self):
-        return '%s[::%s(%r)]' % (
-            self.__class__.__name__, self.name,
-            [token.value for token in self.arguments])
+        return "%s[::%s(%r)]" % (
+            self.__class__.__name__,
+            self.name,
+            [token.value for token in self.arguments[0]],
+        )
 
     def argument_types(self):
         return [token.type for token in self.arguments]
 
     def canonical(self):
-        args = ''.join(token.css() for token in self.arguments)
-        return '%s(%s)' % (self.name, args)
+        args = "".join(token.css() for token in self.arguments[0])
+        return "%s(%s)" % (self.name, args)
 
     def specificity(self):
         a, b, c = self.selector.specificity()
@@ -182,12 +184,27 @@ class Function(object):
     """
     Represents selector:name(expr)
     """
-    def __init__(self, selector, name, arguments):
+
+    def __init__(self, selector, name, arguments, of_type=None):
         self.selector = selector
         self.name = ascii_lower(name)
         self.arguments = arguments
 
+        # for css4 :nth-child(An+B of Subselector)
+        try:
+            self.of_type = of_type[0]
+        except (IndexError, TypeError):
+            self.of_type = None
+
     def __repr__(self):
+        if self.of_type:
+            return "%s[%r:%s(%r of %s)]" % (
+                self.__class__.__name__,
+                self.selector,
+                self.name,
+                [token.value for token in self.arguments],
+                self.of_type.__repr__(),
+            )
         return '%s[%r:%s(%r)]' % (
             self.__class__.__name__, self.selector, self.name,
             [token.value for token in self.arguments])
@@ -539,7 +556,8 @@ def parse_simple_selector(stream, inside_negation=False):
                     raise SelectorSyntaxError("Expected ')', got %s" % (next,))
                 result = Negation(result, argument)
             else:
-                result = Function(result, ident, parse_arguments(stream))
+                arguments, of_type = parse_arguments(stream)
+                result = Function(result, ident, arguments, of_type)
         else:
             raise SelectorSyntaxError(
                 "Expected selector, got %s" % (peek,))
@@ -554,14 +572,31 @@ def parse_arguments(stream):
     while 1:
         stream.skip_whitespace()
         next = stream.next()
-        if next.type in ('IDENT', 'STRING', 'NUMBER') or next in [
-                ('DELIM', '+'), ('DELIM', '-')]:
+        if next == ("IDENT", "of"):
+            stream.skip_whitespace()
+            of_type = parse_of_type(stream)
+            return arguments, of_type
+        elif next.type in ("IDENT", "STRING", "NUMBER") or next in [
+            ("DELIM", "+"),
+            ("DELIM", "-"),
+        ]:
             arguments.append(next)
         elif next == ('DELIM', ')'):
-            return arguments
+            return arguments, None
         else:
             raise SelectorSyntaxError(
                 "Expected an argument, got %s" % (next,))
+
+
+def parse_of_type(stream):
+    subselector = ""
+    while 1:
+        next = stream.next()
+        if next == ("DELIM", ")"):
+            break
+        subselector += next.value
+    result = parse(subselector)
+    return result
 
 
 def parse_attrib(selector, stream):
@@ -620,6 +655,7 @@ def parse_series(tokens):
     for token in tokens:
         if token.type == 'STRING':
             raise ValueError('String tokens not allowed in series.')
+
     s = ''.join(token.value for token in tokens).strip()
     if s == 'odd':
         return 2, 1
@@ -630,7 +666,7 @@ def parse_series(tokens):
     if 'n' not in s:
         # Just b
         return 0, int(s)
-    a, b = s.split('n', 1)
+    a, b = s.split("n", 1)
     if not a:
         a = 1
     elif a == '-' or a == '+':
@@ -641,6 +677,7 @@ def parse_series(tokens):
         b = 0
     else:
         b = int(b)
+
     return a, b
 
 
