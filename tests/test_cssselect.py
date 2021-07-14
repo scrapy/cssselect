@@ -145,6 +145,10 @@ class TestCssselect(unittest.TestCase):
             'Hash[Element[div]#foobar]']
         assert parse_many('div:not(div.foo)') == [
             'Negation[Element[div]:not(Class[Element[div].foo])]']
+        assert parse_many('div:is(.foo, #bar)') == [
+            'Matching[Element[div]:is(Class[Element[*].foo], Hash[Element[*]#bar])]']
+        assert parse_many(':is(:hover, :visited)') == [
+            'Matching[Element[*]:is(Pseudo[Element[*]:hover], Pseudo[Element[*]:visited])]']
         assert parse_many('td ~ th') == [
             'CombinedSelector[Element[td] ~ Element[th]]']
         assert parse_many(':scope > foo') == [
@@ -270,6 +274,8 @@ class TestCssselect(unittest.TestCase):
         assert specificity(':has(foo)') == (0, 0, 1)
         assert specificity(':has(> foo)') == (0, 0, 1)
 
+        assert specificity(':is(.foo, #bar)') == (1, 0, 0)
+        assert specificity(':is(:hover, :visited)') == (0, 1, 0)
 
         assert specificity('foo:empty') == (0, 1, 1)
         assert specificity('foo:before') == (0, 0, 2)
@@ -311,6 +317,8 @@ class TestCssselect(unittest.TestCase):
         # css2css(':has(*[foo])', ':has([foo])')
         # css2css(':has(:empty)')
         # css2css(':has(#foo)')
+        css2css(':is(#bar, .foo)')
+        css2css(':is(:focused, :visited)')
         css2css('foo:empty')
         css2css('foo::before')
         css2css('foo:empty::before')
@@ -384,6 +392,10 @@ class TestCssselect(unittest.TestCase):
             "Got pseudo-element ::before inside :not() at 12")
         assert get_error(':not(:not(a))') == (
             "Got nested :not()")
+        assert get_error(':is(:before)') == (
+            "Got pseudo-element ::before inside function")
+        assert get_error(':is(a b)') == (
+            "Expected an argument, got <IDENT 'b' at 6>")
         assert get_error(':scope > div :scope header') == (
             'Got immediate child pseudo-element ":scope" not at the start of a selector'
         )
@@ -502,7 +514,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e:not(:nth-child(odd))') == (
             "e[not(count(preceding-sibling::*) mod 2 = 0)]")
         assert xpath('e:nOT(*)') == (
-            "e[0]")  # never matches        
+            "e[0]")  # never matches
         assert xpath('e:has(> f)') == 'e[./f]'
         assert xpath('e:has(f)') == 'e/descendant-or-self::f/ancestor-or-self::e'
         assert xpath('e:has(~ f)') == 'e/following-sibling::f/preceding-sibling::e'
@@ -881,6 +893,12 @@ class TestCssselect(unittest.TestCase):
         # assert pcss('link:has(*)') == []
         # assert pcss('link:has([href])') == ['link-href']
         # assert pcss('ol:has(div)') == ['first-ol']
+        assert pcss(':is(#first-li, #second-li)') == [
+            'first-li', 'second-li']
+        assert pcss('a:is(#name-anchor, #tag-anchor)') == [
+            'name-anchor', 'tag-anchor']
+        assert pcss(':is(.c)') == [
+            'first-ol', 'third-li', 'fourth-li']
         assert pcss('ol.a.b.c > li.c:nth-child(3)') == ['third-li']
 
         # Invalid characters in XPath element names, should not crash
