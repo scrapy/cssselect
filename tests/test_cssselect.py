@@ -305,12 +305,8 @@ class TestCssselect(unittest.TestCase):
         css2css(':not(*[foo])', ':not([foo])')
         css2css(':not(:empty)')
         css2css(':not(#foo)')
-        # css2css(':has(*)')
-        # css2css(':has(foo)')
-        # css2css(':has(*.foo)', ':has(.foo)')
-        # css2css(':has(*[foo])', ':has([foo])')
-        # css2css(':has(:empty)')
-        # css2css(':has(#foo)')
+        css2css(':has(*)')
+        css2css(':has(foo)')
         css2css('foo:empty')
         css2css('foo::before')
         css2css('foo:empty::before')
@@ -504,8 +500,8 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e:nOT(*)') == (
             "e[0]")  # never matches        
         assert xpath('e:has(> f)') == 'e[./f]'
-        assert xpath('e:has(f)') == 'e/descendant-or-self::f/ancestor-or-self::e'
-        assert xpath('e:has(~ f)') == 'e/following-sibling::f/preceding-sibling::e'
+        assert xpath('e:has(f)') == 'e[descendant::f]'
+        assert xpath('e:has(~ f)') == 'e[following-sibling::f]'
         assert xpath('e:has(+ f)') == "e/following-sibling::*[(name() = 'f') and (position() = 1)]/preceding-sibling::*[(name() = 'e') and (position() = 1)]"
         assert xpath('e f') == (
             "e/descendant-or-self::*/f")
@@ -878,9 +874,7 @@ class TestCssselect(unittest.TestCase):
         assert pcss('ol :Not(li[class])') == [
             'first-li', 'second-li', 'li-div',
             'fifth-li', 'sixth-li', 'seventh-li']
-        # assert pcss('link:has(*)') == []
-        # assert pcss('link:has([href])') == ['link-href']
-        # assert pcss('ol:has(div)') == ['first-ol']
+        assert pcss('ol:has(div)') == ['first-ol']
         assert pcss('ol.a.b.c > li.c:nth-child(3)') == ['third-li']
 
         # Invalid characters in XPath element names, should not crash

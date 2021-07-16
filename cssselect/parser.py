@@ -267,7 +267,10 @@ class Relation(object):
         )
 
     def canonical(self):
-        subsel = self.subselector.canonical()
+        if not self.subselector:
+            subsel = '*'
+        else:
+            subsel = self.subselector[0].canonical()
         if len(subsel) > 1:
             subsel = subsel.lstrip("*")
         return "%s:has(%s)" % (self.selector.canonical(), subsel)

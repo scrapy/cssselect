@@ -388,11 +388,7 @@ class GenericTranslator(object):
 
     def xpath_relation_descendant_combinator(self, left, right):
         """right is a child, grand-child or further descendant of left; select left"""
-        return left.join(
-            "/descendant-or-self::",
-            right,
-            closing_combiner="/ancestor-or-self::" + left.element,
-        )
+        return left.join("[descendant::", right, closing_combiner="]")
 
     def xpath_relation_child_combinator(self, left, right):
         """right is an immediate child of left; select left"""
@@ -411,11 +407,7 @@ class GenericTranslator(object):
 
     def xpath_relation_indirect_adjacent_combinator(self, left, right):
         """right is a sibling after left, immediately or not; select left"""
-        return left.join(
-            "/following-sibling::",
-            right,
-            closing_combiner="/preceding-sibling::" + left.element,
-        )
+        return left.join("[following-sibling::", right, closing_combiner="]")
 
     # Function: dispatch by function/pseudo-class name
 
