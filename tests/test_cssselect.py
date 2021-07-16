@@ -270,9 +270,9 @@ class TestCssselect(unittest.TestCase):
         assert specificity(':not(:empty)') == (0, 1, 0)
         assert specificity(':not(#foo)') == (1, 0, 0)
 
-        assert specificity(':has(*)') == (0, 0, 0)
-        assert specificity(':has(foo)') == (0, 0, 1)
-        assert specificity(':has(> foo)') == (0, 0, 1)
+        assert specificity(":has(*)") == (0, 0, 0)
+        assert specificity(":has(foo)") == (0, 0, 1)
+        assert specificity(":has(> foo)") == (0, 0, 1)
 
         assert specificity(':is(.foo, #bar)') == (1, 0, 0)
         assert specificity(':is(:hover, :visited)') == (0, 1, 0)
@@ -311,8 +311,8 @@ class TestCssselect(unittest.TestCase):
         css2css(':not(*[foo])', ':not([foo])')
         css2css(':not(:empty)')
         css2css(':not(#foo)')
-        css2css(':has(*)')
-        css2css(':has(foo)')
+        css2css(":has(*)")
+        css2css(":has(foo)")
         css2css(':is(#bar, .foo)')
         css2css(':is(:focused, :visited)')
         css2css('foo:empty')
@@ -511,10 +511,14 @@ class TestCssselect(unittest.TestCase):
             "e[not(count(preceding-sibling::*) mod 2 = 0)]")
         assert xpath('e:nOT(*)') == (
             "e[0]")  # never matches
-        assert xpath('e:has(> f)') == 'e[./f]'
-        assert xpath('e:has(f)') == 'e[descendant::f]'
-        assert xpath('e:has(~ f)') == 'e[following-sibling::f]'
-        assert xpath('e:has(+ f)') == "e/following-sibling::*[(name() = 'f') and (position() = 1)]/preceding-sibling::*[(name() = 'e') and (position() = 1)]"
+        assert xpath("e:has(> f)") == "e[./f]"
+        assert xpath("e:has(f)") == "e[descendant::f]"
+        assert xpath("e:has(~ f)") == "e[following-sibling::f]"
+        assert (
+            xpath("e:has(+ f)")
+            == "e/following-sibling::*[(name() = 'f') and (position() = 1)]"
+               "/preceding-sibling::*[(name() = 'e') and (position() = 1)]"
+        )
         assert xpath('e f') == (
             "e/descendant-or-self::*/f")
         assert xpath('e > f') == (
@@ -886,7 +890,7 @@ class TestCssselect(unittest.TestCase):
         assert pcss('ol :Not(li[class])') == [
             'first-li', 'second-li', 'li-div',
             'fifth-li', 'sixth-li', 'seventh-li']
-        assert pcss('ol:has(div)') == ['first-ol']
+        assert pcss("ol:has(div)") == ["first-ol"]
         assert pcss(':is(#first-li, #second-li)') == [
             'first-li', 'second-li']
         assert pcss('a:is(#name-anchor, #tag-anchor)') == [
