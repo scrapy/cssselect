@@ -55,9 +55,9 @@ class XPathExpr(object):
     def __repr__(self):
         return '%s[%s]' % (self.__class__.__name__, self)
 
-    def add_condition(self, condition):
+    def add_condition(self, condition, conjuction='and'):
         if self.condition:
-            self.condition = '(%s) and (%s)' % (self.condition, condition)
+            self.condition = '(%s) %s (%s)' % (self.condition, conjuction, condition)
         else:
             self.condition = condition
         return self
@@ -288,6 +288,15 @@ class GenericTranslator(object):
             "xpath_relation_%s_combinator" % self.combinator_mapping[combinator.value],
         )
         return method(xpath, right)
+
+    def xpath_matching(self, matching):
+        xpath = self.xpath(matching.selector)
+        exprs = [self.xpath(selector) for selector in matching.selector_list]
+        for e in exprs:
+            e.add_name_test()
+            if e.condition:
+                xpath.add_condition(e.condition, 'or')
+        return xpath
 
     def xpath_function(self, function):
         """Translate a functional pseudo-class."""
