@@ -52,7 +52,7 @@ copyright = '2012-2017, Simon Sapin, Scrapy developers'
 # The full version, including alpha/beta/rc tags.
 with open(os.path.join(os.path.dirname(__file__), '..', 'cssselect', '__init__.py')) as init_file:
     init_py = init_file.read()
-release = re.search("VERSION = '([^']+)'", init_py).group(1)
+release = re.search('VERSION = "([^"]+)"', init_py).group(1)
 # The short X.Y version.
 version = release.rstrip('dev')
 

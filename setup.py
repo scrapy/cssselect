@@ -18,7 +18,7 @@ with open(os.path.join(ROOT, "README.rst")) as readme_file:
     README = readme_file.read()
 with open(os.path.join(ROOT, "cssselect", "__init__.py")) as init_file:
     INIT_PY = init_file.read()
-VERSION = re.search("VERSION = '([^']+)'", INIT_PY).group(1)
+VERSION = re.search('VERSION = "([^"]+)"', INIT_PY).group(1)
 
 
 setup(
