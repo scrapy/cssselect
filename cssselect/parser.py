@@ -268,7 +268,7 @@ class Relation(object):
 
     def canonical(self):
         if not self.subselector:
-            subsel = '*'
+            subsel = "*"
         else:
             subsel = self.subselector[0].canonical()
         if len(subsel) > 1:
@@ -287,22 +287,24 @@ class Matching(object):
     """
     Represents selector:is(selector_list)
     """
+
     def __init__(self, selector, selector_list):
         self.selector = selector
         self.selector_list = selector_list
 
     def __repr__(self):
-        return '%s[%r:is(%s)]' % (
-            self.__class__.__name__, self.selector, ", ".join(
-                map(repr, self.selector_list)))
+        return "%s[%r:is(%s)]" % (
+            self.__class__.__name__,
+            self.selector,
+            ", ".join(map(repr, self.selector_list)),
+        )
 
     def canonical(self):
         selector_arguments = []
         for s in self.selector_list:
             selarg = s.canonical()
-            selector_arguments.append(selarg.lstrip('*'))
-        return '%s:is(%s)' % (self.selector.canonical(),
-                              ", ".join(map(str, selector_arguments)))
+            selector_arguments.append(selarg.lstrip("*"))
+        return "%s:is(%s)" % (self.selector.canonical(), ", ".join(map(str, selector_arguments)))
 
     def specificity(self):
         return max([x.specificity() for x in self.selector_list])
@@ -600,7 +602,7 @@ def parse_simple_selector(stream, inside_negation=False):
             elif ident.lower() == "has":
                 arguments = parse_relative_selector(stream)
                 result = Relation(result, arguments)
-            elif ident.lower() in ('matches', 'is'):
+            elif ident.lower() in ("matches", "is"):
                 selectors = parse_simple_selector_arguments(stream)
                 result = Matching(result, selectors)
             else:
@@ -654,20 +656,19 @@ def parse_simple_selector_arguments(stream):
         result, pseudo_element = parse_simple_selector(stream, True)
         if pseudo_element:
             raise SelectorSyntaxError(
-                'Got pseudo-element ::%s inside function'
-                % (pseudo_element, ))
+                "Got pseudo-element ::%s inside function" % (pseudo_element,)
+            )
         stream.skip_whitespace()
         next = stream.next()
-        if next in (('EOF', None), ('DELIM', ',')):
+        if next in (("EOF", None), ("DELIM", ",")):
             stream.next()
             stream.skip_whitespace()
             arguments.append(result)
-        elif next == ('DELIM', ')'):
+        elif next == ("DELIM", ")"):
             arguments.append(result)
             break
         else:
-            raise SelectorSyntaxError(
-                "Expected an argument, got %s" % (next,))
+            raise SelectorSyntaxError("Expected an argument, got %s" % (next,))
     return arguments
 
 

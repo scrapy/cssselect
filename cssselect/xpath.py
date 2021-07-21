@@ -55,9 +55,9 @@ class XPathExpr(object):
     def __repr__(self):
         return '%s[%s]' % (self.__class__.__name__, self)
 
-    def add_condition(self, condition, conjuction='and'):
+    def add_condition(self, condition, conjuction="and"):
         if self.condition:
-            self.condition = '(%s) %s (%s)' % (self.condition, conjuction, condition)
+            self.condition = "(%s) %s (%s)" % (self.condition, conjuction, condition)
         else:
             self.condition = condition
         return self
@@ -83,9 +83,7 @@ class XPathExpr(object):
         if other.path != '*/':
             path += other.path
         self.path = path
-        self.element = (
-            other.element + closing_combiner if closing_combiner else other.element
-        )
+        self.element = other.element + closing_combiner if closing_combiner else other.element
         self.condition = other.condition
         return self
 
@@ -295,7 +293,7 @@ class GenericTranslator(object):
         for e in exprs:
             e.add_name_test()
             if e.condition:
-                xpath.add_condition(e.condition, 'or')
+                xpath.add_condition(e.condition, "or")
         return xpath
 
     def xpath_function(self, function):
@@ -405,14 +403,8 @@ class GenericTranslator(object):
 
     def xpath_relation_direct_adjacent_combinator(self, left, right):
         """right is a sibling immediately after left; select left"""
-        left_copy = copy.copy(left)
-        xpath = left.join("/following-sibling::", right)
-        xpath.add_name_test()
-        xpath.add_condition("position() = 1")
-
-        xpath = xpath.join("/preceding-sibling::", left_copy)
-        xpath.add_name_test()
-        return xpath.add_condition("position() = 1")
+        xpath = left.add_condition("following-sibling::{}[position() = 1]".format(right.element))
+        return xpath
 
     def xpath_relation_indirect_adjacent_combinator(self, left, right):
         """right is a sibling after left, immediately or not; select left"""
