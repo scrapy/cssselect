@@ -516,7 +516,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:has(~ f)") == "e[following-sibling::f]"
         assert (
             xpath("e:has(+ f)")
-            == "e[following-sibling::f[position() = 1]]"
+            == "e[following-sibling::*[(name() = 'f') and (position() = 1)]]"
         )
         assert xpath('e f') == (
             "e/descendant-or-self::*/f")

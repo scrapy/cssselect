@@ -403,7 +403,9 @@ class GenericTranslator(object):
 
     def xpath_relation_direct_adjacent_combinator(self, left, right):
         """right is a sibling immediately after left; select left"""
-        xpath = left.add_condition("following-sibling::{}[position() = 1]".format(right.element))
+        xpath = left.add_condition(
+            "following-sibling::*[(name() = '{}') and (position() = 1)]".format(right.element)
+        )
         return xpath
 
     def xpath_relation_indirect_adjacent_combinator(self, left, right):
