@@ -335,6 +335,12 @@ class GenericTranslator(object):
     def xpath_hash(self, id_selector):
         """Translate an ID selector."""
         xpath = self.xpath(id_selector.selector)
+        is_valid_identifier = not (re.match('--', id_selector.id)
+                                   or re.match('[0-9]', id_selector.id)
+                                   or re.match('-[0-9]', id_selector.id)
+                                   )
+        if not is_valid_identifier:
+            raise ExpressionError("invalid identifier")
         return self.xpath_attrib_equals(xpath, '@id', id_selector.id)
 
     def xpath_element(self, selector):
