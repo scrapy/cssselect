@@ -145,6 +145,8 @@ class TestCssselect(unittest.TestCase):
             'Hash[Element[div]#foobar]']
         assert parse_many('div:not(div.foo)') == [
             'Negation[Element[div]:not(Class[Element[div].foo])]']
+        assert parse_many('div:has(div.foo)') == [
+            'Relation[Element[div]:has(Selector[Class[Element[div].foo]])]']
         assert parse_many('div:is(.foo, #bar)') == [
             'Matching[Element[div]:is(Class[Element[*].foo], Hash[Element[*]#bar])]']
         assert parse_many(':is(:hover, :visited)') == [
@@ -272,6 +274,7 @@ class TestCssselect(unittest.TestCase):
 
         assert specificity(":has(*)") == (0, 0, 0)
         assert specificity(":has(foo)") == (0, 0, 1)
+        assert specificity(":has(.foo)") == (0, 1, 0)
         assert specificity(":has(> foo)") == (0, 0, 1)
 
         assert specificity(':is(.foo, #bar)') == (1, 0, 0)
@@ -313,6 +316,7 @@ class TestCssselect(unittest.TestCase):
         css2css(':not(#foo)')
         css2css(":has(*)")
         css2css(":has(foo)")
+        css2css(':has(*.foo)', ':has(.foo)')
         css2css(':is(#bar, .foo)')
         css2css(':is(:focused, :visited)')
         css2css('foo:empty')
@@ -399,6 +403,12 @@ class TestCssselect(unittest.TestCase):
             'Got immediate child pseudo-element ":scope" not at the start of a selector'
         )
         assert get_error('> div p') == ("Expected selector, got <DELIM '>' at 0>")
+
+        # Unsupported :has() with several arguments
+        assert get_error(':has(a, b)') == (
+            "Expected an argument, got <DELIM ',' at 6>")
+        assert get_error(':has()') == (
+            "Expected selector, got <EOF at 0>")
 
     def test_translation(self):
         def xpath(css):
@@ -889,6 +899,7 @@ class TestCssselect(unittest.TestCase):
         assert pcss('ol :Not(li[class])') == [
             'first-li', 'second-li', 'li-div',
             'fifth-li', 'sixth-li', 'seventh-li']
+        assert pcss('link:has(*)') == []
         assert pcss("ol:has(div)") == ["first-ol"]
         assert pcss(':is(#first-li, #second-li)') == [
             'first-li', 'second-li']

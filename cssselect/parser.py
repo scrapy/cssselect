@@ -255,8 +255,9 @@ class Relation(object):
     Represents selector:has(subselector)
     """
 
-    def __init__(self, selector, subselector):
+    def __init__(self, selector, combinator, subselector):
         self.selector = selector
+        self.combinator = combinator
         self.subselector = subselector
 
     def __repr__(self):
@@ -267,19 +268,20 @@ class Relation(object):
         )
 
     def canonical(self):
-        if not self.subselector:
-            subsel = "*"
-        else:
+        try:
             subsel = self.subselector[0].canonical()
+        except TypeError:
+            subsel = self.subselector.canonical()
         if len(subsel) > 1:
             subsel = subsel.lstrip("*")
         return "%s:has(%s)" % (self.selector.canonical(), subsel)
 
     def specificity(self):
         a1, b1, c1 = self.selector.specificity()
-        a2 = b2 = c2 = 0
-        if self.subselector:
+        try:
             a2, b2, c2 = self.subselector[-1].specificity()
+        except TypeError:
+            a2, b2, c2 = self.subselector.specificity()
         return a1 + a2, b1 + b2, c1 + c2
 
 
@@ -600,8 +602,8 @@ def parse_simple_selector(stream, inside_negation=False):
                     raise SelectorSyntaxError("Expected ')', got %s" % (next,))
                 result = Negation(result, argument)
             elif ident.lower() == "has":
-                arguments = parse_relative_selector(stream)
-                result = Relation(result, arguments)
+                combinator, arguments = parse_relative_selector(stream)
+                result = Relation(result, combinator, arguments)
             elif ident.lower() in ("matches", "is"):
                 selectors = parse_simple_selector_arguments(stream)
                 result = Matching(result, selectors)
@@ -631,23 +633,27 @@ def parse_arguments(stream):
 
 
 def parse_relative_selector(stream):
-    arguments = []
     stream.skip_whitespace()
+    subselector = ""
     next = stream.next()
+
     if next in [("DELIM", "+"), ("DELIM", "-"), ("DELIM", ">"), ("DELIM", "~")]:
-        arguments.append(next)
-    elif next.type in ("IDENT", "STRING", "NUMBER"):
-        arguments.append(Element(element=next.value))
-    while 1:
+        combinator = next
         stream.skip_whitespace()
         next = stream.next()
-        if next.type in ("IDENT", "STRING", "NUMBER"):
-            arguments.append(Element(element=next.value))
+    else:
+        combinator = Token("DELIM", " ", pos=0)
+
+    while 1:
+        if next.type in ("IDENT", "STRING", "NUMBER") or next in [("DELIM", "."), ("DELIM", "*")]:
+            subselector += next.value
         elif next == ('DELIM', ')'):
-            return arguments
+            result = parse(subselector)
+            return combinator, result[0]
         else:
             raise SelectorSyntaxError(
                 "Expected an argument, got %s" % (next,))
+        next = stream.next()
 
 
 def parse_simple_selector_arguments(stream):
