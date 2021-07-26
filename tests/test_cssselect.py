@@ -18,6 +18,8 @@
 """
 
 import sys
+import typing
+from typing import List, Optional, Sequence, Tuple
 import unittest
 
 from lxml import etree, html
@@ -28,8 +30,16 @@ from cssselect import (
     SelectorSyntaxError,
     ExpressionError,
 )
-from cssselect.parser import tokenize, parse_series, _unicode, FunctionalPseudoElement
-from cssselect.xpath import _unicode_safe_getattr, XPathExpr
+from cssselect.parser import (
+    tokenize,
+    parse_series,
+    _unicode,
+    PseudoElement,
+    FunctionalPseudoElement,
+    Function,
+    Token,
+)
+from cssselect.xpath import XPathExpr
 
 
 if sys.version_info[0] < 3:
@@ -40,12 +50,12 @@ if sys.version_info[0] < 3:
 
 else:
     # Python 3
-    def u(text):
+    def u(text: str) -> str:
         return text
 
 
 class TestCssselect(unittest.TestCase):
-    def test_tokenizer(self):
+    def test_tokenizer(self) -> None:
         tokens = [
             _unicode(item) for item in tokenize(u(r'E\ é > f [a~="y\"x"]:nth(/* fu /]* */-3.7)'))
         ]
@@ -70,14 +80,14 @@ class TestCssselect(unittest.TestCase):
             "<EOF at 42>",
         ]
 
-    def test_parser(self):
-        def repr_parse(css):
+    def test_parser(self) -> None:
+        def repr_parse(css: str) -> List[str]:
             selectors = parse(css)
             for selector in selectors:
                 assert selector.pseudo_element is None
             return [repr(selector.parsed_tree).replace("(u'", "('") for selector in selectors]
 
-        def parse_many(first, *others):
+        def parse_many(first: str, *others: str) -> List[str]:
             result = repr_parse(first)
             for other in others:
                 assert repr_parse(other) == result
@@ -170,24 +180,24 @@ class TestCssselect(unittest.TestCase):
             "Hash[Element[*]#foo]] <followed> Hash[Element[*]#bar]]"
         ]
 
-    def test_pseudo_elements(self):
-        def parse_pseudo(css):
-            result = []
+    def test_pseudo_elements(self) -> None:
+        def parse_pseudo(css: str) -> List[Tuple[str, Optional[str]]]:
+            result: List[Tuple[str, Optional[str]]] = []
             for selector in parse(css):
                 pseudo = selector.pseudo_element
                 pseudo = _unicode(pseudo) if pseudo else pseudo
                 # No Symbol here
                 assert pseudo is None or type(pseudo) is _unicode
-                selector = repr(selector.parsed_tree).replace("(u'", "('")
-                result.append((selector, pseudo))
+                selector_as_str = repr(selector.parsed_tree).replace("(u'", "('")
+                result.append((selector_as_str, pseudo))
             return result
 
-        def parse_one(css):
+        def parse_one(css: str) -> Tuple[str, Optional[str]]:
             result = parse_pseudo(css)
             assert len(result) == 1
             return result[0]
 
-        def test_pseudo_repr(css):
+        def test_pseudo_repr(css: str) -> str:
             result = parse(css)
             assert len(result) == 1
             selector = result[0]
@@ -254,8 +264,8 @@ class TestCssselect(unittest.TestCase):
         assert test_pseudo_repr(u":fİrst-child") == u"Pseudo[Element[*]:fİrst-child]"
         assert test_pseudo_repr(":scope") == "Pseudo[Element[*]:scope]"
 
-    def test_specificity(self):
-        def specificity(css):
+    def test_specificity(self) -> None:
+        def specificity(css: str) -> Tuple[int, int, int]:
             selectors = parse(css)
             assert len(selectors) == 1
             return selectors[0].specificity()
@@ -289,8 +299,8 @@ class TestCssselect(unittest.TestCase):
 
         assert specificity("#lorem + foo#ipsum:first-child > bar:first-line") == (2, 1, 3)
 
-    def test_css_export(self):
-        def css2css(css, res=None):
+    def test_css_export(self) -> None:
+        def css2css(css: str, res: Optional[str] = None) -> None:
             selectors = parse(css)
             assert len(selectors) == 1
             assert selectors[0].canonical() == (res or css)
@@ -324,13 +334,14 @@ class TestCssselect(unittest.TestCase):
         css2css("#lorem + foo#ipsum:first-child > bar::first-line")
         css2css("foo > *")
 
-    def test_parse_errors(self):
-        def get_error(css):
+    def test_parse_errors(self) -> None:
+        def get_error(css: str) -> Optional[str]:
             try:
                 parse(css)
             except SelectorSyntaxError:
                 # Py2, Py3, ...
                 return str(sys.exc_info()[1]).replace("(u'", "('")
+            return None
 
         assert get_error("attributes(href)/html/body/a") == (
             "Expected selector, got <DELIM '(' at 10>"
@@ -379,8 +390,8 @@ class TestCssselect(unittest.TestCase):
         )
         assert get_error("> div p") == ("Expected selector, got <DELIM '>' at 0>")
 
-    def test_translation(self):
-        def xpath(css):
+    def test_translation(self) -> None:
+        def xpath(css: str) -> str:
             return _unicode(GenericTranslator().css_to_xpath(css, prefix=""))
 
         assert xpath("*") == "*"
@@ -490,7 +501,7 @@ class TestCssselect(unittest.TestCase):
         self.assertRaises(TypeError, GenericTranslator().css_to_xpath, 4)
         self.assertRaises(TypeError, GenericTranslator().selector_to_xpath, "foo")
 
-    def test_unicode(self):
+    def test_unicode(self) -> None:
         if sys.version_info[0] < 3:
             css = ".a\xc1b".decode("ISO-8859-1")
         else:
@@ -504,7 +515,7 @@ class TestCssselect(unittest.TestCase):
             "concat(' ', normalize-space(@class), ' '), ' a&#193;b ')]"
         )
 
-    def test_quoting(self):
+    def test_quoting(self) -> None:
         css_to_xpath = GenericTranslator().css_to_xpath
         assert css_to_xpath('*[aval="\'"]') == ("""descendant-or-self::*[@aval = "'"]""")
         assert css_to_xpath("*[aval=\"'''\"]") == ("""descendant-or-self::*[@aval = "'''"]""")
@@ -514,7 +525,7 @@ class TestCssselect(unittest.TestCase):
             "descendant-or-self::*[1]/div[@dataimg = '<testmessage>']"
         )
 
-    def test_unicode_escapes(self):
+    def test_unicode_escapes(self) -> None:
         # \22 == '"'  \20 == ' '
         css_to_xpath = GenericTranslator().css_to_xpath
         assert css_to_xpath(r'*[aval="\'\22\'"]') == (
@@ -530,22 +541,26 @@ class TestCssselect(unittest.TestCase):
             """descendant-or-self::*[@aval = "'  '"]"""
         )
 
-    def test_xpath_pseudo_elements(self):
+    def test_xpath_pseudo_elements(self) -> None:
         class CustomTranslator(GenericTranslator):
-            def xpath_pseudo_element(self, xpath, pseudo_element):
+            def xpath_pseudo_element(
+                self, xpath: XPathExpr, pseudo_element: PseudoElement
+            ) -> XPathExpr:
                 if isinstance(pseudo_element, FunctionalPseudoElement):
-                    method = "xpath_%s_functional_pseudo_element" % (
+                    method_name = "xpath_%s_functional_pseudo_element" % (
                         pseudo_element.name.replace("-", "_")
                     )
-                    method = _unicode_safe_getattr(self, method, None)
+                    method = getattr(self, method_name, None)
                     if not method:
                         raise ExpressionError(
                             "The functional pseudo-element ::%s() is unknown" % pseudo_element.name
                         )
                     xpath = method(xpath, pseudo_element.arguments)
                 else:
-                    method = "xpath_%s_simple_pseudo_element" % (pseudo_element.replace("-", "_"))
-                    method = _unicode_safe_getattr(self, method, None)
+                    method_name = "xpath_%s_simple_pseudo_element" % (
+                        pseudo_element.replace("-", "_")
+                    )
+                    method = getattr(self, method_name, None)
                     if not method:
                         raise ExpressionError(
                             "The pseudo-element ::%s is unknown" % pseudo_element
@@ -555,18 +570,21 @@ class TestCssselect(unittest.TestCase):
 
             # functional pseudo-class:
             # elements that have a certain number of attributes
-            def xpath_nb_attr_function(self, xpath, function):
+            def xpath_nb_attr_function(self, xpath: XPathExpr, function: Function) -> XPathExpr:
+                assert function.arguments[0].value
                 nb_attributes = int(function.arguments[0].value)
                 return xpath.add_condition("count(@*)=%d" % nb_attributes)
 
             # pseudo-class:
             # elements that have 5 attributes
-            def xpath_five_attributes_pseudo(self, xpath):
+            def xpath_five_attributes_pseudo(self, xpath: XPathExpr) -> XPathExpr:
                 return xpath.add_condition("count(@*)=5")
 
             # functional pseudo-element:
             # element's attribute by name
-            def xpath_attr_functional_pseudo_element(self, xpath, arguments):
+            def xpath_attr_functional_pseudo_element(
+                self, xpath: XPathExpr, arguments: Sequence[Token]
+            ) -> XPathExpr:
                 attribute_name = arguments[0].value
                 other = XPathExpr(
                     "@%s" % attribute_name,
@@ -576,7 +594,7 @@ class TestCssselect(unittest.TestCase):
 
             # pseudo-element:
             # element's text() nodes
-            def xpath_text_node_simple_pseudo_element(self, xpath):
+            def xpath_text_node_simple_pseudo_element(self, xpath: XPathExpr) -> XPathExpr:
                 other = XPathExpr(
                     "text()",
                     "",
@@ -585,7 +603,7 @@ class TestCssselect(unittest.TestCase):
 
             # pseudo-element:
             # element's href attribute
-            def xpath_attr_href_simple_pseudo_element(self, xpath):
+            def xpath_attr_href_simple_pseudo_element(self, xpath: XPathExpr) -> XPathExpr:
                 other = XPathExpr(
                     "@href",
                     "",
@@ -594,10 +612,10 @@ class TestCssselect(unittest.TestCase):
 
             # pseudo-element:
             # used to demonstrate operator precedence
-            def xpath_first_or_second_pseudo(self, xpath):
+            def xpath_first_or_second_pseudo(self, xpath: XPathExpr) -> XPathExpr:
                 return xpath.add_condition("@id = 'first' or @id = 'second'")
 
-        def xpath(css):
+        def xpath(css: str) -> str:
             return _unicode(CustomTranslator().css_to_xpath(css))
 
         assert xpath(":five-attributes") == "descendant-or-self::*[count(@*)=5]"
@@ -616,11 +634,11 @@ class TestCssselect(unittest.TestCase):
         assert str(XPathExpr("", "", condition="@href")) == "[@href]"
 
         document = etree.fromstring(OPERATOR_PRECEDENCE_IDS)
-        sort_key = dict((el, count) for count, el in enumerate(document.getiterator())).__getitem__
+        sort_key = dict((el, count) for count, el in enumerate(document.iter())).__getitem__
 
-        def operator_id(selector):
+        def operator_id(selector: str) -> List[str]:
             xpath = CustomTranslator().css_to_xpath(selector)
-            items = document.xpath(xpath)
+            items = typing.cast(List["etree._Element"], document.xpath(xpath))
             items.sort(key=sort_key)
             return [element.get("id", "nil") for element in items]
 
@@ -628,10 +646,10 @@ class TestCssselect(unittest.TestCase):
         assert operator_id(":first-or-second[href]") == ["second"]
         assert operator_id("[href]:first-or-second") == ["second"]
 
-    def test_series(self):
-        def series(css):
+    def test_series(self) -> None:
+        def series(css: str) -> Optional[Tuple[int, int]]:
             (selector,) = parse(":nth-child(%s)" % css)
-            args = selector.parsed_tree.arguments
+            args = typing.cast(FunctionalPseudoElement, selector.parsed_tree).arguments
             try:
                 return parse_series(args)
             except ValueError:
@@ -656,14 +674,14 @@ class TestCssselect(unittest.TestCase):
         assert series("foo") is None
         assert series("n+") is None
 
-    def test_lang(self):
+    def test_lang(self) -> None:
         document = etree.fromstring(XMLLANG_IDS)
-        sort_key = dict((el, count) for count, el in enumerate(document.getiterator())).__getitem__
+        sort_key = dict((el, count) for count, el in enumerate(document.iter())).__getitem__
         css_to_xpath = GenericTranslator().css_to_xpath
 
-        def langid(selector):
+        def langid(selector: str) -> List[str]:
             xpath = css_to_xpath(selector)
-            items = document.xpath(xpath)
+            items = typing.cast(List["etree._Element"], document.xpath(xpath))
             items.sort(key=sort_key)
             return [element.get("id", "nil") for element in items]
 
@@ -677,23 +695,23 @@ class TestCssselect(unittest.TestCase):
         assert langid(":lang(en), :lang(zh)") == ["first", "second", "third", "fourth", "eighth"]
         assert langid(":lang(es)") == []
 
-    def test_select(self):
+    def test_select(self) -> None:
         document = etree.fromstring(HTML_IDS)
-        sort_key = dict((el, count) for count, el in enumerate(document.getiterator())).__getitem__
+        sort_key = dict((el, count) for count, el in enumerate(document.iter())).__getitem__
         css_to_xpath = GenericTranslator().css_to_xpath
         html_css_to_xpath = HTMLTranslator().css_to_xpath
 
-        def select_ids(selector, html_only):
+        def select_ids(selector: str, html_only: bool) -> List[str]:
             xpath = css_to_xpath(selector)
-            items = document.xpath(xpath)
+            items = typing.cast(List["etree._Element"], document.xpath(xpath))
             if html_only:
                 assert items == []
                 xpath = html_css_to_xpath(selector)
-                items = document.xpath(xpath)
+                items = typing.cast(List["etree._Element"], document.xpath(xpath))
             items.sort(key=sort_key)
             return [element.get("id", "nil") for element in items]
 
-        def pcss(main, *selectors, **kwargs):
+        def pcss(main: str, *selectors: str, **kwargs: bool) -> List[str]:
             html_only = kwargs.pop("html_only", False)
             result = select_ids(main, html_only)
             for selector in selectors:
@@ -900,17 +918,14 @@ class TestCssselect(unittest.TestCase):
             "checkbox-disabled-checked",
         ]
 
-    def test_select_shakespeare(self):
+    def test_select_shakespeare(self) -> None:
         document = html.document_fromstring(HTML_SHAKESPEARE)
         body = document.xpath("//body")[0]
         css_to_xpath = GenericTranslator().css_to_xpath
 
-        try:
-            basestring_ = basestring
-        except NameError:
-            basestring_ = (str, bytes)
+        basestring_ = (str, bytes)
 
-        def count(selector):
+        def count(selector: str) -> int:
             xpath = css_to_xpath(selector)
             results = body.xpath(xpath)
             assert not isinstance(results, basestring_)
