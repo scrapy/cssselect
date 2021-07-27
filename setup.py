@@ -14,9 +14,11 @@ except ImportError:
 
 
 ROOT = os.path.dirname(__file__)
-README = open(os.path.join(ROOT, "README.rst")).read()
-INIT_PY = open(os.path.join(ROOT, "cssselect", "__init__.py")).read()
-VERSION = re.search("VERSION = '([^']+)'", INIT_PY).group(1)
+with open(os.path.join(ROOT, "README.rst")) as readme_file:
+    README = readme_file.read()
+with open(os.path.join(ROOT, "cssselect", "__init__.py")) as init_file:
+    INIT_PY = init_file.read()
+VERSION = re.search('VERSION = "([^"]+)"', INIT_PY).group(1)
 
 
 setup(
