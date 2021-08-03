@@ -391,10 +391,8 @@ class TestCssselect(unittest.TestCase):
         assert get_error("> div p") == ("Expected selector, got <DELIM '>' at 0>")
 
         # Unsupported :has() with several arguments
-        assert get_error(':has(a, b)') == (
-            "Expected an argument, got <DELIM ',' at 6>")
-        assert get_error(':has()') == (
-            "Expected selector, got <EOF at 0>")
+        assert get_error(":has(a, b)") == ("Expected an argument, got <DELIM ',' at 6>")
+        assert get_error(":has()") == ("Expected selector, got <EOF at 0>")
 
     def test_translation(self):
         def xpath(css):
@@ -474,8 +472,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:has(f)") == "e[descendant::f]"
         assert xpath("e:has(~ f)") == "e[following-sibling::f]"
         assert (
-            xpath("e:has(+ f)")
-            == "e[following-sibling::*[(name() = 'f') and (position() = 1)]]"
+            xpath("e:has(+ f)") == "e[following-sibling::*[(name() = 'f') and (position() = 1)]]"
         )
         assert xpath('e:contains("foo")') == ("e[contains(., 'foo')]")
         assert xpath("e:ConTains(foo)") == ("e[contains(., 'foo')]")

@@ -661,14 +661,12 @@ def parse_relative_selector(stream):
     while 1:
         if next.type in ("IDENT", "STRING", "NUMBER") or next in [("DELIM", "."), ("DELIM", "*")]:
             subselector += next.value
-        elif next == ('DELIM', ')'):
+        elif next == ("DELIM", ")"):
             result = parse(subselector)
             return combinator, result[0]
         else:
-            raise SelectorSyntaxError(
-                "Expected an argument, got %s" % (next,))
+            raise SelectorSyntaxError("Expected an argument, got %s" % (next,))
         next = stream.next()
-
 
 
 def parse_simple_selector_arguments(stream):
