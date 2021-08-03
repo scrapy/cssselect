@@ -1,4 +1,4 @@
-include AUTHORS CHANGES LICENSE README.rst tox.ini .coveragerc
+include AUTHORS CHANGES LICENSE README.rst tox.ini .coveragerc py.typed
 recursive-include docs *
 recursive-include tests *
 prune docs/_build
