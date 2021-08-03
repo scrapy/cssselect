@@ -386,7 +386,7 @@ class GenericTranslator(object):
 
     def xpath_indirect_adjacent_combinator(self, left, right):
         """right is a sibling after left, immediately or not"""
-        return left.join('/following-sibling::', right)
+        return left.join("/following-sibling::", right)
 
     def xpath_relation_descendant_combinator(self, left, right):
         """right is a child, grand-child or further descendant of left; select left"""
