@@ -270,10 +270,19 @@ class GenericTranslator(object):
     def xpath_negation(self, negation):
         xpath = self.xpath(negation.selector)
         sub_xpath = self.xpath(negation.subselector)
-        sub_xpath.add_name_test()
-        if sub_xpath.condition:
+        if negation.combinator is not None and negation.subselector2 is not None:
+            sub2_xpath = self.xpath(negation.subselector2.parsed_tree)
+            method = getattr(
+                self,
+                "xpath_negation_%s_combinator"
+                % self.combinator_mapping[negation.combinator.value],
+            )
+            return method(xpath, sub_xpath, sub2_xpath)
+        elif sub_xpath.condition:
+            sub_xpath.add_name_test()
             return xpath.add_condition("not(%s)" % sub_xpath.condition)
         else:
+            sub_xpath.add_name_test()
             return xpath.add_condition("0")
 
     def xpath_relation(self, relation):
@@ -406,6 +415,27 @@ class GenericTranslator(object):
     def xpath_relation_indirect_adjacent_combinator(self, left, right):
         """right is a sibling after left, immediately or not; select left"""
         return left.join("[following-sibling::", right, closing_combiner="]")
+
+    def xpath_negation_descendant_combinator(self, xpath, left, right):
+        xpath.add_condition('not(name()="%s" and ancestor::*[name()="%s"])' % (right, left))
+        return xpath
+
+    def xpath_negation_child_combinator(self, xpath, left, right):
+        xpath.add_condition('not(name()="%s" and parent::*[name()="%s"])' % (right, left))
+        return xpath
+
+    def xpath_negation_direct_adjacent_combinator(self, xpath, left, right):
+        xpath.add_condition(
+            'not(name()="%s" and following-sibling::*[position()=1 and name()="%s"])'
+            % (right, left)
+        )
+        return xpath
+
+    def xpath_negation_indirect_adjacent_combinator(self, xpath, left, right):
+        xpath.add_condition(
+            'not(name()="%s" and following-sibling::*[name()="%s"])' % (right, left)
+        )
+        return xpath
 
     # Function: dispatch by function/pseudo-class name
 

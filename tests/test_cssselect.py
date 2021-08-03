@@ -145,6 +145,10 @@ class TestCssselect(unittest.TestCase):
         assert parse_many("a:lang(fr)") == ["Function[Element[a]:lang(['fr'])]"]
         assert parse_many('div:contains("foo")') == ["Function[Element[div]:contains(['foo'])]"]
         assert parse_many("div#foobar") == ["Hash[Element[div]#foobar]"]
+        assert parse_many(":not(a > b)") == ["Negation[Element[*]:not(Element[a] > Element[b])]"]
+        assert parse_many(":not(a + b)") == ["Negation[Element[*]:not(Element[a] + Element[b])]"]
+        assert parse_many(":not(a ~ b)") == ["Negation[Element[*]:not(Element[a] ~ Element[b])]"]
+        assert parse_many(":not(a b)") == ["Negation[Element[*]:not(Element[a]   Element[b])]"]
         assert parse_many("div:not(div.foo)") == [
             "Negation[Element[div]:not(Class[Element[div].foo])]"
         ]
@@ -391,10 +395,8 @@ class TestCssselect(unittest.TestCase):
         assert get_error("> div p") == ("Expected selector, got <DELIM '>' at 0>")
 
         # Unsupported :has() with several arguments
-        assert get_error(':has(a, b)') == (
-            "Expected an argument, got <DELIM ',' at 6>")
-        assert get_error(':has()') == (
-            "Expected selector, got <EOF at 0>")
+        assert get_error(":has(a, b)") == ("Expected an argument, got <DELIM ',' at 6>")
+        assert get_error(":has()") == ("Expected selector, got <EOF at 0>")
 
     def test_translation(self):
         def xpath(css):
@@ -470,12 +472,23 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:EmPTY") == ("e[not(*) and not(string-length())]")
         assert xpath("e:root") == ("e[not(parent::*)]")
         assert xpath("e:hover") == ("e[0]")  # never matches
+        assert xpath("*:not(a > b)") == (
+            '*[not(name()="b" and parent::*[name()="a"])]'
+        )  # select anything that is not b or doesn't have a parent a
+        assert xpath("*:not(a + b)") == (
+            '*[not(name()="b" and following-sibling::*[position()=1 and name()="a"])]'
+        )  # select anything that is not b or doesn't have an immediate sibling a
+        assert xpath("*:not(a ~ b)") == (
+            '*[not(name()="b" and following-sibling::*[name()="a"])]'
+        )  # select anything that is not b or doesn't have a sibling a
+        assert xpath("*:not(a b)") == (
+            '*[not(name()="b" and ancestor::*[name()="a"])]'
+        )  # select anything that is not b or doesn't have an ancestor a
         assert xpath("e:has(> f)") == "e[./f]"
         assert xpath("e:has(f)") == "e[descendant::f]"
         assert xpath("e:has(~ f)") == "e[following-sibling::f]"
         assert (
-            xpath("e:has(+ f)")
-            == "e[following-sibling::*[(name() = 'f') and (position() = 1)]]"
+            xpath("e:has(+ f)") == "e[following-sibling::*[(name() = 'f') and (position() = 1)]]"
         )
         assert xpath('e:contains("foo")') == ("e[contains(., 'foo')]")
         assert xpath("e:ConTains(foo)") == ("e[contains(., 'foo')]")

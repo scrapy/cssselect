@@ -238,12 +238,22 @@ class Negation(object):
     Represents selector:not(subselector)
     """
 
-    def __init__(self, selector, subselector):
+    def __init__(self, selector, subselector, combinator=None, subselector2=None):
         self.selector = selector
         self.subselector = subselector
+        self.combinator = combinator
+        self.subselector2 = subselector2
 
     def __repr__(self):
-        return "%s[%r:not(%r)]" % (self.__class__.__name__, self.selector, self.subselector)
+        if self.combinator is None and self.subselector2 is None:
+            return "%s[%r:not(%r)]" % (self.__class__.__name__, self.selector, self.subselector)
+        return "%s[%r:not(%r %s %r)]" % (
+            self.__class__.__name__,
+            self.selector,
+            self.subselector,
+            self.combinator.value,
+            self.subselector2.parsed_tree,
+        )
 
     def canonical(self):
         subsel = self.subselector.canonical()
@@ -614,9 +624,11 @@ def parse_simple_selector(stream, inside_negation=False):
                         "Got pseudo-element ::%s inside :not() at %s"
                         % (argument_pseudo_element, next.pos)
                     )
+                combinator = arguments = None
                 if next != ("DELIM", ")"):
-                    raise SelectorSyntaxError("Expected ')', got %s" % (next,))
-                result = Negation(result, argument)
+                    stream.skip_whitespace()
+                    combinator, arguments = parse_relative_selector(stream)
+                result = Negation(result, argument, combinator, arguments)
             elif ident.lower() == "has":
                 combinator, arguments = parse_relative_selector(stream)
                 result = Relation(result, combinator, arguments)
