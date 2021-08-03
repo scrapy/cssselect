@@ -206,9 +206,12 @@ class Function(object):
                 [token.value for token in self.arguments],
                 self.of_type.__repr__(),
             )
-        return '%s[%r:%s(%r)]' % (
-            self.__class__.__name__, self.selector, self.name,
-            [token.value for token in self.arguments])
+        return "%s[%r:%s(%r)]" % (
+            self.__class__.__name__,
+            self.selector,
+            self.name,
+            [token.value for token in self.arguments],
+        )
 
     def argument_types(self):
         return [token.type for token in self.arguments]
@@ -620,7 +623,7 @@ def parse_arguments(stream):
             ("DELIM", "-"),
         ]:
             arguments.append(next)
-        elif next == ('DELIM', ')'):
+        elif next == ("DELIM", ")"):
             return arguments, None
 
         else:
@@ -709,11 +712,11 @@ def parse_series(tokens):
 
     """
     for token in tokens:
-        if token.type == 'STRING':
-            raise ValueError('String tokens not allowed in series.')
+        if token.type == "STRING":
+            raise ValueError("String tokens not allowed in series.")
 
-    s = ''.join(token.value for token in tokens).strip()
-    if s == 'odd':
+    s = "".join(token.value for token in tokens).strip()
+    if s == "odd":
         return 2, 1
     elif s == "even":
         return 2, 0

@@ -447,7 +447,7 @@ class GenericTranslator(object):
         if function.of_type:
             nodetest = self.xpath(function.of_type.parsed_tree)
         elif add_name_test:
-            nodetest = '*'
+            nodetest = "*"
         else:
             nodetest = "%s" % xpath.element
 

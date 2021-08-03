@@ -403,16 +403,10 @@ class TestCssselect(unittest.TestCase):
         )
 
         # --- nth-* and nth-last-* -------------------------------------
+        assert xpath("e:nth-child(2n+1 of S)") == "e[count(preceding-sibling::S) mod 2 = 0]"
+        assert xpath("e:nth-of-type(2n+1 of S)") == "e[count(preceding-sibling::S) mod 2 = 0]"
         assert (
-            xpath("e:nth-child(2n+1 of S)")
-            == "e[count(preceding-sibling::S) mod 2 = 0]"
-        )
-        assert (
-            xpath("e:nth-of-type(2n+1 of S)")
-            == "e[count(preceding-sibling::S) mod 2 = 0]"
-        )
-        assert (
-            xpath('e:nth-child(2n+1 of li.important)')
+            xpath("e:nth-child(2n+1 of li.important)")
             == "e[count(preceding-sibling::li[@class and contains(concat(' ', normalize-space(@class), ' '), ' important ')]) mod 2 = 0]"
         )
 
@@ -581,8 +575,11 @@ class TestCssselect(unittest.TestCase):
             # element's attribute by name
             def xpath_attr_functional_pseudo_element(self, xpath, arguments):
                 attribute_name = arguments[0][0].value
-                other = XPathExpr('@%s' % attribute_name, '', )
-                return xpath.join('/', other)
+                other = XPathExpr(
+                    "@%s" % attribute_name,
+                    "",
+                )
+                return xpath.join("/", other)
 
             # pseudo-element:
             # element's text() nodes
