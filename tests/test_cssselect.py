@@ -406,8 +406,9 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:nth-child(2n+1 of S)") == "e[count(preceding-sibling::S) mod 2 = 0]"
         assert xpath("e:nth-of-type(2n+1 of S)") == "e[count(preceding-sibling::S) mod 2 = 0]"
         assert (
-            xpath("e:nth-child(2n+1 of li.important)")
-            == "e[count(preceding-sibling::li[@class and contains(concat(' ', normalize-space(@class), ' '), ' important ')]) mod 2 = 0]"
+            xpath("e:nth-child(2n+1 of li.important)") == "e[count(preceding-sibling::li[@class"
+            " and contains(concat(' ', normalize-space(@class), ' '), ' important ')])"
+            " mod 2 = 0]"
         )
 
         assert xpath("e:nth-child(1)") == ("e[count(preceding-sibling::*) = 0]")
@@ -474,6 +475,9 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e ~ f") == ("e/following-sibling::f")
         assert xpath("e ~ f:nth-child(3)") == (
             "e/following-sibling::f[count(preceding-sibling::*) = 2]"
+        )
+        assert xpath("e ~ f:nth-child(3 of S)") == (
+            "e/following-sibling::f[count(preceding-sibling::S) = 2]"
         )
         assert xpath("div#container p") == ("div[@id = 'container']/descendant-or-self::*/p")
 
