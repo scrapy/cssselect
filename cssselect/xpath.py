@@ -284,6 +284,15 @@ class GenericTranslator(object):
                 xpath.add_condition(e.condition, "or")
         return xpath
 
+    def xpath_specificityadjustment(self, matching):
+        xpath = self.xpath(matching.selector)
+        exprs = [self.xpath(selector) for selector in matching.selector_list]
+        for e in exprs:
+            e.add_name_test()
+            if e.condition:
+                xpath.add_condition(e.condition, "or")
+        return xpath
+
     def xpath_function(self, function):
         """Translate a functional pseudo-class."""
         method = "xpath_%s_function" % function.name.replace("-", "_")
