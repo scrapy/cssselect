@@ -284,6 +284,37 @@ class Matching(object):
         return max([x.specificity() for x in self.selector_list])
 
 
+class SpecificityAdjustment(object):
+    """
+    Represents selector:where(selector_list)
+    Same as selector:is(selector_list), but its specificity is always 0
+    """
+
+    def __init__(self, selector, selector_list):
+        self.selector = selector
+        self.selector_list = selector_list
+
+    def __repr__(self):
+        return "%s[%r:where(%s)]" % (
+            self.__class__.__name__,
+            self.selector,
+            ", ".join(map(repr, self.selector_list)),
+        )
+
+    def canonical(self):
+        selector_arguments = []
+        for s in self.selector_list:
+            selarg = s.canonical()
+            selector_arguments.append(selarg.lstrip("*"))
+        return "%s:where(%s)" % (
+            self.selector.canonical(),
+            ", ".join(map(str, selector_arguments)),
+        )
+
+    def specificity(self):
+        return 0, 0, 0
+
+
 class Attrib(object):
     """
     Represents selector[namespace|attrib operator value]
@@ -585,6 +616,9 @@ def parse_simple_selector(stream, inside_negation=False):
             elif ident.lower() in ("matches", "is"):
                 selectors = parse_simple_selector_arguments(stream)
                 result = Matching(result, selectors)
+            elif ident.lower() == "where":
+                selectors = parse_simple_selector_arguments(stream)
+                result = SpecificityAdjustment(result, selectors)
             else:
                 result = Function(result, ident, parse_arguments(stream))
         else:
