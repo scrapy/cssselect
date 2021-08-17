@@ -469,8 +469,8 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:root") == ("e[not(parent::*)]")
         assert xpath("e:hover") == ("e[0]")  # never matches
         assert (
-            xpath("div:has(div.foo)") == "div[descendant::div]"
-            "[@class and contains(concat(' ', normalize-space(@class), ' '), ' foo ')]"
+            xpath("div:has(bar.foo)") == "div[descendant::bar"
+            "[@class and contains(concat(' ', normalize-space(@class), ' '), ' foo ')]]"
         )
         assert xpath("e:has(> f)") == "e[./f]"
         assert xpath("e:has(f)") == "e[descendant::f]"

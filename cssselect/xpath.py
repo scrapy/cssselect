@@ -76,14 +76,21 @@ class XPathExpr(object):
         """
         self.path += "*/"
 
-    def join(self, combiner, other, closing_combiner=None):
+    def join(self, combiner, other, closing_combiner=None, has_inner_condition=False):
         path = _unicode(self) + combiner
         # Any "star prefix" is redundant when joining.
         if other.path != "*/":
             path += other.path
         self.path = path
-        self.element = other.element + closing_combiner if closing_combiner else other.element
-        self.condition = other.condition
+        if not has_inner_condition:
+            self.element = other.element + closing_combiner if closing_combiner else other.element
+            self.condition = other.condition
+        else:
+            self.element = other.element
+            if other.condition:
+                self.element += "[" + other.condition + "]"
+            if closing_combiner:
+                self.element += closing_combiner
         return self
 
 
@@ -390,7 +397,7 @@ class GenericTranslator(object):
 
     def xpath_relation_descendant_combinator(self, left, right):
         """right is a child, grand-child or further descendant of left; select left"""
-        return left.join("[descendant::", right, closing_combiner="]")
+        return left.join("[descendant::", right, closing_combiner="]", has_inner_condition=True)
 
     def xpath_relation_child_combinator(self, left, right):
         """right is an immediate child of left; select left"""
