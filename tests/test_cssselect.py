@@ -578,7 +578,7 @@ class TestCssselect(unittest.TestCase):
             # functional pseudo-element:
             # element's attribute by name
             def xpath_attr_functional_pseudo_element(self, xpath, arguments):
-                attribute_name = arguments[0][0].value
+                attribute_name = arguments[0].value
                 other = XPathExpr(
                     "@%s" % attribute_name,
                     "",

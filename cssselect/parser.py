@@ -165,14 +165,14 @@ class FunctionalPseudoElement(object):
         return "%s[::%s(%r)]" % (
             self.__class__.__name__,
             self.name,
-            [token.value for token in self.arguments[0]],
+            [token.value for token in self.arguments],
         )
 
     def argument_types(self):
         return [token.type for token in self.arguments]
 
     def canonical(self):
-        args = "".join(token.css() for token in self.arguments[0])
+        args = "".join(token.css() for token in self.arguments)
         return "%s(%s)" % (self.name, args)
 
     def specificity(self):
@@ -600,7 +600,7 @@ def parse_simple_selector(stream, inside_negation=False):
                 selectors = parse_simple_selector_arguments(stream)
                 result = Matching(result, selectors)
             else:
-                arguments, of_type = parse_arguments(stream)
+                arguments, of_type = parse_function_arguments(stream)
                 result = Function(result, ident, arguments, of_type)
         else:
             raise SelectorSyntaxError("Expected selector, got %s" % (peek,))
@@ -610,6 +610,19 @@ def parse_simple_selector(stream, inside_negation=False):
 
 
 def parse_arguments(stream):
+    arguments = []
+    while 1:
+        stream.skip_whitespace()
+        next = stream.next()
+        if next.type in ("IDENT", "STRING", "NUMBER") or next in [("DELIM", "+"), ("DELIM", "-")]:
+            arguments.append(next)
+        elif next == ("DELIM", ")"):
+            return arguments
+        else:
+            raise SelectorSyntaxError("Expected an argument, got %s" % (next,))
+
+
+def parse_function_arguments(stream):
     arguments = []
     while 1:
         stream.skip_whitespace()
