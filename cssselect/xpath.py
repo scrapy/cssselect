@@ -14,6 +14,7 @@
 
 import sys
 import re
+import copy
 
 from cssselect.parser import parse, parse_series, SelectorError
 
@@ -75,13 +76,13 @@ class XPathExpr(object):
         """
         self.path += "*/"
 
-    def join(self, combiner, other):
+    def join(self, combiner, other, closing_combiner=None):
         path = _unicode(self) + combiner
         # Any "star prefix" is redundant when joining.
         if other.path != "*/":
             path += other.path
         self.path = path
-        self.element = other.element
+        self.element = other.element + closing_combiner if closing_combiner else other.element
         self.condition = other.condition
         return self
 
@@ -269,11 +270,31 @@ class GenericTranslator(object):
     def xpath_negation(self, negation):
         xpath = self.xpath(negation.selector)
         sub_xpath = self.xpath(negation.subselector)
-        sub_xpath.add_name_test()
-        if sub_xpath.condition:
+        if negation.combinator is not None and negation.subselector2 is not None:
+            sub2_xpath = self.xpath(negation.subselector2.parsed_tree)
+            method = getattr(
+                self,
+                "xpath_negation_%s_combinator"
+                % self.combinator_mapping[negation.combinator.value],
+            )
+            return method(xpath, sub_xpath, sub2_xpath)
+        elif sub_xpath.condition:
+            sub_xpath.add_name_test()
             return xpath.add_condition("not(%s)" % sub_xpath.condition)
         else:
+            sub_xpath.add_name_test()
             return xpath.add_condition("0")
+
+    def xpath_relation(self, relation):
+        xpath = self.xpath(relation.selector)
+        combinator = relation.combinator
+        subselector = relation.subselector
+        right = self.xpath(subselector.parsed_tree)
+        method = getattr(
+            self,
+            "xpath_relation_%s_combinator" % self.combinator_mapping[combinator.value],
+        )
+        return method(xpath, right)
 
     def xpath_matching(self, matching):
         xpath = self.xpath(matching.selector)
@@ -384,6 +405,46 @@ class GenericTranslator(object):
     def xpath_indirect_adjacent_combinator(self, left, right):
         """right is a sibling after left, immediately or not"""
         return left.join("/following-sibling::", right)
+
+    def xpath_relation_descendant_combinator(self, left, right):
+        """right is a child, grand-child or further descendant of left; select left"""
+        return left.join("[descendant::", right, closing_combiner="]")
+
+    def xpath_relation_child_combinator(self, left, right):
+        """right is an immediate child of left; select left"""
+        return left.join("[./", right, closing_combiner="]")
+
+    def xpath_relation_direct_adjacent_combinator(self, left, right):
+        """right is a sibling immediately after left; select left"""
+        xpath = left.add_condition(
+            "following-sibling::*[(name() = '{}') and (position() = 1)]".format(right.element)
+        )
+        return xpath
+
+    def xpath_relation_indirect_adjacent_combinator(self, left, right):
+        """right is a sibling after left, immediately or not; select left"""
+        return left.join("[following-sibling::", right, closing_combiner="]")
+
+    def xpath_negation_descendant_combinator(self, xpath, left, right):
+        xpath.add_condition('not(name()="%s" and ancestor::*[name()="%s"])' % (right, left))
+        return xpath
+
+    def xpath_negation_child_combinator(self, xpath, left, right):
+        xpath.add_condition('not(name()="%s" and parent::*[name()="%s"])' % (right, left))
+        return xpath
+
+    def xpath_negation_direct_adjacent_combinator(self, xpath, left, right):
+        xpath.add_condition(
+            'not(name()="%s" and following-sibling::*[position()=1 and name()="%s"])'
+            % (right, left)
+        )
+        return xpath
+
+    def xpath_negation_indirect_adjacent_combinator(self, xpath, left, right):
+        xpath.add_condition(
+            'not(name()="%s" and following-sibling::*[name()="%s"])' % (right, left)
+        )
+        return xpath
 
     # Function: dispatch by function/pseudo-class name
 

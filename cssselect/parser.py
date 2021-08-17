@@ -238,12 +238,22 @@ class Negation(object):
     Represents selector:not(subselector)
     """
 
-    def __init__(self, selector, subselector):
+    def __init__(self, selector, subselector, combinator=None, subselector2=None):
         self.selector = selector
         self.subselector = subselector
+        self.combinator = combinator
+        self.subselector2 = subselector2
 
     def __repr__(self):
-        return "%s[%r:not(%r)]" % (self.__class__.__name__, self.selector, self.subselector)
+        if self.combinator is None and self.subselector2 is None:
+            return "%s[%r:not(%r)]" % (self.__class__.__name__, self.selector, self.subselector)
+        return "%s[%r:not(%r %s %r)]" % (
+            self.__class__.__name__,
+            self.selector,
+            self.subselector,
+            self.combinator.value,
+            self.subselector2.parsed_tree,
+        )
 
     def canonical(self):
         subsel = self.subselector.canonical()
@@ -254,6 +264,41 @@ class Negation(object):
     def specificity(self):
         a1, b1, c1 = self.selector.specificity()
         a2, b2, c2 = self.subselector.specificity()
+        return a1 + a2, b1 + b2, c1 + c2
+
+
+class Relation(object):
+    """
+    Represents selector:has(subselector)
+    """
+
+    def __init__(self, selector, combinator, subselector):
+        self.selector = selector
+        self.combinator = combinator
+        self.subselector = subselector
+
+    def __repr__(self):
+        return "%s[%r:has(%r)]" % (
+            self.__class__.__name__,
+            self.selector,
+            self.subselector,
+        )
+
+    def canonical(self):
+        try:
+            subsel = self.subselector[0].canonical()
+        except TypeError:
+            subsel = self.subselector.canonical()
+        if len(subsel) > 1:
+            subsel = subsel.lstrip("*")
+        return "%s:has(%s)" % (self.selector.canonical(), subsel)
+
+    def specificity(self):
+        a1, b1, c1 = self.selector.specificity()
+        try:
+            a2, b2, c2 = self.subselector[-1].specificity()
+        except TypeError:
+            a2, b2, c2 = self.subselector.specificity()
         return a1 + a2, b1 + b2, c1 + c2
 
 
@@ -610,9 +655,15 @@ def parse_simple_selector(stream, inside_negation=False):
                         "Got pseudo-element ::%s inside :not() at %s"
                         % (argument_pseudo_element, next.pos)
                     )
+                combinator = arguments = None
                 if next != ("DELIM", ")"):
-                    raise SelectorSyntaxError("Expected ')', got %s" % (next,))
-                result = Negation(result, argument)
+                    stream.skip_whitespace()
+                    combinator, arguments = parse_relative_selector(stream)
+                result = Negation(result, argument, combinator, arguments)
+            elif ident.lower() == "has":
+                combinator, arguments = parse_relative_selector(stream)
+                result = Relation(result, combinator, arguments)
+
             elif ident.lower() in ("matches", "is"):
                 selectors = parse_simple_selector_arguments(stream)
                 result = Matching(result, selectors)
@@ -639,6 +690,29 @@ def parse_arguments(stream):
             return arguments
         else:
             raise SelectorSyntaxError("Expected an argument, got %s" % (next,))
+
+
+def parse_relative_selector(stream):
+    stream.skip_whitespace()
+    subselector = ""
+    next = stream.next()
+
+    if next in [("DELIM", "+"), ("DELIM", "-"), ("DELIM", ">"), ("DELIM", "~")]:
+        combinator = next
+        stream.skip_whitespace()
+        next = stream.next()
+    else:
+        combinator = Token("DELIM", " ", pos=0)
+
+    while 1:
+        if next.type in ("IDENT", "STRING", "NUMBER") or next in [("DELIM", "."), ("DELIM", "*")]:
+            subselector += next.value
+        elif next == ("DELIM", ")"):
+            result = parse(subselector)
+            return combinator, result[0]
+        else:
+            raise SelectorSyntaxError("Expected an argument, got %s" % (next,))
+        next = stream.next()
 
 
 def parse_simple_selector_arguments(stream):
