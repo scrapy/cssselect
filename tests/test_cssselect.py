@@ -148,6 +148,9 @@ class TestCssselect(unittest.TestCase):
         assert parse_many("div:not(div.foo)") == [
             "Negation[Element[div]:not(Class[Element[div].foo])]"
         ]
+        assert parse_many("div:has(div.foo)") == [
+            "Relation[Element[div]:has(Selector[Class[Element[div].foo]])]"
+        ]
         assert parse_many("div:is(.foo, #bar)") == [
             "Matching[Element[div]:is(Class[Element[*].foo], Hash[Element[*]#bar])]"
         ]
@@ -283,6 +286,11 @@ class TestCssselect(unittest.TestCase):
         assert specificity(":not(:empty)") == (0, 1, 0)
         assert specificity(":not(#foo)") == (1, 0, 0)
 
+        assert specificity(":has(*)") == (0, 0, 0)
+        assert specificity(":has(foo)") == (0, 0, 1)
+        assert specificity(":has(.foo)") == (0, 1, 0)
+        assert specificity(":has(> foo)") == (0, 0, 1)
+
         assert specificity(":is(.foo, #bar)") == (1, 0, 0)
         assert specificity(":is(:hover, :visited)") == (0, 1, 0)
         assert specificity(":where(:hover, :visited)") == (0, 0, 0)
@@ -320,6 +328,9 @@ class TestCssselect(unittest.TestCase):
         css2css(":not(*[foo])", ":not([foo])")
         css2css(":not(:empty)")
         css2css(":not(#foo)")
+        css2css(":has(*)")
+        css2css(":has(foo)")
+        css2css(":has(*.foo)", ":has(.foo)")
         css2css(":is(#bar, .foo)")
         css2css(":is(:focused, :visited)")
         css2css(":where(:focused, :visited)")
@@ -386,6 +397,10 @@ class TestCssselect(unittest.TestCase):
             'Got immediate child pseudo-element ":scope" not at the start of a selector'
         )
         assert get_error("> div p") == ("Expected selector, got <DELIM '>' at 0>")
+
+        # Unsupported :has() with several arguments
+        assert get_error(":has(a, b)") == ("Expected an argument, got <DELIM ',' at 6>")
+        assert get_error(":has()") == ("Expected selector, got <EOF at 0>")
 
     def test_translation(self):
         def xpath(css):
@@ -461,6 +476,16 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:EmPTY") == ("e[not(*) and not(string-length())]")
         assert xpath("e:root") == ("e[not(parent::*)]")
         assert xpath("e:hover") == ("e[0]")  # never matches
+        assert (
+            xpath("div:has(bar.foo)") == "div[descendant::bar"
+            "[@class and contains(concat(' ', normalize-space(@class), ' '), ' foo ')]]"
+        )
+        assert xpath("e:has(> f)") == "e[./f]"
+        assert xpath("e:has(f)") == "e[descendant::f]"
+        assert xpath("e:has(~ f)") == "e[following-sibling::f]"
+        assert (
+            xpath("e:has(+ f)") == "e[following-sibling::*[(name() = 'f') and (position() = 1)]]"
+        )
         assert xpath('e:contains("foo")') == ("e[contains(., 'foo')]")
         assert xpath("e:ConTains(foo)") == ("e[contains(., 'foo')]")
         assert xpath("e.warning") == (
@@ -873,6 +898,8 @@ class TestCssselect(unittest.TestCase):
             "sixth-li",
             "seventh-li",
         ]
+        assert pcss("link:has(*)") == []
+        assert pcss("ol:has(div)") == ["first-ol"]
         assert pcss(":is(#first-li, #second-li)") == ["first-li", "second-li"]
         assert pcss("a:is(#name-anchor, #tag-anchor)") == ["name-anchor", "tag-anchor"]
         assert pcss(":is(.c)") == ["first-ol", "third-li", "fourth-li"]
