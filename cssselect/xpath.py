@@ -12,8 +12,10 @@
 
 """
 
+import copy
 import sys
 import re
+
 import typing
 from typing import Optional
 
@@ -31,7 +33,9 @@ from cssselect.parser import (
     Pseudo,
     Attrib,
     Negation,
+    Relation,
     Matching,
+    SpecificityAdjustment,
     CombinedSelector,
 )
 
@@ -89,14 +93,27 @@ class XPathExpr(object):
         """
         self.path += "*/"
 
-    def join(self, combiner: str, other: "XPathExpr") -> "XPathExpr":
+    def join(
+        self,
+        combiner: str,
+        other: "XPathExpr",
+        closing_combiner: Optional[str] = None,
+        has_inner_condition: bool = False,
+    ) -> "XPathExpr":
         path = _unicode(self) + combiner
         # Any "star prefix" is redundant when joining.
         if other.path != "*/":
             path += other.path
         self.path = path
-        self.element = other.element
-        self.condition = other.condition
+        if not has_inner_condition:
+            self.element = other.element + closing_combiner if closing_combiner else other.element
+            self.condition = other.condition
+        else:
+            self.element = other.element
+            if other.condition:
+                self.element += "[" + other.condition + "]"
+            if closing_combiner:
+                self.element += closing_combiner
         return self
 
 
@@ -294,7 +311,28 @@ class GenericTranslator(object):
         else:
             return xpath.add_condition("0")
 
+    def xpath_relation(self, relation: Relation) -> XPathExpr:
+        xpath = self.xpath(relation.selector)
+        combinator = relation.combinator
+        subselector = relation.subselector
+        right = self.xpath(subselector.parsed_tree)
+        method = getattr(
+            self,
+            "xpath_relation_%s_combinator"
+            % self.combinator_mapping[typing.cast(str, combinator.value)],
+        )
+        return typing.cast(XPathExpr, method(xpath, right))
+
     def xpath_matching(self, matching: Matching) -> XPathExpr:
+        xpath = self.xpath(matching.selector)
+        exprs = [self.xpath(selector) for selector in matching.selector_list]
+        for e in exprs:
+            e.add_name_test()
+            if e.condition:
+                xpath.add_condition(e.condition, "or")
+        return xpath
+
+    def xpath_specificityadjustment(self, matching: SpecificityAdjustment) -> XPathExpr:
         xpath = self.xpath(matching.selector)
         exprs = [self.xpath(selector) for selector in matching.selector_list]
         for e in exprs:
@@ -394,6 +432,29 @@ class GenericTranslator(object):
     def xpath_indirect_adjacent_combinator(self, left: XPathExpr, right: XPathExpr) -> XPathExpr:
         """right is a sibling after left, immediately or not"""
         return left.join("/following-sibling::", right)
+
+    def xpath_relation_descendant_combinator(self, left: XPathExpr, right: XPathExpr) -> XPathExpr:
+        """right is a child, grand-child or further descendant of left; select left"""
+        return left.join("[descendant::", right, closing_combiner="]", has_inner_condition=True)
+
+    def xpath_relation_child_combinator(self, left: XPathExpr, right: XPathExpr) -> XPathExpr:
+        """right is an immediate child of left; select left"""
+        return left.join("[./", right, closing_combiner="]")
+
+    def xpath_relation_direct_adjacent_combinator(
+        self, left: XPathExpr, right: XPathExpr
+    ) -> XPathExpr:
+        """right is a sibling immediately after left; select left"""
+        xpath = left.add_condition(
+            "following-sibling::*[(name() = '{}') and (position() = 1)]".format(right.element)
+        )
+        return xpath
+
+    def xpath_relation_indirect_adjacent_combinator(
+        self, left: XPathExpr, right: XPathExpr
+    ) -> XPathExpr:
+        """right is a sibling after left, immediately or not; select left"""
+        return left.join("[following-sibling::", right, closing_combiner="]")
 
     # Function: dispatch by function/pseudo-class name
 

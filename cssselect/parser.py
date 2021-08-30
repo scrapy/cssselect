@@ -56,7 +56,9 @@ Tree = Union[
     "Pseudo",
     "Attrib",
     "Negation",
+    "Relation",
     "Matching",
+    "SpecificityAdjustment",
     "CombinedSelector",
 ]
 PseudoElement = Union["FunctionalPseudoElement", str]
@@ -267,6 +269,41 @@ class Negation(object):
         return a1 + a2, b1 + b2, c1 + c2
 
 
+class Relation(object):
+    """
+    Represents selector:has(subselector)
+    """
+
+    def __init__(self, selector: Tree, combinator: "Token", subselector: Selector):
+        self.selector = selector
+        self.combinator = combinator
+        self.subselector = subselector
+
+    def __repr__(self) -> str:
+        return "%s[%r:has(%r)]" % (
+            self.__class__.__name__,
+            self.selector,
+            self.subselector,
+        )
+
+    def canonical(self) -> str:
+        try:
+            subsel = self.subselector[0].canonical()  # type: ignore
+        except TypeError:
+            subsel = self.subselector.canonical()
+        if len(subsel) > 1:
+            subsel = subsel.lstrip("*")
+        return "%s:has(%s)" % (self.selector.canonical(), subsel)
+
+    def specificity(self) -> Tuple[int, int, int]:
+        a1, b1, c1 = self.selector.specificity()
+        try:
+            a2, b2, c2 = self.subselector[-1].specificity()  # type: ignore
+        except TypeError:
+            a2, b2, c2 = self.subselector.specificity()
+        return a1 + a2, b1 + b2, c1 + c2
+
+
 class Matching(object):
     """
     Represents selector:is(selector_list)
@@ -292,6 +329,37 @@ class Matching(object):
 
     def specificity(self) -> Tuple[int, int, int]:
         return max([x.specificity() for x in self.selector_list])
+
+
+class SpecificityAdjustment(object):
+    """
+    Represents selector:where(selector_list)
+    Same as selector:is(selector_list), but its specificity is always 0
+    """
+
+    def __init__(self, selector: Tree, selector_list: List[Tree]):
+        self.selector = selector
+        self.selector_list = selector_list
+
+    def __repr__(self) -> str:
+        return "%s[%r:where(%s)]" % (
+            self.__class__.__name__,
+            self.selector,
+            ", ".join(map(repr, self.selector_list)),
+        )
+
+    def canonical(self) -> str:
+        selector_arguments = []
+        for s in self.selector_list:
+            selarg = s.canonical()
+            selector_arguments.append(selarg.lstrip("*"))
+        return "%s:where(%s)" % (
+            self.selector.canonical(),
+            ", ".join(map(str, selector_arguments)),
+        )
+
+    def specificity(self) -> Tuple[int, int, int]:
+        return 0, 0, 0
 
 
 class Attrib(object):
@@ -618,9 +686,16 @@ def parse_simple_selector(
                 if next != ("DELIM", ")"):
                     raise SelectorSyntaxError("Expected ')', got %s" % (next,))
                 result = Negation(result, argument)
+            elif ident.lower() == "has":
+                combinator, arguments = parse_relative_selector(stream)
+                result = Relation(result, combinator, arguments)
+
             elif ident.lower() in ("matches", "is"):
                 selectors = parse_simple_selector_arguments(stream)
                 result = Matching(result, selectors)
+            elif ident.lower() == "where":
+                selectors = parse_simple_selector_arguments(stream)
+                result = SpecificityAdjustment(result, selectors)
             else:
                 result = Function(result, ident, parse_arguments(stream))
         else:
@@ -641,6 +716,29 @@ def parse_arguments(stream: "TokenStream") -> List["Token"]:
             return arguments
         else:
             raise SelectorSyntaxError("Expected an argument, got %s" % (next,))
+
+
+def parse_relative_selector(stream: "TokenStream") -> Tuple["Token", Selector]:
+    stream.skip_whitespace()
+    subselector = ""
+    next = stream.next()
+
+    if next in [("DELIM", "+"), ("DELIM", "-"), ("DELIM", ">"), ("DELIM", "~")]:
+        combinator = next
+        stream.skip_whitespace()
+        next = stream.next()
+    else:
+        combinator = Token("DELIM", " ", pos=0)
+
+    while 1:
+        if next.type in ("IDENT", "STRING", "NUMBER") or next in [("DELIM", "."), ("DELIM", "*")]:
+            subselector += typing.cast(str, next.value)
+        elif next == ("DELIM", ")"):
+            result = parse(subselector)
+            return combinator, result[0]
+        else:
+            raise SelectorSyntaxError("Expected an argument, got %s" % (next,))
+        next = stream.next()
 
 
 def parse_simple_selector_arguments(stream: "TokenStream") -> List[Tree]:
