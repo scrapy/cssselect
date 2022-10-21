@@ -40,7 +40,7 @@ class ExpressionError(SelectorError, RuntimeError):
 #### XPath Helpers
 
 
-class XPathExpr(object):
+class XPathExpr:
     def __init__(self, path="", element="*", condition="", star_prefix=False):
         self.path = path
         self.element = element
@@ -108,7 +108,7 @@ is_non_whitespace = re.compile(r"^[^ \t\r\n\f]+$").match
 #### Translation
 
 
-class GenericTranslator(object):
+class GenericTranslator:
     """
     Translator for "generic" XML documents.
 
@@ -760,7 +760,7 @@ class HTMLTranslator(GenericTranslator):
 
     def xpath_link_pseudo(self, xpath):
         return xpath.add_condition(
-            "@href and " "(name(.) = 'a' or name(.) = 'link' or name(.) = 'area')"
+            "@href and (name(.) = 'a' or name(.) = 'link' or name(.) = 'area')"
         )
 
     # Links are never visited, the implementation for :visited is the same

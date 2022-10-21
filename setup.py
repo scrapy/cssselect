@@ -3,14 +3,7 @@
 import re
 import os.path
 
-try:
-    from setuptools import setup
-
-    extra_kwargs = {"test_suite": "cssselect.tests"}
-except ImportError:
-    from distutils.core import setup
-
-    extra_kwargs = {}
+from setuptools import setup
 
 
 ROOT = os.path.dirname(__file__)
@@ -33,6 +26,7 @@ setup(
     url="https://github.com/scrapy/cssselect",
     license="BSD",
     packages=["cssselect"],
+    test_suite="cssselect.tests",
     python_requires=">=3.6",
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -46,5 +40,4 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
     ],
-    **extra_kwargs,
 )

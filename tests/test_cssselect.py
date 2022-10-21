@@ -198,7 +198,7 @@ class TestCssselect(unittest.TestCase):
             result = parse(css)
             assert len(result) == 1
             selector = result[0]
-            return selector.parsed_tree.__repr__()
+            return repr(selector.parsed_tree)
 
         assert parse_one("foo") == ("Element[foo]", None)
         assert parse_one("*") == ("Element[*]", None)
@@ -258,7 +258,7 @@ class TestCssselect(unittest.TestCase):
 
         # Special test for the unicode symbols and ':scope' element if check
         # Errors if use repr() instead of __repr__()
-        assert test_pseudo_repr(u":fİrst-child") == u"Pseudo[Element[*]:fİrst-child]"
+        assert test_pseudo_repr(":fİrst-child") == "Pseudo[Element[*]:fİrst-child]"
         assert test_pseudo_repr(":scope") == "Pseudo[Element[*]:scope]"
 
     def test_specificity(self):
