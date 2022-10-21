@@ -47,7 +47,7 @@ class SelectorSyntaxError(SelectorError, SyntaxError):
 #### Parsed objects
 
 
-class Selector(object):
+class Selector:
     """
     Represents a parsed selector.
 
@@ -118,7 +118,7 @@ class Selector(object):
         return a, b, c
 
 
-class Class(object):
+class Class:
     """
     Represents selector.class_name
     """
@@ -139,7 +139,7 @@ class Class(object):
         return a, b, c
 
 
-class FunctionalPseudoElement(object):
+class FunctionalPseudoElement:
     """
     Represents selector::name(arguments)
 
@@ -181,7 +181,7 @@ class FunctionalPseudoElement(object):
         return a, b, c
 
 
-class Function(object):
+class Function:
     """
     Represents selector:name(expr)
     """
@@ -212,7 +212,7 @@ class Function(object):
         return a, b, c
 
 
-class Pseudo(object):
+class Pseudo:
     """
     Represents selector:ident
     """
@@ -233,7 +233,7 @@ class Pseudo(object):
         return a, b, c
 
 
-class Negation(object):
+class Negation:
     """
     Represents selector:not(subselector)
     """
@@ -257,7 +257,7 @@ class Negation(object):
         return a1 + a2, b1 + b2, c1 + c2
 
 
-class Relation(object):
+class Relation:
     """
     Represents selector:has(subselector)
     """
@@ -292,7 +292,7 @@ class Relation(object):
         return a1 + a2, b1 + b2, c1 + c2
 
 
-class Matching(object):
+class Matching:
     """
     Represents selector:is(selector_list)
     """
@@ -316,10 +316,10 @@ class Matching(object):
         return "%s:is(%s)" % (self.selector.canonical(), ", ".join(map(str, selector_arguments)))
 
     def specificity(self):
-        return max([x.specificity() for x in self.selector_list])
+        return max(x.specificity() for x in self.selector_list)
 
 
-class SpecificityAdjustment(object):
+class SpecificityAdjustment:
     """
     Represents selector:where(selector_list)
     Same as selector:is(selector_list), but its specificity is always 0
@@ -350,7 +350,7 @@ class SpecificityAdjustment(object):
         return 0, 0, 0
 
 
-class Attrib(object):
+class Attrib:
     """
     Represents selector[namespace|attrib operator value]
     """
@@ -397,7 +397,7 @@ class Attrib(object):
         return a, b, c
 
 
-class Element(object):
+class Element:
     """
     Represents namespace|element
 
@@ -425,7 +425,7 @@ class Element(object):
             return 0, 0, 0
 
 
-class Hash(object):
+class Hash:
     """
     Represents selector#id
     """
@@ -446,7 +446,7 @@ class Hash(object):
         return a, b, c
 
 
-class CombinedSelector(object):
+class CombinedSelector:
     def __init__(self, selector, combinator, subselector):
         assert selector is not None
         self.selector = selector
@@ -621,7 +621,7 @@ def parse_simple_selector(stream, inside_negation=False):
                 continue
             if stream.peek() != ("DELIM", "("):
                 result = Pseudo(result, ident)
-                if result.__repr__() == "Pseudo[Element[*]:scope]":
+                if repr(result) == "Pseudo[Element[*]:scope]":
                     if not (
                         len(stream.used) == 2
                         or (len(stream.used) == 3 and stream.used[0].type == "S")
@@ -947,7 +947,7 @@ def tokenize(s):
     yield EOFToken(pos)
 
 
-class TokenStream(object):
+class TokenStream:
     def __init__(self, tokens, source=None):
         self.used = []
         self.tokens = iter(tokens)
