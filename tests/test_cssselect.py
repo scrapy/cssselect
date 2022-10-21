@@ -37,7 +37,6 @@ if sys.version_info[0] < 3:
     def u(text):
         return text.decode("utf8")
 
-
 else:
     # Python 3
     def u(text):
@@ -91,18 +90,15 @@ class TestCssselect(unittest.TestCase):
         assert parse_many("foo|bar") == ["Element[foo|bar]"]
         # This will never match, but it is valid:
         assert parse_many("#foo#bar") == ["Hash[Hash[Element[*]#foo]#bar]"]
-        assert (
-            parse_many(
-                "div>.foo",
-                "div> .foo",
-                "div >.foo",
-                "div > .foo",
-                "div \n>  \t \t .foo",
-                "div\r>\n\n\n.foo",
-                "div\f>\f.foo",
-            )
-            == ["CombinedSelector[Element[div] > Class[Element[*].foo]]"]
-        )
+        assert parse_many(
+            "div>.foo",
+            "div> .foo",
+            "div >.foo",
+            "div > .foo",
+            "div \n>  \t \t .foo",
+            "div\r>\n\n\n.foo",
+            "div\f>\f.foo",
+        ) == ["CombinedSelector[Element[div] > Class[Element[*].foo]]"]
         assert parse_many("td.foo,.bar", "td.foo, .bar", "td.foo\t\r\n\f ,\t\r\n\f .bar") == [
             "Class[Element[td].foo]",
             "Class[Element[*].bar]",
