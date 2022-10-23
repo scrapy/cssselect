@@ -28,7 +28,7 @@ from cssselect import (
     SelectorSyntaxError,
     ExpressionError,
 )
-from cssselect.parser import tokenize, parse_series, _unicode, FunctionalPseudoElement
+from cssselect.parser import tokenize, parse_series, FunctionalPseudoElement
 from cssselect.xpath import _unicode_safe_getattr, XPathExpr
 
 
@@ -45,9 +45,7 @@ else:
 
 class TestCssselect(unittest.TestCase):
     def test_tokenizer(self):
-        tokens = [
-            _unicode(item) for item in tokenize(u(r'E\ é > f [a~="y\"x"]:nth(/* fu /]* */-3.7)'))
-        ]
+        tokens = [str(item) for item in tokenize(u(r'E\ é > f [a~="y\"x"]:nth(/* fu /]* */-3.7)'))]
         assert tokens == [
             u("<IDENT 'E é' at 0>"),
             "<S ' ' at 4>",
@@ -178,9 +176,9 @@ class TestCssselect(unittest.TestCase):
             result = []
             for selector in parse(css):
                 pseudo = selector.pseudo_element
-                pseudo = _unicode(pseudo) if pseudo else pseudo
+                pseudo = str(pseudo) if pseudo else pseudo
                 # No Symbol here
-                assert pseudo is None or type(pseudo) is _unicode
+                assert pseudo is None or type(pseudo) is str
                 selector = repr(selector.parsed_tree).replace("(u'", "('")
                 result.append((selector, pseudo))
             return result
@@ -400,7 +398,7 @@ class TestCssselect(unittest.TestCase):
 
     def test_translation(self):
         def xpath(css):
-            return _unicode(GenericTranslator().css_to_xpath(css, prefix=""))
+            return str(GenericTranslator().css_to_xpath(css, prefix=""))
 
         assert xpath("*") == "*"
         assert xpath("e") == "e"
@@ -629,7 +627,7 @@ class TestCssselect(unittest.TestCase):
                 return xpath.add_condition("@id = 'first' or @id = 'second'")
 
         def xpath(css):
-            return _unicode(CustomTranslator().css_to_xpath(css))
+            return str(CustomTranslator().css_to_xpath(css))
 
         assert xpath(":five-attributes") == "descendant-or-self::*[count(@*)=5]"
         assert xpath(":nb-attr(3)") == "descendant-or-self::*[count(@*)=3]"
@@ -938,10 +936,7 @@ class TestCssselect(unittest.TestCase):
         body = document.xpath("//body")[0]
         css_to_xpath = GenericTranslator().css_to_xpath
 
-        try:
-            basestring_ = basestring
-        except NameError:
-            basestring_ = (str, bytes)
+        basestring_ = (str, bytes)
 
         def count(selector):
             xpath = css_to_xpath(selector)
@@ -1393,7 +1388,7 @@ HTML_SHAKESPEARE = """
 </div>
 </body>
 </html>
-"""
+"""  # noqa: W191,E101
 
 
 if __name__ == "__main__":

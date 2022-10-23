@@ -17,14 +17,6 @@ import re
 import operator
 
 
-if sys.version_info[0] < 3:
-    _unicode = unicode
-    _unichr = unichr
-else:
-    _unicode = str
-    _unichr = chr
-
-
 def ascii_lower(string):
     """Lower-case, but only in the ASCII range."""
     return string.encode("utf8").lower().decode("utf8")
@@ -617,7 +609,7 @@ def parse_simple_selector(stream, inside_negation=False):
             if ident.lower() in ("first-line", "first-letter", "before", "after"):
                 # Special case: CSS 2.1 pseudo-elements can have a single ':'
                 # Any new pseudo-element must have two.
-                pseudo_element = _unicode(ident)
+                pseudo_element = str(ident)
                 continue
             if stream.peek() != ("DELIM", "("):
                 result = Pseudo(result, ident)
@@ -870,7 +862,7 @@ def _replace_unicode(match):
     codepoint = int(match.group(1), 16)
     if codepoint > sys.maxunicode:
         codepoint = 0xFFFD
-    return _unichr(codepoint)
+    return chr(codepoint)
 
 
 def unescape_ident(value):
