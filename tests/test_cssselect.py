@@ -47,7 +47,6 @@ if sys.version_info[0] < 3:
     def u(text):
         return text.decode("utf8")
 
-
 else:
     # Python 3
     def u(text: str) -> str:
@@ -101,18 +100,15 @@ class TestCssselect(unittest.TestCase):
         assert parse_many("foo|bar") == ["Element[foo|bar]"]
         # This will never match, but it is valid:
         assert parse_many("#foo#bar") == ["Hash[Hash[Element[*]#foo]#bar]"]
-        assert (
-            parse_many(
-                "div>.foo",
-                "div> .foo",
-                "div >.foo",
-                "div > .foo",
-                "div \n>  \t \t .foo",
-                "div\r>\n\n\n.foo",
-                "div\f>\f.foo",
-            )
-            == ["CombinedSelector[Element[div] > Class[Element[*].foo]]"]
-        )
+        assert parse_many(
+            "div>.foo",
+            "div> .foo",
+            "div >.foo",
+            "div > .foo",
+            "div \n>  \t \t .foo",
+            "div\r>\n\n\n.foo",
+            "div\f>\f.foo",
+        ) == ["CombinedSelector[Element[div] > Class[Element[*].foo]]"]
         assert parse_many("td.foo,.bar", "td.foo, .bar", "td.foo\t\r\n\f ,\t\r\n\f .bar") == [
             "Class[Element[td].foo]",
             "Class[Element[*].bar]",
@@ -208,7 +204,7 @@ class TestCssselect(unittest.TestCase):
             result = parse(css)
             assert len(result) == 1
             selector = result[0]
-            return selector.parsed_tree.__repr__()
+            return repr(selector.parsed_tree)
 
         assert parse_one("foo") == ("Element[foo]", None)
         assert parse_one("*") == ("Element[*]", None)
@@ -268,7 +264,7 @@ class TestCssselect(unittest.TestCase):
 
         # Special test for the unicode symbols and ':scope' element if check
         # Errors if use repr() instead of __repr__()
-        assert test_pseudo_repr(u":fİrst-child") == u"Pseudo[Element[*]:fİrst-child]"
+        assert test_pseudo_repr(":fİrst-child") == "Pseudo[Element[*]:fİrst-child]"
         assert test_pseudo_repr(":scope") == "Pseudo[Element[*]:scope]"
 
     def test_specificity(self) -> None:
