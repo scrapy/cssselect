@@ -19,7 +19,7 @@
 
 import sys
 import typing
-from typing import List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple, Iterable
 import unittest
 
 from lxml import etree, html
@@ -727,27 +727,32 @@ class TestCssselect(unittest.TestCase):
         assert langid(":lang(en), :lang(zh)") == ["first", "second", "third", "fourth", "eighth"]
         assert langid(":lang(es)") == []
 
-    def test_argument_types(self):
+    def test_argument_types(self) -> None:
         class CustomTranslator(GenericTranslator):
-            def __init__(self):
-                self.argument_types = []
+            def __init__(self) -> None:
+                self.argument_types: List[str] = []
 
-            def xpath_pseudo_element(self, xpath, pseudo_element):
-                self.argument_types += pseudo_element.argument_types()
+            def xpath_pseudo_element(
+                self, xpath: XPathExpr, pseudo_element: PseudoElement
+            ) -> XPathExpr:
+                self.argument_types += typing.cast(
+                    FunctionalPseudoElement, pseudo_element
+                ).argument_types()
+                return xpath
 
-        def argument_types(css):
+        def argument_types(css: str) -> List[str]:
             translator = CustomTranslator()
             translator.css_to_xpath(css)
             return translator.argument_types
 
-        mappings = (
+        mappings: List[Tuple[str, List[str]]] = [
             ("", []),
             ("ident", ["IDENT"]),
             ('"string"', ["STRING"]),
             ("1", ["NUMBER"]),
-        )
+        ]
         for argument_string, argument_list in mappings:
-            css = "::pseudo_element({})".format(argument_string)
+            css = f"::pseudo_element({argument_string})"
             assert argument_types(css) == argument_list
 
     def test_select(self) -> None:
