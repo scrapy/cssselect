@@ -2,45 +2,42 @@
 
 import re
 import os.path
-try:
-    from setuptools import setup
-    extra_kwargs = {'test_suite': 'cssselect.tests'}
-except ImportError:
-    from distutils.core import setup
-    extra_kwargs = {}
+
+from setuptools import setup
 
 
 ROOT = os.path.dirname(__file__)
-README = open(os.path.join(ROOT, 'README.rst')).read()
-INIT_PY = open(os.path.join(ROOT, 'cssselect', '__init__.py')).read()
-VERSION = re.search("VERSION = '([^']+)'", INIT_PY).group(1)
+with open(os.path.join(ROOT, "README.rst")) as readme_file:
+    README = readme_file.read()
+with open(os.path.join(ROOT, "cssselect", "__init__.py")) as init_file:
+    INIT_PY = init_file.read()
+VERSION = re.search('VERSION = "([^"]+)"', INIT_PY).group(1)
 
 
 setup(
-    name='cssselect',
+    name="cssselect",
     version=VERSION,
-    author='Ian Bicking',
-    author_email='ianb@colorstudy.com',
-    maintainer='Paul Tremberth',
-    maintainer_email='paul.tremberth@gmail.com',
-    description=
-        'cssselect parses CSS3 Selectors and translates them to XPath 1.0',
+    author="Ian Bicking",
+    author_email="ianb@colorstudy.com",
+    maintainer="Paul Tremberth",
+    maintainer_email="paul.tremberth@gmail.com",
+    description="cssselect parses CSS3 Selectors and translates them to XPath 1.0",
     long_description=README,
-    url='https://github.com/scrapy/cssselect',
-    license='BSD',
-    packages=['cssselect'],
-    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*',
+    url="https://github.com/scrapy/cssselect",
+    license="BSD",
+    packages=["cssselect"],
+    test_suite="cssselect.tests",
+    python_requires=">=3.6",
     classifiers=[
-        'Development Status :: 4 - Beta',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: BSD License',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7'
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: BSD License",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
     ],
-    **extra_kwargs
 )

@@ -13,10 +13,15 @@
 
 """
 
-from cssselect.parser import (parse, Selector, FunctionalPseudoElement,
-                              SelectorError, SelectorSyntaxError)
+from cssselect.parser import (
+    parse,
+    Selector,
+    FunctionalPseudoElement,
+    SelectorError,
+    SelectorSyntaxError,
+)
 from cssselect.xpath import GenericTranslator, HTMLTranslator, ExpressionError
 
 
-VERSION = '1.1.0'
+VERSION = "1.1.0"
 __version__ = VERSION
