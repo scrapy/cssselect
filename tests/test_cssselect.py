@@ -274,6 +274,7 @@ class TestCssselect(unittest.TestCase):
         assert specificity('[baz="4"]') == (0, 1, 0)
         assert specificity('[baz^="4"]') == (0, 1, 0)
         assert specificity("#lipsum") == (1, 0, 0)
+        assert specificity("::attr(name)") == (0, 0, 1)
 
         assert specificity(":not(*)") == (0, 0, 0)
         assert specificity(":not(foo)") == (0, 0, 1)
@@ -707,6 +708,29 @@ class TestCssselect(unittest.TestCase):
         assert langid(":lang(de) :lang(zh)") == ["eighth"]
         assert langid(":lang(en), :lang(zh)") == ["first", "second", "third", "fourth", "eighth"]
         assert langid(":lang(es)") == []
+
+    def test_argument_types(self):
+        class CustomTranslator(GenericTranslator):
+            def __init__(self):
+                self.argument_types = []
+
+            def xpath_pseudo_element(self, xpath, pseudo_element):
+                self.argument_types += pseudo_element.argument_types()
+
+        def argument_types(css):
+            translator = CustomTranslator()
+            translator.css_to_xpath(css)
+            return translator.argument_types
+
+        mappings = (
+            ("", []),
+            ("ident", ["IDENT"]),
+            ('"string"', ["STRING"]),
+            ("1", ["NUMBER"]),
+        )
+        for argument_string, argument_list in mappings:
+            css = "::pseudo_element({})".format(argument_string)
+            assert argument_types(css) == argument_list
 
     def test_select(self):
         document = etree.fromstring(HTML_IDS)
