@@ -12,19 +12,9 @@
 
 """
 
-import sys
 import re
-import copy
 
 from cssselect.parser import parse, parse_series, SelectorError
-
-
-if sys.version_info[0] < 3:
-    _basestring = basestring
-    _unicode = unicode
-else:
-    _basestring = str
-    _unicode = str
 
 
 def _unicode_safe_getattr(obj, name, default=None):
@@ -47,7 +37,7 @@ class XPathExpr:
         self.condition = condition
 
     def __str__(self):
-        path = _unicode(self.path) + _unicode(self.element)
+        path = str(self.path) + str(self.element)
         if self.condition:
             path += "[%s]" % self.condition
         return path
@@ -77,7 +67,7 @@ class XPathExpr:
         self.path += "*/"
 
     def join(self, combiner, other, closing_combiner=None, has_inner_condition=False):
-        path = _unicode(self) + combiner
+        path = str(self) + combiner
         # Any "star prefix" is redundant when joining.
         if other.path != "*/":
             path += other.path
@@ -230,7 +220,7 @@ class GenericTranslator:
         assert isinstance(xpath, self.xpathexpr_cls)  # help debug a missing 'return'
         if translate_pseudo_elements and selector.pseudo_element:
             xpath = self.xpath_pseudo_element(xpath, selector.pseudo_element)
-        return (prefix or "") + _unicode(xpath)
+        return (prefix or "") + str(xpath)
 
     def xpath_pseudo_element(self, xpath, pseudo_element):
         """Translate a pseudo-element.
@@ -243,7 +233,7 @@ class GenericTranslator:
 
     @staticmethod
     def xpath_literal(s):
-        s = _unicode(s)
+        s = str(s)
         if "'" not in s:
             s = "'%s'" % s
         elif '"' not in s:
