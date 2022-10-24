@@ -21,6 +21,9 @@ jobs:
             TOXENV: security
         - python-version: 3
           env:
+            TOXENV: docs
+        - python-version: 3
+          env:
             TOXENV: typing
 
     steps:

@@ -206,14 +206,14 @@ Version 0.3
 Released on 2012-04-17.
 
 * Fix many parsing bugs.
-* Rename the :class:`Translator` class to :class:`GenericTranslator`
+* Rename the ``Translator`` class to :class:`GenericTranslator`
 * There, implement ``:target``, ``:hover``, ``:focus``, ``:active``
   ``:checked``, ``:enabled``, ``:disabled``, ``:link`` and ``:visited``
   as never matching.
 * Make a new HTML-specific ``HTMLTranslator`` subclass. There, implement
   ``:checked``, ``:enabled``, ``:disabled``, ``:link`` and ``:visited``
   as appropriate for HTML, with all links  "not visited".
-* Remove the :func:`css_to_xpath` function. The translator classes
+* Remove the ``css_to_xpath`` function. The translator classes
   are the new API.
 * Add support for ``:contains()`` back, but case-sensitive. lxml will
   override it to be case-insensitive for backward-compatibility.
