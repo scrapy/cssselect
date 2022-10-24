@@ -982,14 +982,14 @@ class TestCssselect(unittest.TestCase):
 
     def test_select_shakespeare(self) -> None:
         document = html.document_fromstring(HTML_SHAKESPEARE)
-        body = document.xpath("//body")[0]
+        body = typing.cast(List["etree._Element"], document.xpath("//body"))[0]
         css_to_xpath = GenericTranslator().css_to_xpath
 
         basestring_ = (str, bytes)
 
         def count(selector: str) -> int:
             xpath = css_to_xpath(selector)
-            results = body.xpath(xpath)
+            results = typing.cast(List["etree._Element"], body.xpath(xpath))
             assert not isinstance(results, basestring_)
             found = set()
             for item in results:
