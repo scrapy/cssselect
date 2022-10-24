@@ -21,17 +21,22 @@ import sys
 import unittest
 
 from lxml import etree, html
-from cssselect import (parse, GenericTranslator, HTMLTranslator,
-                       SelectorSyntaxError, ExpressionError)
-from cssselect.parser import (tokenize, parse_series, _unicode,
-                              FunctionalPseudoElement)
+from cssselect import (
+    parse,
+    GenericTranslator,
+    HTMLTranslator,
+    SelectorSyntaxError,
+    ExpressionError,
+)
+from cssselect.parser import tokenize, parse_series, _unicode, FunctionalPseudoElement
 from cssselect.xpath import _unicode_safe_getattr, XPathExpr
 
 
 if sys.version_info[0] < 3:
     # Python 2
     def u(text):
-        return text.decode('utf8')
+        return text.decode("utf8")
+
 else:
     # Python 3
     def u(text):
@@ -41,8 +46,8 @@ else:
 class TestCssselect(unittest.TestCase):
     def test_tokenizer(self):
         tokens = [
-            _unicode(item) for item in tokenize(
-                u(r'E\ é > f [a~="y\"x"]:nth(/* fu /]* */-3.7)'))]
+            _unicode(item) for item in tokenize(u(r'E\ é > f [a~="y\"x"]:nth(/* fu /]* */-3.7)'))
+        ]
         assert tokens == [
             u("<IDENT 'E é' at 0>"),
             "<S ' ' at 4>",
@@ -69,8 +74,7 @@ class TestCssselect(unittest.TestCase):
             selectors = parse(css)
             for selector in selectors:
                 assert selector.pseudo_element is None
-            return [repr(selector.parsed_tree).replace("(u'", "('")
-                    for selector in selectors]
+            return [repr(selector.parsed_tree).replace("(u'", "('") for selector in selectors]
 
         def parse_many(first, *others):
             result = repr_parse(first)
@@ -78,88 +82,95 @@ class TestCssselect(unittest.TestCase):
                 assert repr_parse(other) == result
             return result
 
-        assert parse_many('*') == ['Element[*]']
-        assert parse_many('*|*') == ['Element[*]']
-        assert parse_many('*|foo') == ['Element[foo]']
-        assert parse_many('|foo') == ['Element[foo]']
-        assert parse_many('foo|*') == ['Element[foo|*]']
-        assert parse_many('foo|bar') == ['Element[foo|bar]']
+        assert parse_many("*") == ["Element[*]"]
+        assert parse_many("*|*") == ["Element[*]"]
+        assert parse_many("*|foo") == ["Element[foo]"]
+        assert parse_many("|foo") == ["Element[foo]"]
+        assert parse_many("foo|*") == ["Element[foo|*]"]
+        assert parse_many("foo|bar") == ["Element[foo|bar]"]
         # This will never match, but it is valid:
-        assert parse_many('#foo#bar') == ['Hash[Hash[Element[*]#foo]#bar]']
+        assert parse_many("#foo#bar") == ["Hash[Hash[Element[*]#foo]#bar]"]
         assert parse_many(
-            'div>.foo',
-            'div> .foo',
-            'div >.foo',
-            'div > .foo',
-            'div \n>  \t \t .foo', 'div\r>\n\n\n.foo', 'div\f>\f.foo'
-        ) == ['CombinedSelector[Element[div] > Class[Element[*].foo]]']
-        assert parse_many('td.foo,.bar',
-            'td.foo, .bar',
-            'td.foo\t\r\n\f ,\t\r\n\f .bar'
-        ) == [
-            'Class[Element[td].foo]',
-            'Class[Element[*].bar]'
+            "div>.foo",
+            "div> .foo",
+            "div >.foo",
+            "div > .foo",
+            "div \n>  \t \t .foo",
+            "div\r>\n\n\n.foo",
+            "div\f>\f.foo",
+        ) == ["CombinedSelector[Element[div] > Class[Element[*].foo]]"]
+        assert parse_many("td.foo,.bar", "td.foo, .bar", "td.foo\t\r\n\f ,\t\r\n\f .bar") == [
+            "Class[Element[td].foo]",
+            "Class[Element[*].bar]",
         ]
-        assert parse_many('div, td.foo, div.bar span') == [
-            'Element[div]',
-            'Class[Element[td].foo]',
-            'CombinedSelector[Class[Element[div].bar] '
-                '<followed> Element[span]]']
-        assert parse_many('div > p') == [
-            'CombinedSelector[Element[div] > Element[p]]']
-        assert parse_many('td:first') == [
-            'Pseudo[Element[td]:first]']
-        assert parse_many('td:first') == [
-            'Pseudo[Element[td]:first]']
-        assert parse_many('td :first') == [
-            'CombinedSelector[Element[td] '
-                '<followed> Pseudo[Element[*]:first]]']
-        assert parse_many('td :first') == [
-            'CombinedSelector[Element[td] '
-                '<followed> Pseudo[Element[*]:first]]']
-        assert parse_many('a[name]', 'a[ name\t]') == [
-            'Attrib[Element[a][name]]']
-        assert parse_many('a [name]') == [
-            'CombinedSelector[Element[a] <followed> Attrib[Element[*][name]]]']
-        assert parse_many('a[rel="include"]', 'a[rel = include]') == [
-            "Attrib[Element[a][rel = 'include']]"]
+        assert parse_many("div, td.foo, div.bar span") == [
+            "Element[div]",
+            "Class[Element[td].foo]",
+            "CombinedSelector[Class[Element[div].bar] <followed> Element[span]]",
+        ]
+        assert parse_many("div > p") == ["CombinedSelector[Element[div] > Element[p]]"]
+        assert parse_many("td:first") == ["Pseudo[Element[td]:first]"]
+        assert parse_many("td:first") == ["Pseudo[Element[td]:first]"]
+        assert parse_many("td :first") == [
+            "CombinedSelector[Element[td] <followed> Pseudo[Element[*]:first]]"
+        ]
+        assert parse_many("td :first") == [
+            "CombinedSelector[Element[td] <followed> Pseudo[Element[*]:first]]"
+        ]
+        assert parse_many("a[name]", "a[ name\t]") == ["Attrib[Element[a][name]]"]
+        assert parse_many("a [name]") == [
+            "CombinedSelector[Element[a] <followed> Attrib[Element[*][name]]]"
+        ]
+        assert parse_many('a[rel="include"]', "a[rel = include]") == [
+            "Attrib[Element[a][rel = 'include']]"
+        ]
         assert parse_many("a[hreflang |= 'en']", "a[hreflang|=en]") == [
-            "Attrib[Element[a][hreflang |= 'en']]"]
-        assert parse_many('div:nth-child(10)') == [
-            "Function[Element[div]:nth-child(['10'])]"]
-        assert parse_many(':nth-child(2n+2)') == [
-            "Function[Element[*]:nth-child(['2', 'n', '+2'])]"]
-        assert parse_many('div:nth-of-type(10)') == [
-            "Function[Element[div]:nth-of-type(['10'])]"]
-        assert parse_many('div div:nth-of-type(10) .aclass') == [
-            'CombinedSelector[CombinedSelector[Element[div] <followed> '
-                "Function[Element[div]:nth-of-type(['10'])]] "
-                '<followed> Class[Element[*].aclass]]']
-        assert parse_many('label:only') == [
-            'Pseudo[Element[label]:only]']
-        assert parse_many('a:lang(fr)') == [
-            "Function[Element[a]:lang(['fr'])]"]
-        assert parse_many('div:contains("foo")') == [
-            "Function[Element[div]:contains(['foo'])]"]
-        assert parse_many('div#foobar') == [
-            'Hash[Element[div]#foobar]']
-        assert parse_many('div:not(div.foo)') == [
-            'Negation[Element[div]:not(Class[Element[div].foo])]']
-        assert parse_many('td ~ th') == [
-            'CombinedSelector[Element[td] ~ Element[th]]']
-        assert parse_many(':scope > foo') == [
-            'CombinedSelector[Pseudo[Element[*]:scope] > Element[foo]]'
+            "Attrib[Element[a][hreflang |= 'en']]"
         ]
-        assert parse_many(' :scope > foo') == [
-            'CombinedSelector[Pseudo[Element[*]:scope] > Element[foo]]'
+        assert parse_many("div:nth-child(10)") == ["Function[Element[div]:nth-child(['10'])]"]
+        assert parse_many(":nth-child(2n+2)") == [
+            "Function[Element[*]:nth-child(['2', 'n', '+2'])]"
         ]
-        assert parse_many(':scope > foo bar > div') == [
-            'CombinedSelector[CombinedSelector[CombinedSelector[Pseudo[Element[*]:scope] > '
-            'Element[foo]] <followed> Element[bar]] > Element[div]]'
+        assert parse_many("div:nth-of-type(10)") == ["Function[Element[div]:nth-of-type(['10'])]"]
+        assert parse_many("div div:nth-of-type(10) .aclass") == [
+            "CombinedSelector[CombinedSelector[Element[div] <followed> "
+            "Function[Element[div]:nth-of-type(['10'])]] "
+            "<followed> Class[Element[*].aclass]]"
         ]
-        assert parse_many(':scope > #foo #bar') == [
-            'CombinedSelector[CombinedSelector[Pseudo[Element[*]:scope] > '
-            'Hash[Element[*]#foo]] <followed> Hash[Element[*]#bar]]'
+        assert parse_many("label:only") == ["Pseudo[Element[label]:only]"]
+        assert parse_many("a:lang(fr)") == ["Function[Element[a]:lang(['fr'])]"]
+        assert parse_many('div:contains("foo")') == ["Function[Element[div]:contains(['foo'])]"]
+        assert parse_many("div#foobar") == ["Hash[Element[div]#foobar]"]
+        assert parse_many("div:not(div.foo)") == [
+            "Negation[Element[div]:not(Class[Element[div].foo])]"
+        ]
+        assert parse_many("div:has(div.foo)") == [
+            "Relation[Element[div]:has(Selector[Class[Element[div].foo]])]"
+        ]
+        assert parse_many("div:is(.foo, #bar)") == [
+            "Matching[Element[div]:is(Class[Element[*].foo], Hash[Element[*]#bar])]"
+        ]
+        assert parse_many(":is(:hover, :visited)") == [
+            "Matching[Element[*]:is(Pseudo[Element[*]:hover], Pseudo[Element[*]:visited])]"
+        ]
+        assert parse_many(":where(:hover, :visited)") == [
+            "SpecificityAdjustment[Element[*]:where(Pseudo[Element[*]:hover],"
+            " Pseudo[Element[*]:visited])]"
+        ]
+        assert parse_many("td ~ th") == ["CombinedSelector[Element[td] ~ Element[th]]"]
+        assert parse_many(":scope > foo") == [
+            "CombinedSelector[Pseudo[Element[*]:scope] > Element[foo]]"
+        ]
+        assert parse_many(" :scope > foo") == [
+            "CombinedSelector[Pseudo[Element[*]:scope] > Element[foo]]"
+        ]
+        assert parse_many(":scope > foo bar > div") == [
+            "CombinedSelector[CombinedSelector[CombinedSelector[Pseudo[Element[*]:scope] > "
+            "Element[foo]] <followed> Element[bar]] > Element[div]]"
+        ]
+        assert parse_many(":scope > #foo #bar") == [
+            "CombinedSelector[CombinedSelector[Pseudo[Element[*]:scope] > "
+            "Hash[Element[*]#foo]] <followed> Hash[Element[*]#bar]]"
         ]
 
     def test_pseudo_elements(self):
@@ -183,71 +194,76 @@ class TestCssselect(unittest.TestCase):
             result = parse(css)
             assert len(result) == 1
             selector = result[0]
-            return selector.parsed_tree.__repr__()
+            return repr(selector.parsed_tree)
 
-        assert parse_one('foo') == ('Element[foo]', None)
-        assert parse_one('*') == ('Element[*]', None)
-        assert parse_one(':empty') == ('Pseudo[Element[*]:empty]', None)
-        assert parse_one(':scope') == ('Pseudo[Element[*]:scope]', None)
+        assert parse_one("foo") == ("Element[foo]", None)
+        assert parse_one("*") == ("Element[*]", None)
+        assert parse_one(":empty") == ("Pseudo[Element[*]:empty]", None)
+        assert parse_one(":scope") == ("Pseudo[Element[*]:scope]", None)
 
         # Special cases for CSS 2.1 pseudo-elements
-        assert parse_one(':BEfore') == ('Element[*]', 'before')
-        assert parse_one(':aftER') == ('Element[*]', 'after')
-        assert parse_one(':First-Line') == ('Element[*]', 'first-line')
-        assert parse_one(':First-Letter') == ('Element[*]', 'first-letter')
+        assert parse_one(":BEfore") == ("Element[*]", "before")
+        assert parse_one(":aftER") == ("Element[*]", "after")
+        assert parse_one(":First-Line") == ("Element[*]", "first-line")
+        assert parse_one(":First-Letter") == ("Element[*]", "first-letter")
 
-        assert parse_one('::befoRE') == ('Element[*]', 'before')
-        assert parse_one('::AFter') == ('Element[*]', 'after')
-        assert parse_one('::firsT-linE') == ('Element[*]', 'first-line')
-        assert parse_one('::firsT-letteR') == ('Element[*]', 'first-letter')
+        assert parse_one("::befoRE") == ("Element[*]", "before")
+        assert parse_one("::AFter") == ("Element[*]", "after")
+        assert parse_one("::firsT-linE") == ("Element[*]", "first-line")
+        assert parse_one("::firsT-letteR") == ("Element[*]", "first-letter")
 
-        assert parse_one('::text-content') == ('Element[*]', 'text-content')
-        assert parse_one('::attr(name)') == (
-            "Element[*]", "FunctionalPseudoElement[::attr(['name'])]")
+        assert parse_one("::text-content") == ("Element[*]", "text-content")
+        assert parse_one("::attr(name)") == (
+            "Element[*]",
+            "FunctionalPseudoElement[::attr(['name'])]",
+        )
 
-        assert parse_one('::Selection') == ('Element[*]', 'selection')
-        assert parse_one('foo:after') == ('Element[foo]', 'after')
-        assert parse_one('foo::selection') == ('Element[foo]', 'selection')
-        assert parse_one('lorem#ipsum ~ a#b.c[href]:empty::selection') == (
-            'CombinedSelector[Hash[Element[lorem]#ipsum] ~ '
-                'Pseudo[Attrib[Class[Hash[Element[a]#b].c][href]]:empty]]',
-            'selection')
-        assert parse_pseudo(':scope > div, foo bar') == [
-            ('CombinedSelector[Pseudo[Element[*]:scope] > Element[div]]', None),
-            ('CombinedSelector[Element[foo] <followed> Element[bar]]', None),
+        assert parse_one("::Selection") == ("Element[*]", "selection")
+        assert parse_one("foo:after") == ("Element[foo]", "after")
+        assert parse_one("foo::selection") == ("Element[foo]", "selection")
+        assert parse_one("lorem#ipsum ~ a#b.c[href]:empty::selection") == (
+            "CombinedSelector[Hash[Element[lorem]#ipsum] ~ "
+            "Pseudo[Attrib[Class[Hash[Element[a]#b].c][href]]:empty]]",
+            "selection",
+        )
+        assert parse_pseudo(":scope > div, foo bar") == [
+            ("CombinedSelector[Pseudo[Element[*]:scope] > Element[div]]", None),
+            ("CombinedSelector[Element[foo] <followed> Element[bar]]", None),
         ]
-        assert parse_pseudo('foo bar, :scope > div') == [
-            ('CombinedSelector[Element[foo] <followed> Element[bar]]', None),
-            ('CombinedSelector[Pseudo[Element[*]:scope] > Element[div]]', None),
+        assert parse_pseudo("foo bar, :scope > div") == [
+            ("CombinedSelector[Element[foo] <followed> Element[bar]]", None),
+            ("CombinedSelector[Pseudo[Element[*]:scope] > Element[div]]", None),
         ]
-        assert parse_pseudo('foo bar,:scope > div') == [
-            ('CombinedSelector[Element[foo] <followed> Element[bar]]', None),
-            ('CombinedSelector[Pseudo[Element[*]:scope] > Element[div]]', None),
+        assert parse_pseudo("foo bar,:scope > div") == [
+            ("CombinedSelector[Element[foo] <followed> Element[bar]]", None),
+            ("CombinedSelector[Pseudo[Element[*]:scope] > Element[div]]", None),
         ]
-        assert parse_pseudo('foo:before, bar, baz:after') == [
-            ('Element[foo]', 'before'), ('Element[bar]', None),
-            ('Element[baz]', 'after')
+        assert parse_pseudo("foo:before, bar, baz:after") == [
+            ("Element[foo]", "before"),
+            ("Element[bar]", None),
+            ("Element[baz]", "after"),
         ]
 
         # Special cases for CSS 2.1 pseudo-elements are ignored by default
-        for pseudo in ('after', 'before', 'first-line', 'first-letter'):
-            selector, = parse('e:%s' % pseudo)
+        for pseudo in ("after", "before", "first-line", "first-letter"):
+            (selector,) = parse("e:%s" % pseudo)
             assert selector.pseudo_element == pseudo
-            assert GenericTranslator().selector_to_xpath(selector, prefix='') == "e"
+            assert GenericTranslator().selector_to_xpath(selector, prefix="") == "e"
 
         # Pseudo Elements are ignored by default, but if allowed they are not
         # supported by GenericTranslator
         tr = GenericTranslator()
-        selector, = parse('e::foo')
-        assert selector.pseudo_element == 'foo'
-        assert tr.selector_to_xpath(selector, prefix='') == "e"
-        self.assertRaises(ExpressionError, tr.selector_to_xpath, selector,
-                          translate_pseudo_elements=True)
+        (selector,) = parse("e::foo")
+        assert selector.pseudo_element == "foo"
+        assert tr.selector_to_xpath(selector, prefix="") == "e"
+        self.assertRaises(
+            ExpressionError, tr.selector_to_xpath, selector, translate_pseudo_elements=True
+        )
 
         # Special test for the unicode symbols and ':scope' element if check
         # Errors if use repr() instead of __repr__()
-        assert test_pseudo_repr(u':fİrst-child') == u'Pseudo[Element[*]:fİrst-child]'
-        assert test_pseudo_repr(':scope') == 'Pseudo[Element[*]:scope]'
+        assert test_pseudo_repr(":fİrst-child") == "Pseudo[Element[*]:fİrst-child]"
+        assert test_pseudo_repr(":scope") == "Pseudo[Element[*]:scope]"
 
     def test_specificity(self):
         def specificity(css):
@@ -255,32 +271,41 @@ class TestCssselect(unittest.TestCase):
             assert len(selectors) == 1
             return selectors[0].specificity()
 
-        assert specificity('*') == (0, 0, 0)
-        assert specificity(' foo') == (0, 0, 1)
-        assert specificity(':empty ') == (0, 1, 0)
-        assert specificity(':before') == (0, 0, 1)
-        assert specificity('*:before') == (0, 0, 1)
-        assert specificity(':nth-child(2)') == (0, 1, 0)
-        assert specificity('.bar') == (0, 1, 0)
-        assert specificity('[baz]') == (0, 1, 0)
+        assert specificity("*") == (0, 0, 0)
+        assert specificity(" foo") == (0, 0, 1)
+        assert specificity(":empty ") == (0, 1, 0)
+        assert specificity(":before") == (0, 0, 1)
+        assert specificity("*:before") == (0, 0, 1)
+        assert specificity(":nth-child(2)") == (0, 1, 0)
+        assert specificity(".bar") == (0, 1, 0)
+        assert specificity("[baz]") == (0, 1, 0)
         assert specificity('[baz="4"]') == (0, 1, 0)
         assert specificity('[baz^="4"]') == (0, 1, 0)
-        assert specificity('#lipsum') == (1, 0, 0)
+        assert specificity("#lipsum") == (1, 0, 0)
+        assert specificity("::attr(name)") == (0, 0, 1)
 
-        assert specificity(':not(*)') == (0, 0, 0)
-        assert specificity(':not(foo)') == (0, 0, 1)
-        assert specificity(':not(.foo)') == (0, 1, 0)
-        assert specificity(':not([foo])') == (0, 1, 0)
-        assert specificity(':not(:empty)') == (0, 1, 0)
-        assert specificity(':not(#foo)') == (1, 0, 0)
+        assert specificity(":not(*)") == (0, 0, 0)
+        assert specificity(":not(foo)") == (0, 0, 1)
+        assert specificity(":not(.foo)") == (0, 1, 0)
+        assert specificity(":not([foo])") == (0, 1, 0)
+        assert specificity(":not(:empty)") == (0, 1, 0)
+        assert specificity(":not(#foo)") == (1, 0, 0)
 
-        assert specificity('foo:empty') == (0, 1, 1)
-        assert specificity('foo:before') == (0, 0, 2)
-        assert specificity('foo::before') == (0, 0, 2)
-        assert specificity('foo:empty::before') == (0, 1, 2)
+        assert specificity(":has(*)") == (0, 0, 0)
+        assert specificity(":has(foo)") == (0, 0, 1)
+        assert specificity(":has(.foo)") == (0, 1, 0)
+        assert specificity(":has(> foo)") == (0, 0, 1)
 
-        assert specificity('#lorem + foo#ipsum:first-child > bar:first-line'
-            ) == (2, 1, 3)
+        assert specificity(":is(.foo, #bar)") == (1, 0, 0)
+        assert specificity(":is(:hover, :visited)") == (0, 1, 0)
+        assert specificity(":where(:hover, :visited)") == (0, 0, 0)
+
+        assert specificity("foo:empty") == (0, 1, 1)
+        assert specificity("foo:before") == (0, 0, 2)
+        assert specificity("foo::before") == (0, 0, 2)
+        assert specificity("foo:empty::before") == (0, 1, 2)
+
+        assert specificity("#lorem + foo#ipsum:first-child > bar:first-line") == (2, 1, 3)
 
     def test_css_export(self):
         def css2css(css, res=None):
@@ -288,32 +313,38 @@ class TestCssselect(unittest.TestCase):
             assert len(selectors) == 1
             assert selectors[0].canonical() == (res or css)
 
-        css2css('*')
-        css2css(' foo', 'foo')
-        css2css('Foo', 'Foo')
-        css2css(':empty ', ':empty')
-        css2css(':before', '::before')
-        css2css(':beFOre', '::before')
-        css2css('*:before', '::before')
-        css2css(':nth-child(2)')
-        css2css('.bar')
-        css2css('[baz]')
+        css2css("*")
+        css2css(" foo", "foo")
+        css2css("Foo", "Foo")
+        css2css(":empty ", ":empty")
+        css2css(":before", "::before")
+        css2css(":beFOre", "::before")
+        css2css("*:before", "::before")
+        css2css(":nth-child(2)")
+        css2css(".bar")
+        css2css("[baz]")
         css2css('[baz="4"]', "[baz='4']")
         css2css('[baz^="4"]', "[baz^='4']")
         css2css("[ns|attr='4']")
-        css2css('#lipsum')
-        css2css(':not(*)')
-        css2css(':not(foo)')
-        css2css(':not(*.foo)', ':not(.foo)')
-        css2css(':not(*[foo])', ':not([foo])')
-        css2css(':not(:empty)')
-        css2css(':not(#foo)')
-        css2css('foo:empty')
-        css2css('foo::before')
-        css2css('foo:empty::before')
+        css2css("#lipsum")
+        css2css(":not(*)")
+        css2css(":not(foo)")
+        css2css(":not(*.foo)", ":not(.foo)")
+        css2css(":not(*[foo])", ":not([foo])")
+        css2css(":not(:empty)")
+        css2css(":not(#foo)")
+        css2css(":has(*)")
+        css2css(":has(foo)")
+        css2css(":has(*.foo)", ":has(.foo)")
+        css2css(":is(#bar, .foo)")
+        css2css(":is(:focused, :visited)")
+        css2css(":where(:focused, :visited)")
+        css2css("foo:empty")
+        css2css("foo::before")
+        css2css("foo:empty::before")
         css2css('::name(arg + "val" - 3)', "::name(arg+'val'-3)")
-        css2css('#lorem + foo#ipsum:first-child > bar::first-line')
-        css2css('foo > *')
+        css2css("#lorem + foo#ipsum:first-child > bar::first-line")
+        css2css("foo > *")
 
     def test_parse_errors(self):
         def get_error(css):
@@ -323,279 +354,242 @@ class TestCssselect(unittest.TestCase):
                 # Py2, Py3, ...
                 return str(sys.exc_info()[1]).replace("(u'", "('")
 
-        assert get_error('attributes(href)/html/body/a') == (
-            "Expected selector, got <DELIM '(' at 10>")
-        assert get_error('attributes(href)') == (
-            "Expected selector, got <DELIM '(' at 10>")
-        assert get_error('html/body/a') == (
-            "Expected selector, got <DELIM '/' at 4>")
-        assert get_error(' ') == (
-            "Expected selector, got <EOF at 1>")
-        assert get_error('div, ') == (
-            "Expected selector, got <EOF at 5>")
-        assert get_error(' , div') == (
-            "Expected selector, got <DELIM ',' at 1>")
-        assert get_error('p, , div') == (
-            "Expected selector, got <DELIM ',' at 3>")
-        assert get_error('div > ') == (
-            "Expected selector, got <EOF at 6>")
-        assert get_error('  > div') == (
-            "Expected selector, got <DELIM '>' at 2>")
-        assert get_error('foo|#bar') == (
-            "Expected ident or '*', got <HASH 'bar' at 4>")
-        assert get_error('#.foo') == (
-            "Expected selector, got <DELIM '#' at 0>")
-        assert get_error('.#foo') == (
-            "Expected ident, got <HASH 'foo' at 1>")
-        assert get_error(':#foo') == (
-            "Expected ident, got <HASH 'foo' at 1>")
-        assert get_error('[*]') == (
-            "Expected '|', got <DELIM ']' at 2>")
-        assert get_error('[foo|]') == (
-            "Expected ident, got <DELIM ']' at 5>")
-        assert get_error('[#]') == (
-            "Expected ident or '*', got <DELIM '#' at 1>")
-        assert get_error('[foo=#]') == (
-            "Expected string or ident, got <DELIM '#' at 5>")
-        assert get_error('[href]a') == (
-            "Expected selector, got <IDENT 'a' at 6>")
-        assert get_error('[rel=stylesheet]') is None
-        assert get_error('[rel:stylesheet]') == (
-            "Operator expected, got <DELIM ':' at 4>")
-        assert get_error('[rel=stylesheet') == (
-            "Expected ']', got <EOF at 15>")
-        assert get_error(':lang(fr)') is None
-        assert get_error(':lang(fr') == (
-            "Expected an argument, got <EOF at 8>")
-        assert get_error(':contains("foo') == (
-            "Unclosed string at 10")
-        assert get_error('foo!') == (
-            "Expected selector, got <DELIM '!' at 3>")
+        assert get_error("attributes(href)/html/body/a") == (
+            "Expected selector, got <DELIM '(' at 10>"
+        )
+        assert get_error("attributes(href)") == ("Expected selector, got <DELIM '(' at 10>")
+        assert get_error("html/body/a") == ("Expected selector, got <DELIM '/' at 4>")
+        assert get_error(" ") == ("Expected selector, got <EOF at 1>")
+        assert get_error("div, ") == ("Expected selector, got <EOF at 5>")
+        assert get_error(" , div") == ("Expected selector, got <DELIM ',' at 1>")
+        assert get_error("p, , div") == ("Expected selector, got <DELIM ',' at 3>")
+        assert get_error("div > ") == ("Expected selector, got <EOF at 6>")
+        assert get_error("  > div") == ("Expected selector, got <DELIM '>' at 2>")
+        assert get_error("foo|#bar") == ("Expected ident or '*', got <HASH 'bar' at 4>")
+        assert get_error("#.foo") == ("Expected selector, got <DELIM '#' at 0>")
+        assert get_error(".#foo") == ("Expected ident, got <HASH 'foo' at 1>")
+        assert get_error(":#foo") == ("Expected ident, got <HASH 'foo' at 1>")
+        assert get_error("[*]") == ("Expected '|', got <DELIM ']' at 2>")
+        assert get_error("[foo|]") == ("Expected ident, got <DELIM ']' at 5>")
+        assert get_error("[#]") == ("Expected ident or '*', got <DELIM '#' at 1>")
+        assert get_error("[foo=#]") == ("Expected string or ident, got <DELIM '#' at 5>")
+        assert get_error("[href]a") == ("Expected selector, got <IDENT 'a' at 6>")
+        assert get_error("[rel=stylesheet]") is None
+        assert get_error("[rel:stylesheet]") == ("Operator expected, got <DELIM ':' at 4>")
+        assert get_error("[rel=stylesheet") == ("Expected ']', got <EOF at 15>")
+        assert get_error(":lang(fr)") is None
+        assert get_error(":lang(fr") == ("Expected an argument, got <EOF at 8>")
+        assert get_error(':contains("foo') == ("Unclosed string at 10")
+        assert get_error("foo!") == ("Expected selector, got <DELIM '!' at 3>")
 
         # Mis-placed pseudo-elements
-        assert get_error('a:before:empty') == (
-            "Got pseudo-element ::before not at the end of a selector")
-        assert get_error('li:before a') == (
-            "Got pseudo-element ::before not at the end of a selector")
-        assert get_error(':not(:before)') == (
-            "Got pseudo-element ::before inside :not() at 12")
-        assert get_error(':not(:not(a))') == (
-            "Got nested :not()")
-        assert get_error(':scope > div :scope header') == (
+        assert get_error("a:before:empty") == (
+            "Got pseudo-element ::before not at the end of a selector"
+        )
+        assert get_error("li:before a") == (
+            "Got pseudo-element ::before not at the end of a selector"
+        )
+        assert get_error(":not(:before)") == ("Got pseudo-element ::before inside :not() at 12")
+        assert get_error(":not(:not(a))") == ("Got nested :not()")
+        assert get_error(":is(:before)") == ("Got pseudo-element ::before inside function")
+        assert get_error(":is(a b)") == ("Expected an argument, got <IDENT 'b' at 6>")
+        assert get_error(":where(:before)") == ("Got pseudo-element ::before inside function")
+        assert get_error(":where(a b)") == ("Expected an argument, got <IDENT 'b' at 9>")
+        assert get_error(":scope > div :scope header") == (
             'Got immediate child pseudo-element ":scope" not at the start of a selector'
         )
-        assert get_error('div :scope header') == (
+        assert get_error("div :scope header") == (
             'Got immediate child pseudo-element ":scope" not at the start of a selector'
         )
-        assert get_error('> div p') == ("Expected selector, got <DELIM '>' at 0>")
+        assert get_error("> div p") == ("Expected selector, got <DELIM '>' at 0>")
+
+        # Unsupported :has() with several arguments
+        assert get_error(":has(a, b)") == ("Expected an argument, got <DELIM ',' at 6>")
+        assert get_error(":has()") == ("Expected selector, got <EOF at 0>")
 
     def test_translation(self):
         def xpath(css):
-            return _unicode(GenericTranslator().css_to_xpath(css, prefix=''))
+            return _unicode(GenericTranslator().css_to_xpath(css, prefix=""))
 
-        assert xpath('*') == "*"
-        assert xpath('e') == "e"
-        assert xpath('*|e') == "e"
-        assert xpath('e|f') == "e:f"
-        assert xpath('e[foo]') == "e[@foo]"
-        assert xpath('e[foo|bar]') == "e[@foo:bar]"
+        assert xpath("*") == "*"
+        assert xpath("e") == "e"
+        assert xpath("*|e") == "e"
+        assert xpath("e|f") == "e:f"
+        assert xpath("e[foo]") == "e[@foo]"
+        assert xpath("e[foo|bar]") == "e[@foo:bar]"
         assert xpath('e[foo="bar"]') == "e[@foo = 'bar']"
         assert xpath('e[foo~="bar"]') == (
-            "e[@foo and contains("
-               "concat(' ', normalize-space(@foo), ' '), ' bar ')]")
-        assert xpath('e[foo^="bar"]') == (
-            "e[@foo and starts-with(@foo, 'bar')]")
+            "e[@foo and contains(" "concat(' ', normalize-space(@foo), ' '), ' bar ')]"
+        )
+        assert xpath('e[foo^="bar"]') == ("e[@foo and starts-with(@foo, 'bar')]")
         assert xpath('e[foo$="bar"]') == (
-            "e[@foo and substring(@foo, string-length(@foo)-2) = 'bar']")
-        assert xpath('e[foo*="bar"]') == (
-            "e[@foo and contains(@foo, 'bar')]")
+            "e[@foo and substring(@foo, string-length(@foo)-2) = 'bar']"
+        )
+        assert xpath('e[foo*="bar"]') == ("e[@foo and contains(@foo, 'bar')]")
         assert xpath('e[hreflang|="en"]') == (
-            "e[@hreflang and ("
-               "@hreflang = 'en' or starts-with(@hreflang, 'en-'))]")
+            "e[@hreflang and (" "@hreflang = 'en' or starts-with(@hreflang, 'en-'))]"
+        )
 
         # --- nth-* and nth-last-* -------------------------------------
-        assert xpath('e:nth-child(1)') == (
-            "e[count(preceding-sibling::*) = 0]")
+        assert xpath("e:nth-child(1)") == ("e[count(preceding-sibling::*) = 0]")
 
         # always true
-        assert xpath('e:nth-child(n)') == (
-            "e")
-        assert xpath('e:nth-child(n+1)') == (
-            "e")
+        assert xpath("e:nth-child(n)") == ("e")
+        assert xpath("e:nth-child(n+1)") == ("e")
         # always true too
-        assert xpath('e:nth-child(n-10)') == (
-            "e")
+        assert xpath("e:nth-child(n-10)") == ("e")
         # b=2 is the limit...
-        assert xpath('e:nth-child(n+2)') == (
-            "e[count(preceding-sibling::*) >= 1]")
+        assert xpath("e:nth-child(n+2)") == ("e[count(preceding-sibling::*) >= 1]")
         # always false
-        assert xpath('e:nth-child(-n)') == (
-            "e[0]")
+        assert xpath("e:nth-child(-n)") == ("e[0]")
         # equivalent to first child
-        assert xpath('e:nth-child(-n+1)') == (
-            "e[count(preceding-sibling::*) <= 0]")
+        assert xpath("e:nth-child(-n+1)") == ("e[count(preceding-sibling::*) <= 0]")
 
-        assert xpath('e:nth-child(3n+2)') == (
-            "e[count(preceding-sibling::*) >= 1 and "
-              "(count(preceding-sibling::*) +2) mod 3 = 0]")
-        assert xpath('e:nth-child(3n-2)') == (
-            "e[count(preceding-sibling::*) mod 3 = 0]")
-        assert xpath('e:nth-child(-n+6)') == (
-            "e[count(preceding-sibling::*) <= 5]")
+        assert xpath("e:nth-child(3n+2)") == (
+            "e[(count(preceding-sibling::*) >= 1) and "
+            "((count(preceding-sibling::*) +2) mod 3 = 0)]"
+        )
+        assert xpath("e:nth-child(3n-2)") == ("e[count(preceding-sibling::*) mod 3 = 0]")
+        assert xpath("e:nth-child(-n+6)") == ("e[count(preceding-sibling::*) <= 5]")
 
-        assert xpath('e:nth-last-child(1)') == (
-            "e[count(following-sibling::*) = 0]")
-        assert xpath('e:nth-last-child(2n)') == (
-            "e[(count(following-sibling::*) +1) mod 2 = 0]")
-        assert xpath('e:nth-last-child(2n+1)') == (
-            "e[count(following-sibling::*) mod 2 = 0]")
-        assert xpath('e:nth-last-child(2n+2)') == (
-            "e[count(following-sibling::*) >= 1 and "
-              "(count(following-sibling::*) +1) mod 2 = 0]")
-        assert xpath('e:nth-last-child(3n+1)') == (
-            "e[count(following-sibling::*) mod 3 = 0]")
+        assert xpath("e:nth-last-child(1)") == ("e[count(following-sibling::*) = 0]")
+        assert xpath("e:nth-last-child(2n)") == ("e[(count(following-sibling::*) +1) mod 2 = 0]")
+        assert xpath("e:nth-last-child(2n+1)") == ("e[count(following-sibling::*) mod 2 = 0]")
+        assert xpath("e:nth-last-child(2n+2)") == (
+            "e[(count(following-sibling::*) >= 1) and "
+            "((count(following-sibling::*) +1) mod 2 = 0)]"
+        )
+        assert xpath("e:nth-last-child(3n+1)") == ("e[count(following-sibling::*) mod 3 = 0]")
         # represents the two last e elements
-        assert xpath('e:nth-last-child(-n+2)') == (
-            "e[count(following-sibling::*) <= 1]")
+        assert xpath("e:nth-last-child(-n+2)") == ("e[count(following-sibling::*) <= 1]")
 
-        assert xpath('e:nth-of-type(1)') == (
-            "e[count(preceding-sibling::e) = 0]")
-        assert xpath('e:nth-last-of-type(1)') == (
-            "e[count(following-sibling::e) = 0]")
-        assert xpath('div e:nth-last-of-type(1) .aclass') == (
+        assert xpath("e:nth-of-type(1)") == ("e[count(preceding-sibling::e) = 0]")
+        assert xpath("e:nth-last-of-type(1)") == ("e[count(following-sibling::e) = 0]")
+        assert xpath("div e:nth-last-of-type(1) .aclass") == (
             "div/descendant-or-self::*/e[count(following-sibling::e) = 0]"
-               "/descendant-or-self::*/*[@class and contains("
-               "concat(' ', normalize-space(@class), ' '), ' aclass ')]")
+            "/descendant-or-self::*/*[@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' aclass ')]"
+        )
 
-        assert xpath('e:first-child') == (
-            "e[count(preceding-sibling::*) = 0]")
-        assert xpath('e:last-child') == (
-            "e[count(following-sibling::*) = 0]")
-        assert xpath('e:first-of-type') == (
-            "e[count(preceding-sibling::e) = 0]")
-        assert xpath('e:last-of-type') == (
-            "e[count(following-sibling::e) = 0]")
-        assert xpath('e:only-child') == (
-            "e[count(parent::*/child::*) = 1]")
-        assert xpath('e:only-of-type') == (
-            "e[count(parent::*/child::e) = 1]")
-        assert xpath('e:empty') == (
-            "e[not(*) and not(string-length())]")
-        assert xpath('e:EmPTY') == (
-            "e[not(*) and not(string-length())]")
-        assert xpath('e:root') == (
-            "e[not(parent::*)]")
-        assert xpath('e:hover') == (
-            "e[0]")  # never matches
-        assert xpath('e:contains("foo")') == (
-            "e[contains(., 'foo')]")
-        assert xpath('e:ConTains(foo)') == (
-            "e[contains(., 'foo')]")
-        assert xpath('e.warning') == (
-            "e[@class and contains("
-               "concat(' ', normalize-space(@class), ' '), ' warning ')]")
-        assert xpath('e#myid') == (
-            "e[@id = 'myid']")
-        assert xpath('e:not(:nth-child(odd))') == (
-            "e[not(count(preceding-sibling::*) mod 2 = 0)]")
-        assert xpath('e:nOT(*)') == (
-            "e[0]")  # never matches
-        assert xpath('e f') == (
-            "e/descendant-or-self::*/f")
-        assert xpath('e > f') == (
-            "e/f")
-        assert xpath('e + f') == (
-            "e/following-sibling::*[name() = 'f' and (position() = 1)]")
-        assert xpath('e ~ f') == (
-            "e/following-sibling::f")
-        assert xpath('e ~ f:nth-child(3)') == (
-            "e/following-sibling::f[count(preceding-sibling::*) = 2]")
-        assert xpath('div#container p') == (
-            "div[@id = 'container']/descendant-or-self::*/p")
+        assert xpath("e:first-child") == ("e[count(preceding-sibling::*) = 0]")
+        assert xpath("e:last-child") == ("e[count(following-sibling::*) = 0]")
+        assert xpath("e:first-of-type") == ("e[count(preceding-sibling::e) = 0]")
+        assert xpath("e:last-of-type") == ("e[count(following-sibling::e) = 0]")
+        assert xpath("e:only-child") == ("e[count(parent::*/child::*) = 1]")
+        assert xpath("e:only-of-type") == ("e[count(parent::*/child::e) = 1]")
+        assert xpath("e:empty") == ("e[not(*) and not(string-length())]")
+        assert xpath("e:EmPTY") == ("e[not(*) and not(string-length())]")
+        assert xpath("e:root") == ("e[not(parent::*)]")
+        assert xpath("e:hover") == ("e[0]")  # never matches
+        assert (
+            xpath("div:has(bar.foo)") == "div[descendant::bar"
+            "[@class and contains(concat(' ', normalize-space(@class), ' '), ' foo ')]]"
+        )
+        assert xpath("e:has(> f)") == "e[./f]"
+        assert xpath("e:has(f)") == "e[descendant::f]"
+        assert xpath("e:has(~ f)") == "e[following-sibling::f]"
+        assert (
+            xpath("e:has(+ f)") == "e[following-sibling::*[(name() = 'f') and (position() = 1)]]"
+        )
+        assert xpath('e:contains("foo")') == ("e[contains(., 'foo')]")
+        assert xpath("e:ConTains(foo)") == ("e[contains(., 'foo')]")
+        assert xpath("e.warning") == (
+            "e[@class and contains(" "concat(' ', normalize-space(@class), ' '), ' warning ')]"
+        )
+        assert xpath("e#myid") == ("e[@id = 'myid']")
+        assert xpath("e:not(:nth-child(odd))") == ("e[not(count(preceding-sibling::*) mod 2 = 0)]")
+        assert xpath("e:nOT(*)") == ("e[0]")  # never matches
+        assert xpath("e f") == ("e/descendant-or-self::*/f")
+        assert xpath("e > f") == ("e/f")
+        assert xpath("e + f") == ("e/following-sibling::*[(name() = 'f') and (position() = 1)]")
+        assert xpath("e ~ f") == ("e/following-sibling::f")
+        assert xpath("e ~ f:nth-child(3)") == (
+            "e/following-sibling::f[count(preceding-sibling::*) = 2]"
+        )
+        assert xpath("div#container p") == ("div[@id = 'container']/descendant-or-self::*/p")
+        assert xpath("e:where(foo)") == "e[name() = 'foo']"
+        assert xpath("e:where(foo, bar)") == "e[(name() = 'foo') or (name() = 'bar')]"
 
         # Invalid characters in XPath element names
-        assert xpath(r'di\a0 v') == (
-            u("*[name() = 'di v']"))  # di\xa0v
-        assert xpath(r'di\[v') == (
-            "*[name() = 'di[v']")
-        assert xpath(r'[h\a0 ref]') == (
-            u("*[attribute::*[name() = 'h ref']]"))  # h\xa0ref
-        assert xpath(r'[h\]ref]') == (
-            "*[attribute::*[name() = 'h]ref']]")
+        assert xpath(r"di\a0 v") == (u("*[name() = 'di v']"))  # di\xa0v
+        assert xpath(r"di\[v") == ("*[name() = 'di[v']")
+        assert xpath(r"[h\a0 ref]") == (u("*[attribute::*[name() = 'h ref']]"))  # h\xa0ref
+        assert xpath(r"[h\]ref]") == ("*[attribute::*[name() = 'h]ref']]")
 
-        self.assertRaises(ExpressionError, xpath, u(':fİrst-child'))
-        self.assertRaises(ExpressionError, xpath, ':first-of-type')
-        self.assertRaises(ExpressionError, xpath, ':only-of-type')
-        self.assertRaises(ExpressionError, xpath, ':last-of-type')
-        self.assertRaises(ExpressionError, xpath, ':nth-of-type(1)')
-        self.assertRaises(ExpressionError, xpath, ':nth-last-of-type(1)')
-        self.assertRaises(ExpressionError, xpath, ':nth-child(n-)')
-        self.assertRaises(ExpressionError, xpath, ':after')
-        self.assertRaises(ExpressionError, xpath, ':lorem-ipsum')
-        self.assertRaises(ExpressionError, xpath, ':lorem(ipsum)')
-        self.assertRaises(ExpressionError, xpath, '::lorem-ipsum')
+        self.assertRaises(ExpressionError, xpath, u(":fİrst-child"))
+        self.assertRaises(ExpressionError, xpath, ":first-of-type")
+        self.assertRaises(ExpressionError, xpath, ":only-of-type")
+        self.assertRaises(ExpressionError, xpath, ":last-of-type")
+        self.assertRaises(ExpressionError, xpath, ":nth-of-type(1)")
+        self.assertRaises(ExpressionError, xpath, ":nth-last-of-type(1)")
+        self.assertRaises(ExpressionError, xpath, ":nth-child(n-)")
+        self.assertRaises(ExpressionError, xpath, ":after")
+        self.assertRaises(ExpressionError, xpath, ":lorem-ipsum")
+        self.assertRaises(ExpressionError, xpath, ":lorem(ipsum)")
+        self.assertRaises(ExpressionError, xpath, "::lorem-ipsum")
         self.assertRaises(TypeError, GenericTranslator().css_to_xpath, 4)
-        self.assertRaises(TypeError, GenericTranslator().selector_to_xpath,
-            'foo')
+        self.assertRaises(TypeError, GenericTranslator().selector_to_xpath, "foo")
 
     def test_unicode(self):
         if sys.version_info[0] < 3:
-            css = '.a\xc1b'.decode('ISO-8859-1')
+            css = ".a\xc1b".decode("ISO-8859-1")
         else:
-            css = '.a\xc1b'
+            css = ".a\xc1b"
 
         xpath = GenericTranslator().css_to_xpath(css)
         assert css[1:] in xpath
-        xpath = xpath.encode('ascii', 'xmlcharrefreplace').decode('ASCII')
+        xpath = xpath.encode("ascii", "xmlcharrefreplace").decode("ASCII")
         assert xpath == (
             "descendant-or-self::*[@class and contains("
-            "concat(' ', normalize-space(@class), ' '), ' a&#193;b ')]")
+            "concat(' ', normalize-space(@class), ' '), ' a&#193;b ')]"
+        )
 
     def test_quoting(self):
         css_to_xpath = GenericTranslator().css_to_xpath
-        assert css_to_xpath('*[aval="\'"]') == (
-            '''descendant-or-self::*[@aval = "'"]''')
-        assert css_to_xpath('*[aval="\'\'\'"]') == (
-            """descendant-or-self::*[@aval = "'''"]""")
-        assert css_to_xpath('*[aval=\'"\']') == (
-            '''descendant-or-self::*[@aval = '"']''')
-        assert css_to_xpath('*[aval=\'"""\']') == (
-            '''descendant-or-self::*[@aval = '"""']''')
+        assert css_to_xpath('*[aval="\'"]') == ("""descendant-or-self::*[@aval = "'"]""")
+        assert css_to_xpath("*[aval=\"'''\"]") == ("""descendant-or-self::*[@aval = "'''"]""")
+        assert css_to_xpath("*[aval='\"']") == ("""descendant-or-self::*[@aval = '"']""")
+        assert css_to_xpath('*[aval=\'"""\']') == ('''descendant-or-self::*[@aval = '"""']''')
         assert css_to_xpath(':scope > div[dataimg="<testmessage>"]') == (
-            "descendant-or-self::*[1]/div[@dataimg = '<testmessage>']")
+            "descendant-or-self::*[1]/div[@dataimg = '<testmessage>']"
+        )
 
     def test_unicode_escapes(self):
         # \22 == '"'  \20 == ' '
         css_to_xpath = GenericTranslator().css_to_xpath
         assert css_to_xpath(r'*[aval="\'\22\'"]') == (
-            '''descendant-or-self::*[@aval = concat("'",'"',"'")]''')
+            """descendant-or-self::*[@aval = concat("'",'"',"'")]"""
+        )
         assert css_to_xpath(r'*[aval="\'\22 2\'"]') == (
-            '''descendant-or-self::*[@aval = concat("'",'"2',"'")]''')
+            """descendant-or-self::*[@aval = concat("'",'"2',"'")]"""
+        )
         assert css_to_xpath(r'*[aval="\'\20  \'"]') == (
-            '''descendant-or-self::*[@aval = "'  '"]''')
-        assert css_to_xpath('*[aval="\'\\20\r\n \'"]') == (
-            '''descendant-or-self::*[@aval = "'  '"]''')
+            """descendant-or-self::*[@aval = "'  '"]"""
+        )
+        assert css_to_xpath("*[aval=\"'\\20\r\n '\"]") == (
+            """descendant-or-self::*[@aval = "'  '"]"""
+        )
 
     def test_xpath_pseudo_elements(self):
         class CustomTranslator(GenericTranslator):
             def xpath_pseudo_element(self, xpath, pseudo_element):
                 if isinstance(pseudo_element, FunctionalPseudoElement):
-                    method = 'xpath_%s_functional_pseudo_element' % (
-                        pseudo_element.name.replace('-', '_'))
+                    method = "xpath_%s_functional_pseudo_element" % (
+                        pseudo_element.name.replace("-", "_")
+                    )
                     method = _unicode_safe_getattr(self, method, None)
                     if not method:
                         raise ExpressionError(
-                            "The functional pseudo-element ::%s() is unknown"
-                        % pseudo_element.name)
+                            "The functional pseudo-element ::%s() is unknown" % pseudo_element.name
+                        )
                     xpath = method(xpath, pseudo_element.arguments)
                 else:
-                    method = 'xpath_%s_simple_pseudo_element' % (
-                        pseudo_element.replace('-', '_'))
+                    method = "xpath_%s_simple_pseudo_element" % (pseudo_element.replace("-", "_"))
                     method = _unicode_safe_getattr(self, method, None)
                     if not method:
                         raise ExpressionError(
-                            "The pseudo-element ::%s is unknown"
-                            % pseudo_element)
+                            "The pseudo-element ::%s is unknown" % pseudo_element
+                        )
                     xpath = method(xpath)
                 return xpath
 
@@ -603,8 +597,7 @@ class TestCssselect(unittest.TestCase):
             # elements that have a certain number of attributes
             def xpath_nb_attr_function(self, xpath, function):
                 nb_attributes = int(function.arguments[0].value)
-                return xpath.add_condition(
-                    "count(@*)=%d" % nb_attributes)
+                return xpath.add_condition("count(@*)=%d" % nb_attributes)
 
             # pseudo-class:
             # elements that have 5 attributes
@@ -615,90 +608,141 @@ class TestCssselect(unittest.TestCase):
             # element's attribute by name
             def xpath_attr_functional_pseudo_element(self, xpath, arguments):
                 attribute_name = arguments[0].value
-                other = XPathExpr('@%s' % attribute_name, '', )
-                return xpath.join('/', other)
+                other = XPathExpr(
+                    "@%s" % attribute_name,
+                    "",
+                )
+                return xpath.join("/", other)
 
             # pseudo-element:
             # element's text() nodes
             def xpath_text_node_simple_pseudo_element(self, xpath):
-                other = XPathExpr('text()', '', )
-                return xpath.join('/', other)
+                other = XPathExpr(
+                    "text()",
+                    "",
+                )
+                return xpath.join("/", other)
 
             # pseudo-element:
             # element's href attribute
             def xpath_attr_href_simple_pseudo_element(self, xpath):
-                other = XPathExpr('@href', '', )
-                return xpath.join('/', other)
+                other = XPathExpr(
+                    "@href",
+                    "",
+                )
+                return xpath.join("/", other)
+
+            # pseudo-element:
+            # used to demonstrate operator precedence
+            def xpath_first_or_second_pseudo(self, xpath):
+                return xpath.add_condition("@id = 'first' or @id = 'second'")
 
         def xpath(css):
             return _unicode(CustomTranslator().css_to_xpath(css))
 
-        assert xpath(':five-attributes') == "descendant-or-self::*[count(@*)=5]"
-        assert xpath(':nb-attr(3)') == "descendant-or-self::*[count(@*)=3]"
-        assert xpath('::attr(href)') == "descendant-or-self::*/@href"
-        assert xpath('::text-node') == "descendant-or-self::*/text()"
-        assert xpath('::attr-href') == "descendant-or-self::*/@href"
-        assert xpath('p img::attr(src)') == (
-            "descendant-or-self::p/descendant-or-self::*/img/@src")
-        assert xpath(':scope') == "descendant-or-self::*[1]"
+        assert xpath(":five-attributes") == "descendant-or-self::*[count(@*)=5]"
+        assert xpath(":nb-attr(3)") == "descendant-or-self::*[count(@*)=3]"
+        assert xpath("::attr(href)") == "descendant-or-self::*/@href"
+        assert xpath("::text-node") == "descendant-or-self::*/text()"
+        assert xpath("::attr-href") == "descendant-or-self::*/@href"
+        assert xpath("p img::attr(src)") == (
+            "descendant-or-self::p/descendant-or-self::*/img/@src"
+        )
+        assert xpath(":scope") == "descendant-or-self::*[1]"
+        assert xpath(":first-or-second[href]") == (
+            "descendant-or-self::*[(@id = 'first' or @id = 'second') " "and (@href)]"
+        )
+
+        assert str(XPathExpr("", "", condition="@href")) == "[@href]"
+
+        document = etree.fromstring(OPERATOR_PRECEDENCE_IDS)
+        sort_key = dict((el, count) for count, el in enumerate(document.getiterator())).__getitem__
+
+        def operator_id(selector):
+            xpath = CustomTranslator().css_to_xpath(selector)
+            items = document.xpath(xpath)
+            items.sort(key=sort_key)
+            return [element.get("id", "nil") for element in items]
+
+        assert operator_id(":first-or-second") == ["first", "second"]
+        assert operator_id(":first-or-second[href]") == ["second"]
+        assert operator_id("[href]:first-or-second") == ["second"]
 
     def test_series(self):
         def series(css):
-            selector, = parse(':nth-child(%s)' % css)
+            (selector,) = parse(":nth-child(%s)" % css)
             args = selector.parsed_tree.arguments
             try:
                 return parse_series(args)
             except ValueError:
                 return None
 
-        assert series('1n+3') == (1, 3)
-        assert series('1n +3') == (1, 3)
-        assert series('1n + 3') == (1, 3)
-        assert series('1n+ 3') == (1, 3)
-        assert series('1n-3') == (1, -3)
-        assert series('1n -3') == (1, -3)
-        assert series('1n - 3') == (1, -3)
-        assert series('1n- 3') == (1, -3)
-        assert series('n-5') == (1, -5)
-        assert series('odd') == (2, 1)
-        assert series('even') == (2, 0)
-        assert series('3n') == (3, 0)
-        assert series('n') == (1, 0)
-        assert series('+n') == (1, 0)
-        assert series('-n') == (-1, 0)
-        assert series('5') == (0, 5)
-        assert series('foo') is None
-        assert series('n+') is None
+        assert series("1n+3") == (1, 3)
+        assert series("1n +3") == (1, 3)
+        assert series("1n + 3") == (1, 3)
+        assert series("1n+ 3") == (1, 3)
+        assert series("1n-3") == (1, -3)
+        assert series("1n -3") == (1, -3)
+        assert series("1n - 3") == (1, -3)
+        assert series("1n- 3") == (1, -3)
+        assert series("n-5") == (1, -5)
+        assert series("odd") == (2, 1)
+        assert series("even") == (2, 0)
+        assert series("3n") == (3, 0)
+        assert series("n") == (1, 0)
+        assert series("+n") == (1, 0)
+        assert series("-n") == (-1, 0)
+        assert series("5") == (0, 5)
+        assert series("foo") is None
+        assert series("n+") is None
 
     def test_lang(self):
         document = etree.fromstring(XMLLANG_IDS)
-        sort_key = dict(
-            (el, count) for count, el in enumerate(document.getiterator())
-        ).__getitem__
+        sort_key = dict((el, count) for count, el in enumerate(document.getiterator())).__getitem__
         css_to_xpath = GenericTranslator().css_to_xpath
 
         def langid(selector):
             xpath = css_to_xpath(selector)
             items = document.xpath(xpath)
             items.sort(key=sort_key)
-            return [element.get('id', 'nil') for element in items]
+            return [element.get("id", "nil") for element in items]
 
-        assert langid(':lang("EN")') == ['first', 'second', 'third', 'fourth']
-        assert langid(':lang("en-us")') == ['second', 'fourth']
-        assert langid(':lang(en-nz)') == ['third']
-        assert langid(':lang(fr)') == ['fifth']
-        assert langid(':lang(ru)') == ['sixth']
-        assert langid(":lang('ZH')") == ['eighth']
-        assert langid(':lang(de) :lang(zh)') == ['eighth']
-        assert langid(':lang(en), :lang(zh)') == [
-            'first', 'second', 'third', 'fourth', 'eighth']
-        assert langid(':lang(es)') == []
+        assert langid(':lang("EN")') == ["first", "second", "third", "fourth"]
+        assert langid(':lang("en-us")') == ["second", "fourth"]
+        assert langid(":lang(en-nz)") == ["third"]
+        assert langid(":lang(fr)") == ["fifth"]
+        assert langid(":lang(ru)") == ["sixth"]
+        assert langid(":lang('ZH')") == ["eighth"]
+        assert langid(":lang(de) :lang(zh)") == ["eighth"]
+        assert langid(":lang(en), :lang(zh)") == ["first", "second", "third", "fourth", "eighth"]
+        assert langid(":lang(es)") == []
+
+    def test_argument_types(self):
+        class CustomTranslator(GenericTranslator):
+            def __init__(self):
+                self.argument_types = []
+
+            def xpath_pseudo_element(self, xpath, pseudo_element):
+                self.argument_types += pseudo_element.argument_types()
+
+        def argument_types(css):
+            translator = CustomTranslator()
+            translator.css_to_xpath(css)
+            return translator.argument_types
+
+        mappings = (
+            ("", []),
+            ("ident", ["IDENT"]),
+            ('"string"', ["STRING"]),
+            ("1", ["NUMBER"]),
+        )
+        for argument_string, argument_list in mappings:
+            css = "::pseudo_element({})".format(argument_string)
+            assert argument_types(css) == argument_list
 
     def test_select(self):
         document = etree.fromstring(HTML_IDS)
-        sort_key = dict(
-            (el, count) for count, el in enumerate(document.getiterator())
-        ).__getitem__
+        sort_key = dict((el, count) for count, el in enumerate(document.getiterator())).__getitem__
         css_to_xpath = GenericTranslator().css_to_xpath
         html_css_to_xpath = HTMLTranslator().css_to_xpath
 
@@ -710,166 +754,220 @@ class TestCssselect(unittest.TestCase):
                 xpath = html_css_to_xpath(selector)
                 items = document.xpath(xpath)
             items.sort(key=sort_key)
-            return [element.get('id', 'nil') for element in items]
+            return [element.get("id", "nil") for element in items]
 
         def pcss(main, *selectors, **kwargs):
-            html_only = kwargs.pop('html_only', False)
+            html_only = kwargs.pop("html_only", False)
             result = select_ids(main, html_only)
             for selector in selectors:
                 assert select_ids(selector, html_only) == result
             return result
 
-        all_ids = pcss('*')
-        assert all_ids[:6] == [
-            'html', 'nil', 'link-href', 'link-nohref', 'nil', 'outer-div']
-        assert all_ids[-1:] == ['foobar-span']
-        assert pcss('div') == ['outer-div', 'li-div', 'foobar-div']
-        assert pcss('DIV', html_only=True) == [
-            'outer-div', 'li-div', 'foobar-div']  # case-insensitive in HTML
-        assert pcss('div div') == ['li-div']
-        assert pcss('div, div div') == ['outer-div', 'li-div', 'foobar-div']
-        assert pcss('a[name]') == ['name-anchor']
-        assert pcss('a[NAme]', html_only=True) == [
-            'name-anchor'] # case-insensitive in HTML:
-        assert pcss('a[rel]') == ['tag-anchor', 'nofollow-anchor']
-        assert pcss('a[rel="tag"]') == ['tag-anchor']
-        assert pcss('a[href*="localhost"]') == ['tag-anchor']
+        all_ids = pcss("*")
+        assert all_ids[:6] == ["html", "nil", "link-href", "link-nohref", "nil", "outer-div"]
+        assert all_ids[-1:] == ["foobar-span"]
+        assert pcss("div") == ["outer-div", "li-div", "foobar-div"]
+        assert pcss("DIV", html_only=True) == [
+            "outer-div",
+            "li-div",
+            "foobar-div",
+        ]  # case-insensitive in HTML
+        assert pcss("div div") == ["li-div"]
+        assert pcss("div, div div") == ["outer-div", "li-div", "foobar-div"]
+        assert pcss("a[name]") == ["name-anchor"]
+        assert pcss("a[NAme]", html_only=True) == ["name-anchor"]  # case-insensitive in HTML:
+        assert pcss("a[rel]") == ["tag-anchor", "nofollow-anchor"]
+        assert pcss('a[rel="tag"]') == ["tag-anchor"]
+        assert pcss('a[href*="localhost"]') == ["tag-anchor"]
         assert pcss('a[href*=""]') == []
-        assert pcss('a[href^="http"]') == ['tag-anchor', 'nofollow-anchor']
-        assert pcss('a[href^="http:"]') == ['tag-anchor']
+        assert pcss('a[href^="http"]') == ["tag-anchor", "nofollow-anchor"]
+        assert pcss('a[href^="http:"]') == ["tag-anchor"]
         assert pcss('a[href^=""]') == []
-        assert pcss('a[href$="org"]') == ['nofollow-anchor']
+        assert pcss('a[href$="org"]') == ["nofollow-anchor"]
         assert pcss('a[href$=""]') == []
-        assert pcss('div[foobar~="bc"]', 'div[foobar~="cde"]') == [
-            'foobar-div']
-        assert pcss('[foobar~="ab bc"]',
-                    '[foobar~=""]', '[foobar~=" \t"]') == []
+        assert pcss('div[foobar~="bc"]', 'div[foobar~="cde"]') == ["foobar-div"]
+        assert pcss('[foobar~="ab bc"]', '[foobar~=""]', '[foobar~=" \t"]') == []
         assert pcss('div[foobar~="cd"]') == []
-        assert pcss('*[lang|="En"]', '[lang|="En-us"]') == ['second-li']
+        assert pcss('*[lang|="En"]', '[lang|="En-us"]') == ["second-li"]
         # Attribute values are case sensitive
         assert pcss('*[lang|="en"]', '[lang|="en-US"]') == []
         assert pcss('*[lang|="e"]') == []
         # ... :lang() is not.
-        assert pcss(':lang("EN")', '*:lang(en-US)', html_only=True) == [
-            'second-li', 'li-div']
+        assert pcss(':lang("EN")', "*:lang(en-US)", html_only=True) == ["second-li", "li-div"]
         assert pcss(':lang("e")', html_only=True) == []
-        assert pcss(':scope > div') == []
-        assert pcss(':scope body') == ['nil']
-        assert pcss(':scope body > div') == ['outer-div', 'foobar-div']
-        assert pcss(':scope head') == ['nil']
-        assert pcss(':scope html') == []
+        assert pcss(":scope > div") == []
+        assert pcss(":scope body") == ["nil"]
+        assert pcss(":scope body > div") == ["outer-div", "foobar-div"]
+        assert pcss(":scope head") == ["nil"]
+        assert pcss(":scope html") == []
 
         # --- nth-* and nth-last-* -------------------------------------
 
         # select nothing
-        assert pcss('li:nth-child(-n)') == []
+        assert pcss("li:nth-child(-n)") == []
         # select all children
-        assert pcss('li:nth-child(n)') == [
-            'first-li', 'second-li', 'third-li', 'fourth-li',
-            'fifth-li', 'sixth-li', 'seventh-li']
+        assert pcss("li:nth-child(n)") == [
+            "first-li",
+            "second-li",
+            "third-li",
+            "fourth-li",
+            "fifth-li",
+            "sixth-li",
+            "seventh-li",
+        ]
 
-        assert pcss('li:nth-child(3)',
-                    '#first-li ~ :nth-child(3)') == ['third-li']
-        assert pcss('li:nth-child(10)') == []
-        assert pcss('li:nth-child(2n)', 'li:nth-child(even)',
-                    'li:nth-child(2n+0)') == [
-            'second-li', 'fourth-li', 'sixth-li']
-        assert pcss('li:nth-child(+2n+1)', 'li:nth-child(odd)') == [
-            'first-li', 'third-li', 'fifth-li', 'seventh-li']
-        assert pcss('li:nth-child(2n+4)') == ['fourth-li', 'sixth-li']
-        assert pcss('li:nth-child(3n+1)') == [
-            'first-li', 'fourth-li', 'seventh-li']
-        assert pcss('li:nth-child(-n+3)') == [
-            'first-li', 'second-li', 'third-li']
-        assert pcss('li:nth-child(-2n+4)') == ['second-li', 'fourth-li']
-        assert pcss('li:nth-last-child(0)') == []
-        assert pcss('li:nth-last-child(1)') == ['seventh-li']
-        assert pcss('li:nth-last-child(2n)', 'li:nth-last-child(even)') == [
-            'second-li', 'fourth-li', 'sixth-li']
-        assert pcss('li:nth-last-child(2n+1)') == [
-            'first-li', 'third-li', 'fifth-li', 'seventh-li']
-        assert pcss('li:nth-last-child(2n+2)') == [
-            'second-li', 'fourth-li', 'sixth-li']
-        assert pcss('li:nth-last-child(3n+1)') == [
-            'first-li', 'fourth-li', 'seventh-li']
-        assert pcss('ol:first-of-type') == ['first-ol']
-        assert pcss('ol:nth-child(1)') == []
-        assert pcss('ol:nth-of-type(2)') == ['second-ol']
-        assert pcss('ol:nth-last-of-type(1)') == ['second-ol']
+        assert pcss("li:nth-child(3)", "#first-li ~ :nth-child(3)") == ["third-li"]
+        assert pcss("li:nth-child(10)") == []
+        assert pcss("li:nth-child(2n)", "li:nth-child(even)", "li:nth-child(2n+0)") == [
+            "second-li",
+            "fourth-li",
+            "sixth-li",
+        ]
+        assert pcss("li:nth-child(+2n+1)", "li:nth-child(odd)") == [
+            "first-li",
+            "third-li",
+            "fifth-li",
+            "seventh-li",
+        ]
+        assert pcss("li:nth-child(2n+4)") == ["fourth-li", "sixth-li"]
+        assert pcss("li:nth-child(3n+1)") == ["first-li", "fourth-li", "seventh-li"]
+        assert pcss("li:nth-child(-n+3)") == ["first-li", "second-li", "third-li"]
+        assert pcss("li:nth-child(-2n+4)") == ["second-li", "fourth-li"]
+        assert pcss("li:nth-last-child(0)") == []
+        assert pcss("li:nth-last-child(1)") == ["seventh-li"]
+        assert pcss("li:nth-last-child(2n)", "li:nth-last-child(even)") == [
+            "second-li",
+            "fourth-li",
+            "sixth-li",
+        ]
+        assert pcss("li:nth-last-child(2n+1)") == [
+            "first-li",
+            "third-li",
+            "fifth-li",
+            "seventh-li",
+        ]
+        assert pcss("li:nth-last-child(2n+2)") == ["second-li", "fourth-li", "sixth-li"]
+        assert pcss("li:nth-last-child(3n+1)") == ["first-li", "fourth-li", "seventh-li"]
+        assert pcss("ol:first-of-type") == ["first-ol"]
+        assert pcss("ol:nth-child(1)") == []
+        assert pcss("ol:nth-of-type(2)") == ["second-ol"]
+        assert pcss("ol:nth-last-of-type(1)") == ["second-ol"]
 
         # "+" and "~" tests
-        assert pcss('ol#first-ol li + li:nth-child(4)') == ['fourth-li']
-        assert pcss('li + li:nth-child(1)') == []
-        assert pcss('li ~ li:nth-child(2n+1)') == [
-            'third-li', 'fifth-li', 'seventh-li'
-        ]   # all but the first
-        assert pcss('li ~ li:nth-last-child(2n+1)') == [
-            'third-li', 'fifth-li', 'seventh-li'
-        ]   # all but the first
+        assert pcss("ol#first-ol li + li:nth-child(4)") == ["fourth-li"]
+        assert pcss("li + li:nth-child(1)") == []
+        assert pcss("li ~ li:nth-child(2n+1)") == [
+            "third-li",
+            "fifth-li",
+            "seventh-li",
+        ]  # all but the first
+        assert pcss("li ~ li:nth-last-child(2n+1)") == [
+            "third-li",
+            "fifth-li",
+            "seventh-li",
+        ]  # all but the first
 
-        assert pcss('span:only-child') == ['foobar-span']
-        assert pcss('li div:only-child') == ['li-div']
-        assert pcss('div *:only-child') == ['li-div', 'foobar-span']
-        self.assertRaises(ExpressionError, pcss, 'p *:only-of-type')
-        assert pcss('p:only-of-type') == ['paragraph']
-        assert pcss('a:empty', 'a:EMpty') == ['name-anchor']
-        assert pcss('li:empty') == [
-            'third-li', 'fourth-li', 'fifth-li', 'sixth-li']
-        assert pcss(':root', 'html:root') == ['html']
-        assert pcss('li:root', '* :root') == []
+        assert pcss("span:only-child") == ["foobar-span"]
+        assert pcss("li div:only-child") == ["li-div"]
+        assert pcss("div *:only-child") == ["li-div", "foobar-span"]
+        self.assertRaises(ExpressionError, pcss, "p *:only-of-type")
+        assert pcss("p:only-of-type") == ["paragraph"]
+        assert pcss("a:empty", "a:EMpty") == ["name-anchor"]
+        assert pcss("li:empty") == ["third-li", "fourth-li", "fifth-li", "sixth-li"]
+        assert pcss(":root", "html:root") == ["html"]
+        assert pcss("li:root", "* :root") == []
         assert pcss('*:contains("link")', ':CONtains("link")') == [
-            'html', 'nil', 'outer-div', 'tag-anchor', 'nofollow-anchor']
+            "html",
+            "nil",
+            "outer-div",
+            "tag-anchor",
+            "nofollow-anchor",
+        ]
         assert pcss('*:contains("LInk")') == []  # case sensitive
         assert pcss('*:contains("e")') == [
-            'html', 'nil', 'outer-div', 'first-ol', 'first-li',
-            'paragraph', 'p-em']
+            "html",
+            "nil",
+            "outer-div",
+            "first-ol",
+            "first-li",
+            "paragraph",
+            "p-em",
+        ]
         assert pcss('*:contains("E")') == []  # case-sensitive
-        assert pcss('.a', '.b', '*.a', 'ol.a') == ['first-ol']
-        assert pcss('.c', '*.c') == ['first-ol', 'third-li', 'fourth-li']
-        assert pcss('ol *.c', 'ol li.c', 'li ~ li.c', 'ol > li.c') == [
-            'third-li', 'fourth-li']
-        assert pcss('#first-li', 'li#first-li', '*#first-li') == ['first-li']
-        assert pcss('li div', 'li > div', 'div div') == ['li-div']
-        assert pcss('div > div') == []
-        assert pcss('div>.c', 'div > .c') == ['first-ol']
-        assert pcss('div + div') == ['foobar-div']
-        assert pcss('a ~ a') == ['tag-anchor', 'nofollow-anchor']
-        assert pcss('a[rel="tag"] ~ a') == ['nofollow-anchor']
-        assert pcss('ol#first-ol li:last-child') == ['seventh-li']
-        assert pcss('ol#first-ol *:last-child') == ['li-div', 'seventh-li']
-        assert pcss('#outer-div:first-child') == ['outer-div']
-        assert pcss('#outer-div :first-child') == [
-            'name-anchor', 'first-li', 'li-div', 'p-b',
-            'checkbox-fieldset-disabled', 'area-href']
-        assert pcss('a[href]') == ['tag-anchor', 'nofollow-anchor']
-        assert pcss(':not(*)') == []
-        assert pcss('a:not([href])') == ['name-anchor']
-        assert pcss('ol :Not(li[class])') == [
-            'first-li', 'second-li', 'li-div',
-            'fifth-li', 'sixth-li', 'seventh-li']
-        assert pcss('ol.a.b.c > li.c:nth-child(3)') == ['third-li']
+        assert pcss(".a", ".b", "*.a", "ol.a") == ["first-ol"]
+        assert pcss(".c", "*.c") == ["first-ol", "third-li", "fourth-li"]
+        assert pcss("ol *.c", "ol li.c", "li ~ li.c", "ol > li.c") == ["third-li", "fourth-li"]
+        assert pcss("#first-li", "li#first-li", "*#first-li") == ["first-li"]
+        assert pcss("li div", "li > div", "div div") == ["li-div"]
+        assert pcss("div > div") == []
+        assert pcss("div>.c", "div > .c") == ["first-ol"]
+        assert pcss("div + div") == ["foobar-div"]
+        assert pcss("a ~ a") == ["tag-anchor", "nofollow-anchor"]
+        assert pcss('a[rel="tag"] ~ a') == ["nofollow-anchor"]
+        assert pcss("ol#first-ol li:last-child") == ["seventh-li"]
+        assert pcss("ol#first-ol *:last-child") == ["li-div", "seventh-li"]
+        assert pcss("#outer-div:first-child") == ["outer-div"]
+        assert pcss("#outer-div :first-child") == [
+            "name-anchor",
+            "first-li",
+            "li-div",
+            "p-b",
+            "checkbox-fieldset-disabled",
+            "area-href",
+        ]
+        assert pcss("a[href]") == ["tag-anchor", "nofollow-anchor"]
+        assert pcss(":not(*)") == []
+        assert pcss("a:not([href])") == ["name-anchor"]
+        assert pcss("ol :Not(li[class])") == [
+            "first-li",
+            "second-li",
+            "li-div",
+            "fifth-li",
+            "sixth-li",
+            "seventh-li",
+        ]
+        assert pcss("link:has(*)") == []
+        assert pcss("ol:has(div)") == ["first-ol"]
+        assert pcss(":is(#first-li, #second-li)") == ["first-li", "second-li"]
+        assert pcss("a:is(#name-anchor, #tag-anchor)") == ["name-anchor", "tag-anchor"]
+        assert pcss(":is(.c)") == ["first-ol", "third-li", "fourth-li"]
+        assert pcss("ol.a.b.c > li.c:nth-child(3)") == ["third-li"]
 
         # Invalid characters in XPath element names, should not crash
-        assert pcss(r'di\a0 v', r'div\[') == []
-        assert pcss(r'[h\a0 ref]', r'[h\]ref]') == []
+        assert pcss(r"di\a0 v", r"div\[") == []
+        assert pcss(r"[h\a0 ref]", r"[h\]ref]") == []
 
         # HTML-specific
-        assert pcss(':link', html_only=True) == [
-            'link-href', 'tag-anchor', 'nofollow-anchor', 'area-href']
-        assert pcss(':visited', html_only=True) == []
-        assert pcss(':enabled', html_only=True) == [
-            'link-href', 'tag-anchor', 'nofollow-anchor',
-            'checkbox-unchecked', 'text-checked', 'checkbox-checked',
-            'area-href']
-        assert pcss(':disabled', html_only=True) == [
-            'checkbox-disabled', 'checkbox-disabled-checked', 'fieldset',
-            'checkbox-fieldset-disabled']
-        assert pcss(':checked', html_only=True) == [
-            'checkbox-checked', 'checkbox-disabled-checked']
+        assert pcss(":link", html_only=True) == [
+            "link-href",
+            "tag-anchor",
+            "nofollow-anchor",
+            "area-href",
+        ]
+        assert pcss(":visited", html_only=True) == []
+        assert pcss(":enabled", html_only=True) == [
+            "link-href",
+            "tag-anchor",
+            "nofollow-anchor",
+            "checkbox-unchecked",
+            "text-checked",
+            "checkbox-checked",
+            "area-href",
+        ]
+        assert pcss(":disabled", html_only=True) == [
+            "checkbox-disabled",
+            "checkbox-disabled-checked",
+            "fieldset",
+            "checkbox-fieldset-disabled",
+        ]
+        assert pcss(":checked", html_only=True) == [
+            "checkbox-checked",
+            "checkbox-disabled-checked",
+        ]
 
     def test_select_shakespeare(self):
         document = html.document_fromstring(HTML_SHAKESPEARE)
-        body = document.xpath('//body')[0]
+        body = document.xpath("//body")[0]
         css_to_xpath = GenericTranslator().css_to_xpath
 
         try:
@@ -892,58 +990,67 @@ class TestCssselect(unittest.TestCase):
 
         ## Changed from original; probably because I'm only
         ## searching the body.
-        #assert count('*') == 252
-        assert count('*') == 246
-        assert count('div:contains(CELIA)') == 26
-        assert count('div:only-child') == 22 # ?
-        assert count('div:nth-child(even)') == 106
-        assert count('div:nth-child(2n)') == 106
-        assert count('div:nth-child(odd)') == 137
-        assert count('div:nth-child(2n+1)') == 137
-        assert count('div:nth-child(n)') == 243
-        assert count('div:last-child') == 53
-        assert count('div:first-child') == 51
-        assert count('div > div') == 242
-        assert count('div + div') == 190
-        assert count('div ~ div') == 190
-        assert count('body') == 1
-        assert count('body div') == 243
-        assert count('div') == 243
-        assert count('div div') == 242
-        assert count('div div div') == 241
-        assert count('div, div, div') == 243
-        assert count('div, a, span') == 243
-        assert count('.dialog') == 51
-        assert count('div.dialog') == 51
-        assert count('div .dialog') == 51
-        assert count('div.character, div.dialog') == 99
-        assert count('div.direction.dialog') == 0
-        assert count('div.dialog.direction') == 0
-        assert count('div.dialog.scene') == 1
-        assert count('div.scene.scene') == 1
-        assert count('div.scene .scene') == 0
-        assert count('div.direction .dialog ') == 0
-        assert count('div .dialog .direction') == 4
-        assert count('div.dialog .dialog .direction') == 4
-        assert count('#speech5') == 1
-        assert count('div#speech5') == 1
-        assert count('div #speech5') == 1
-        assert count('div.scene div.dialog') == 49
-        assert count('div#scene1 div.dialog div') == 142
-        assert count('#scene1 #speech1') == 1
-        assert count('div[class]') == 103
-        assert count('div[class=dialog]') == 50
-        assert count('div[class^=dia]') == 51
-        assert count('div[class$=log]') == 50
-        assert count('div[class*=sce]') == 1
-        assert count('div[class|=dialog]') == 50 # ? Seems right
-        assert count('div[class!=madeup]') == 243 # ? Seems right
-        assert count('div[class~=dialog]') == 51 # ? Seems right
-        assert count(':scope > div') == 1
-        assert count(':scope > div > div[class=dialog]') == 1
-        assert count(':scope > div div') == 242
+        # assert count('*') == 252
+        assert count("*") == 246
+        assert count("div:contains(CELIA)") == 26
+        assert count("div:only-child") == 22  # ?
+        assert count("div:nth-child(even)") == 106
+        assert count("div:nth-child(2n)") == 106
+        assert count("div:nth-child(odd)") == 137
+        assert count("div:nth-child(2n+1)") == 137
+        assert count("div:nth-child(n)") == 243
+        assert count("div:last-child") == 53
+        assert count("div:first-child") == 51
+        assert count("div > div") == 242
+        assert count("div + div") == 190
+        assert count("div ~ div") == 190
+        assert count("body") == 1
+        assert count("body div") == 243
+        assert count("div") == 243
+        assert count("div div") == 242
+        assert count("div div div") == 241
+        assert count("div, div, div") == 243
+        assert count("div, a, span") == 243
+        assert count(".dialog") == 51
+        assert count("div.dialog") == 51
+        assert count("div .dialog") == 51
+        assert count("div.character, div.dialog") == 99
+        assert count("div.direction.dialog") == 0
+        assert count("div.dialog.direction") == 0
+        assert count("div.dialog.scene") == 1
+        assert count("div.scene.scene") == 1
+        assert count("div.scene .scene") == 0
+        assert count("div.direction .dialog ") == 0
+        assert count("div .dialog .direction") == 4
+        assert count("div.dialog .dialog .direction") == 4
+        assert count("#speech5") == 1
+        assert count("div#speech5") == 1
+        assert count("div #speech5") == 1
+        assert count("div.scene div.dialog") == 49
+        assert count("div#scene1 div.dialog div") == 142
+        assert count("#scene1 #speech1") == 1
+        assert count("div[class]") == 103
+        assert count("div[class=dialog]") == 50
+        assert count("div[class^=dia]") == 51
+        assert count("div[class$=log]") == 50
+        assert count("div[class*=sce]") == 1
+        assert count("div[class|=dialog]") == 50  # ? Seems right
+        assert count("div[class!=madeup]") == 243  # ? Seems right
+        assert count("div[class~=dialog]") == 51  # ? Seems right
+        assert count(":scope > div") == 1
+        assert count(":scope > div > div[class=dialog]") == 1
+        assert count(":scope > div div") == 242
 
-XMLLANG_IDS = '''
+
+OPERATOR_PRECEDENCE_IDS = """
+<html>
+  <a id="first"></a>
+  <a id="second" href="#"></a>
+  <a id="third" href="#"></a>
+</html>
+"""
+
+XMLLANG_IDS = """
 <test>
   <a id="first" xml:lang="en">a</a>
   <b id="second" xml:lang="en-US">b</b>
@@ -955,9 +1062,9 @@ XMLLANG_IDS = '''
     <h id="eighth" xml:lang="zh"/>
   </g>
 </test>
-'''
+"""
 
-HTML_IDS = '''
+HTML_IDS = """
 <html id="html"><head>
   <link id="link-href" href="foo" />
   <link id="link-nohref" />
@@ -1006,10 +1113,10 @@ c"></li>
 <div id="foobar-div" foobar="ab bc
 cde"><span id="foobar-span"></span></div>
 </body></html>
-'''
+"""
 
 
-HTML_SHAKESPEARE = '''
+HTML_SHAKESPEARE = """
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
 	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" debug="true">
@@ -1318,8 +1425,8 @@ HTML_SHAKESPEARE = '''
 </div>
 </body>
 </html>
-'''
+"""
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

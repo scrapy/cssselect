@@ -50,9 +50,9 @@ copyright = '2012-2017, Simon Sapin, Scrapy developers'
 # built documents.
 #
 # The full version, including alpha/beta/rc tags.
-init_py = open(os.path.join(os.path.dirname(__file__),
-                            '..', 'cssselect', '__init__.py')).read()
-release = re.search("VERSION = '([^']+)'", init_py).group(1)
+with open(os.path.join(os.path.dirname(__file__), '..', 'cssselect', '__init__.py')) as init_file:
+    init_py = init_file.read()
+release = re.search('VERSION = "([^"]+)"', init_py).group(1)
 # The short X.Y version.
 version = release.rstrip('dev')
 
@@ -248,3 +248,8 @@ texinfo_documents = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'http://docs.python.org/': None}
+
+
+# --- Nitpicking options ------------------------------------------------------
+
+nitpicky = True
