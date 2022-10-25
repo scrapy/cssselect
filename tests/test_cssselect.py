@@ -19,8 +19,8 @@
 
 import sys
 import typing
-from typing import List, Optional, Sequence, Tuple, Iterable
 import unittest
+from typing import List, Optional, Sequence, Tuple
 
 from lxml import etree, html
 from cssselect import (

@@ -16,7 +16,7 @@ import sys
 import re
 import operator
 import typing
-from typing import Callable, Iterable, Iterator, List, Optional, Sequence, Tuple, Union
+from typing import Iterable, Iterator, List, Optional, Sequence, Tuple, Union
 
 
 def ascii_lower(string: str) -> str:
