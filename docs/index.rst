@@ -108,7 +108,10 @@ in the Level 3 specification:
 * ``:not()`` accepts a *sequence of simple selectors*, not just single
   *simple selector*. For example, ``:not(a.important[rel])`` is allowed,
   even though the negation contains 3 *simple selectors*.
-* ``:scope`` allows to access immediate children of a selector: ``product.css(':scope > div::text')``, simillar to XPath ``child::div``. Must be used at the start of a selector. Simplified version of `level 4 reference`_.
+* ``:scope`` allows to access immediate children of a selector:
+  ``product.css(':scope > div::text')``, simillar to XPath ``child::div``. Must
+  be used at the start of a selector. Simplified version of
+  `level 4 reference`_.
 
 .. _an early draft: http://www.w3.org/TR/2001/CR-css3-selectors-20011113/#content-selectors
 .. _level 4 reference: https://developer.mozilla.org/en-US/docs/Web/CSS/:scope
