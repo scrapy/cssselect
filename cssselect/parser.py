@@ -190,15 +190,22 @@ class Function:
     Represents selector:name(expr)
     """
 
-    def __init__(self, selector: Tree, name: str, arguments: Sequence["Token"], of_type=None) -> None:
+    def __init__(
+        self,
+        selector: Tree,
+        name: str,
+        arguments: Sequence["Token"],
+        of_type: Optional[List[Selector]] = None,
+    ) -> None:
         self.selector = selector
         self.name = ascii_lower(name)
         self.arguments = arguments
 
         # for css4 :nth-child(An+B of Subselector)
-        try:
+        self.of_type: Optional[Selector]
+        if of_type:
             self.of_type = of_type[0]
-        except (IndexError, TypeError):
+        else:
             self.of_type = None
 
     def __repr__(self) -> str:
@@ -709,8 +716,8 @@ def parse_simple_selector(
                 selectors = parse_simple_selector_arguments(stream)
                 result = SpecificityAdjustment(result, selectors)
             else:
-                arguments, of_type = parse_function_arguments(stream)
-                result = Function(result, ident, arguments, of_type)
+                fn_arguments, of_type = parse_function_arguments(stream)
+                result = Function(result, ident, fn_arguments, of_type)
         else:
             raise SelectorSyntaxError("Expected selector, got %s" % (peek,))
     if len(stream.used) == selector_start:
@@ -731,8 +738,10 @@ def parse_arguments(stream: "TokenStream") -> List["Token"]:
             raise SelectorSyntaxError("Expected an argument, got %s" % (next,))
 
 
-def parse_function_arguments(stream):
-    arguments = []
+def parse_function_arguments(
+    stream: "TokenStream",
+) -> Tuple[List["Token"], Optional[List[Selector]]]:
+    arguments: List["Token"] = []
     while 1:
         stream.skip_whitespace()
         next = stream.next()
@@ -797,13 +806,13 @@ def parse_simple_selector_arguments(stream: "TokenStream") -> List[Tree]:
     return arguments
 
 
-def parse_of_type(stream):
+def parse_of_type(stream: "TokenStream") -> List[Selector]:
     subselector = ""
     while 1:
         next = stream.next()
         if next == ("DELIM", ")"):
             break
-        subselector += next.value
+        subselector += typing.cast(str, next.value)
     result = parse(subselector)
     return result
 
