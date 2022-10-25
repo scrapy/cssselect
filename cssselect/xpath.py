@@ -13,8 +13,8 @@
 """
 
 import copy
-import sys
 import re
+import sys
 
 import typing
 from typing import Optional
@@ -40,14 +40,6 @@ from cssselect.parser import (
 )
 
 
-if sys.version_info[0] < 3:
-    _basestring = basestring
-    _unicode = unicode
-else:
-    _basestring = str
-    _unicode = str
-
-
 class ExpressionError(SelectorError, RuntimeError):
     """Unknown or unsupported selector (eg. pseudo-class)."""
 
@@ -64,7 +56,7 @@ class XPathExpr:
         self.condition = condition
 
     def __str__(self) -> str:
-        path = _unicode(self.path) + _unicode(self.element)
+        path = str(self.path) + str(self.element)
         if self.condition:
             path += "[%s]" % self.condition
         return path
@@ -100,7 +92,7 @@ class XPathExpr:
         closing_combiner: Optional[str] = None,
         has_inner_condition: bool = False,
     ) -> "XPathExpr":
-        path = _unicode(self) + combiner
+        path = str(self) + combiner
         # Any "star prefix" is redundant when joining.
         if other.path != "*/":
             path += other.path
@@ -256,7 +248,7 @@ class GenericTranslator:
         assert isinstance(xpath, self.xpathexpr_cls)  # help debug a missing 'return'
         if translate_pseudo_elements and selector.pseudo_element:
             xpath = self.xpath_pseudo_element(xpath, selector.pseudo_element)
-        return (prefix or "") + _unicode(xpath)
+        return (prefix or "") + str(xpath)
 
     def xpath_pseudo_element(self, xpath: XPathExpr, pseudo_element: PseudoElement) -> XPathExpr:
         """Translate a pseudo-element.
@@ -269,7 +261,7 @@ class GenericTranslator:
 
     @staticmethod
     def xpath_literal(s: str) -> str:
-        s = _unicode(s)
+        s = str(s)
         if "'" not in s:
             s = "'%s'" % s
         elif '"' not in s:

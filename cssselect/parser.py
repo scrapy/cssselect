@@ -19,14 +19,6 @@ import typing
 from typing import Callable, Iterable, Iterator, List, Optional, Sequence, Tuple, Union
 
 
-if sys.version_info[0] < 3:
-    _unicode = unicode
-    _unichr = unichr
-else:
-    _unicode = str
-    _unichr = chr
-
-
 def ascii_lower(string: str) -> str:
     """Lower-case, but only in the ASCII range."""
     return string.encode("utf8").lower().decode("utf8")
@@ -655,7 +647,7 @@ def parse_simple_selector(
             if ident.lower() in ("first-line", "first-letter", "before", "after"):
                 # Special case: CSS 2.1 pseudo-elements can have a single ':'
                 # Any new pseudo-element must have two.
-                pseudo_element = _unicode(ident)
+                pseudo_element = str(ident)
                 continue
             if stream.peek() != ("DELIM", "("):
                 result = Pseudo(result, ident)
@@ -663,6 +655,12 @@ def parse_simple_selector(
                     if not (
                         len(stream.used) == 2
                         or (len(stream.used) == 3 and stream.used[0].type == "S")
+                        or (len(stream.used) >= 3 and stream.used[-3].is_delim(","))
+                        or (
+                            len(stream.used) >= 4
+                            and stream.used[-3].type == "S"
+                            and stream.used[-4].is_delim(",")
+                        )
                     ):
                         raise SelectorSyntaxError(
                             'Got immediate child pseudo-element ":scope" '
@@ -941,7 +939,7 @@ def _replace_unicode(match: "re.Match[str]") -> str:
     codepoint = int(match.group(1), 16)
     if codepoint > sys.maxunicode:
         codepoint = 0xFFFD
-    return _unichr(codepoint)
+    return chr(codepoint)
 
 
 def unescape_ident(value: str) -> str:
