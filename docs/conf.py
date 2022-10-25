@@ -248,3 +248,12 @@ texinfo_documents = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'http://docs.python.org/': None}
+
+
+# --- Nitpicking options ------------------------------------------------------
+
+nitpicky = True
+nitpick_ignore = [
+    # explicitly not a part of the public API
+    ('py:class', 'cssselect.parser.Token'),
+]

@@ -22,6 +22,16 @@ from cssselect.parser import (
 )
 from cssselect.xpath import GenericTranslator, HTMLTranslator, ExpressionError
 
+__all__ = (
+    "ExpressionError",
+    "FunctionalPseudoElement",
+    "GenericTranslator",
+    "HTMLTranslator",
+    "parse",
+    "Selector",
+    "SelectorError",
+    "SelectorSyntaxError",
+)
 
 VERSION = "1.1.0"
 __version__ = VERSION
