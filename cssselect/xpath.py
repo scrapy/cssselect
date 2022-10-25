@@ -673,14 +673,14 @@ class GenericTranslator:
         return xpath
 
     def xpath_attrib_equals(self, xpath: XPathExpr, name: str, value: Optional[str]) -> XPathExpr:
-        assert value
+        assert value is not None
         xpath.add_condition("%s = %s" % (name, self.xpath_literal(value)))
         return xpath
 
     def xpath_attrib_different(
         self, xpath: XPathExpr, name: str, value: Optional[str]
     ) -> XPathExpr:
-        assert value
+        assert value is not None
         # FIXME: this seems like a weird hack...
         if value:
             xpath.add_condition("not(%s) or %s != %s" % (name, name, self.xpath_literal(value)))
@@ -703,7 +703,7 @@ class GenericTranslator:
     def xpath_attrib_dashmatch(
         self, xpath: XPathExpr, name: str, value: Optional[str]
     ) -> XPathExpr:
-        assert value
+        assert value is not None
         # Weird, but true...
         xpath.add_condition(
             "%s and (%s = %s or starts-with(%s, %s))"
