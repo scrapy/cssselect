@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Version 1.x.x
+-------------
+
+Unreleased.
+
+*   Add type annotations (PEP 484 and PEP 561).
+
 Version 1.1.0
 -------------
 

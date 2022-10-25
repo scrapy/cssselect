@@ -22,6 +22,9 @@ jobs:
         - python-version: 3
           env:
             TOXENV: docs
+        - python-version: 3
+          env:
+            TOXENV: typing
 
     steps:
     - uses: actions/checkout@v2
