@@ -195,7 +195,7 @@ class GenericTranslator:
         about "real" elements.
 
         :param css:
-            A *group of selectors* as an Unicode string.
+            A *group of selectors* as a string.
         :param prefix:
             This string is prepended to the XPath expression for each selector.
             The default makes selectors scoped to the context node’s subtree.
@@ -204,7 +204,7 @@ class GenericTranslator:
             :class:`ExpressionError` on unknown/unsupported selectors,
             including pseudo-elements.
         :returns:
-            The equivalent XPath 1.0 expression as an Unicode string.
+            The equivalent XPath 1.0 expression as a string.
 
         """
         return " | ".join(
@@ -235,7 +235,7 @@ class GenericTranslator:
         :raises:
             :class:`ExpressionError` on unknown/unsupported selectors.
         :returns:
-            The equivalent XPath 1.0 expression as an Unicode string.
+            The equivalent XPath 1.0 expression as a string.
 
         """
         tree = getattr(selector, "parsed_tree", None)
