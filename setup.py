@@ -27,6 +27,10 @@ setup(
     license="BSD",
     packages=["cssselect"],
     test_suite="cssselect.tests",
+    package_data={
+        "cssselect": ["py.typed"],
+    },
+    include_package_data=True,
     python_requires=">=3.7",
     classifiers=[
         "Development Status :: 4 - Beta",
