@@ -99,22 +99,29 @@ These applicable pseudo-classes are not yet implemented:
   you specify an element type, but not with ``*``
 
 On the other hand, *cssselect* supports some selectors that are not
-in the Level 3 specification:
+in the Level 3 specification.
+
+These parts of the Level 4 specification are supported (note that a large part
+of the Level 4 additions is not applicable to cssselect similarly to ``:hover``
+or not representable in XPath 1.0 so the complete specification is unlikely to
+be implemented):
+
+* The ``:scope`` pseudo-class. Limitation: it can only be used at a start of a
+  selector.
+* The ``:is()``, ``:where()`` and ``:has()`` pseudo-classes. Limitation:
+  ``:has()`` cannot contain nested ``:has()`` or ``:not()``.
+
+These are non-standard extensions:
 
 * The ``:contains(text)`` pseudo-class that existed in `an early draft`_
   but was then removed.
 * The ``!=`` attribute operator. ``[foo!=bar]`` is the same as
-  ``:not([foo=bar])``
+  ``:not([foo=bar])``.
 * ``:not()`` accepts a *sequence of simple selectors*, not just single
   *simple selector*. For example, ``:not(a.important[rel])`` is allowed,
   even though the negation contains 3 *simple selectors*.
-* ``:scope`` allows to access immediate children of a selector:
-  ``product.css(':scope > div::text')``, simillar to XPath ``child::div``. Must
-  be used at the start of a selector. Simplified version of
-  `level 4 reference`_.
 
 .. _an early draft: http://www.w3.org/TR/2001/CR-css3-selectors-20011113/#content-selectors
-.. _level 4 reference: https://developer.mozilla.org/en-US/docs/Web/CSS/:scope
 
 ..
     The following claim was copied from lxml:
