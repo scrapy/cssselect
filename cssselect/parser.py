@@ -519,7 +519,7 @@ def parse(css: str) -> List[Selector]:
     you can skip this and use :meth:`~GenericTranslator.css_to_xpath`.
 
     :param css:
-        A *group of selectors* as an Unicode string.
+        A *group of selectors* as a string.
     :raises:
         :class:`SelectorSyntaxError` on invalid selectors.
     :returns:

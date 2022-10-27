@@ -1,12 +1,42 @@
 Changelog
 =========
 
-Version 1.x.x
+Version 1.2.0
 -------------
 
 Unreleased.
 
+*   Drop support for Python 2.7, 3.4-3.6, add support for Python 3.7-3.11.
+
 *   Add type annotations (PEP 484 and PEP 561).
+
+*   More features from the CSS Selectors Level 4:
+
+    *   The ``:is()`` pseudo-class.
+
+    *   The ``:where()`` pseudo-class.
+
+    *   The ``:has()`` pseudo-class, with some limitations.
+
+*   Fix parsing ``:scope`` after a comma.
+
+*   Add parentheses to fix condition precedence in some cases.
+
+*   Private API changes related to the removal of the Python 2 support:
+
+    * Remove ``_unicode`` and ``_unichr`` aliases from ``csselect.parser``.
+
+    * Remove ``_basestring`` and ``_unicode`` aliases from ``csselect.xpath``.
+
+    * Deprecate ``csselect.xpath._unicode_safe_getattr()`` and change it to just
+      call ``getattr()``.
+
+*   Include tests in the PyPI tarball.
+
+*   Many CI additions and improvements.
+
+*   Improve the test coverage.
+
 
 Version 1.1.0
 -------------
