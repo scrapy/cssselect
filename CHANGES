@@ -4,7 +4,7 @@ Changelog
 Version 1.2.0
 -------------
 
-Unreleased.
+Released on 2022-10-27.
 
 *   Drop support for Python 2.7, 3.4-3.6, add support for Python 3.7-3.11.
 

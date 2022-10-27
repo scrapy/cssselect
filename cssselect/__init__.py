@@ -33,5 +33,5 @@ __all__ = (
     "SelectorSyntaxError",
 )
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 __version__ = VERSION
