@@ -10,12 +10,6 @@ Unreleased.
 
 *   Add type annotations (PEP 484 and PEP 561).
 
-*   Many CI additions and improvements.
-
-*   Include tests in the PyPI tarball.
-
-*   Improve the test coverage.
-
 *   More features from the CSS Selectors Level 4:
 
     *   The ``:is()`` pseudo-class.
@@ -27,6 +21,21 @@ Unreleased.
 *   Fix parsing ``:scope`` after a comma.
 
 *   Add parentheses to fix condition precedence in some cases.
+
+*   Private API changes related to the removal of the Python 2 support:
+
+    * Remove ``_unicode`` and ``_unichr`` aliases from ``csselect.parser``.
+
+    * Remove ``_basestring`` and ``_unicode`` aliases from ``csselect.xpath``.
+
+    * Deprecate ``csselect.xpath._unicode_safe_getattr()`` and change it to just
+      call ``getattr()``.
+
+*   Include tests in the PyPI tarball.
+
+*   Many CI additions and improvements.
+
+*   Improve the test coverage.
 
 
 Version 1.1.0
