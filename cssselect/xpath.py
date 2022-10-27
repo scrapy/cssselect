@@ -38,6 +38,7 @@ from cssselect.parser import (
 )
 
 
+@typing.no_type_check
 def _unicode_safe_getattr(obj, name, default=None):
     warnings.warn(
         "_unicode_safe_getattr is deprecated and will be removed in the"
