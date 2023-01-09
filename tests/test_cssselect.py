@@ -562,6 +562,12 @@ class TestCssselect(unittest.TestCase):
         assert css_to_xpath("*[aval=\"'\\20\r\n '\"]") == (
             """descendant-or-self::*[@aval = "'  '"]"""
         )
+        assert css_to_xpath(r'*[aval="\5czz"]') == (
+            r"descendant-or-self::*[@aval = '\zz']"
+        )
+        assert css_to_xpath(r'*[aval="foo\5c bar"]') == (
+            r"descendant-or-self::*[@aval = 'foo\bar']"
+        )
 
     def test_xpath_pseudo_elements(self) -> None:
         class CustomTranslator(GenericTranslator):
