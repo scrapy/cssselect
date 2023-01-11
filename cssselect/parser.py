@@ -938,7 +938,7 @@ _replace_simple = operator.methodcaller("group", 1)
 def _replace_unicode(match: "re.Match[str]") -> str:
     codepoint = int(match.group(1), 16)
     if codepoint == 0x5C:
-        return r'\\'
+        return r"\\"
     if codepoint > sys.maxunicode:
         codepoint = 0xFFFD
     return chr(codepoint)
