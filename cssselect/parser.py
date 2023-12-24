@@ -190,12 +190,33 @@ class Function:
     Represents selector:name(expr)
     """
 
-    def __init__(self, selector: Tree, name: str, arguments: Sequence["Token"]) -> None:
+    def __init__(
+        self,
+        selector: Tree,
+        name: str,
+        arguments: Sequence["Token"],
+        of_type: Optional[List[Selector]] = None,
+    ) -> None:
         self.selector = selector
         self.name = ascii_lower(name)
         self.arguments = arguments
 
+        # for css4 :nth-child(An+B of Subselector)
+        self.of_type: Optional[Selector]
+        if of_type:
+            self.of_type = of_type[0]
+        else:
+            self.of_type = None
+
     def __repr__(self) -> str:
+        if self.of_type:
+            return "%s[%r:%s(%r of %s)]" % (
+                self.__class__.__name__,
+                self.selector,
+                self.name,
+                [token.value for token in self.arguments],
+                self.of_type.__repr__(),
+            )
         return "%s[%r:%s(%r)]" % (
             self.__class__.__name__,
             self.selector,
@@ -695,7 +716,8 @@ def parse_simple_selector(
                 selectors = parse_simple_selector_arguments(stream)
                 result = SpecificityAdjustment(result, selectors)
             else:
-                result = Function(result, ident, parse_arguments(stream))
+                fn_arguments, of_type = parse_function_arguments(stream)
+                result = Function(result, ident, fn_arguments, of_type)
         else:
             raise SelectorSyntaxError("Expected selector, got %s" % (peek,))
     if len(stream.used) == selector_start:
@@ -712,6 +734,29 @@ def parse_arguments(stream: "TokenStream") -> List["Token"]:
             arguments.append(next)
         elif next == ("DELIM", ")"):
             return arguments
+        else:
+            raise SelectorSyntaxError("Expected an argument, got %s" % (next,))
+
+
+def parse_function_arguments(
+    stream: "TokenStream",
+) -> Tuple[List["Token"], Optional[List[Selector]]]:
+    arguments: List["Token"] = []
+    while 1:
+        stream.skip_whitespace()
+        next = stream.next()
+        if next == ("IDENT", "of"):
+            stream.skip_whitespace()
+            of_type = parse_of_type(stream)
+            return arguments, of_type
+        elif next.type in ("IDENT", "STRING", "NUMBER") or next in [
+            ("DELIM", "+"),
+            ("DELIM", "-"),
+        ]:
+            arguments.append(next)
+        elif next == ("DELIM", ")"):
+            return arguments, None
+
         else:
             raise SelectorSyntaxError("Expected an argument, got %s" % (next,))
 
@@ -759,6 +804,17 @@ def parse_simple_selector_arguments(stream: "TokenStream") -> List[Tree]:
         else:
             raise SelectorSyntaxError("Expected an argument, got %s" % (next,))
     return arguments
+
+
+def parse_of_type(stream: "TokenStream") -> List[Selector]:
+    subselector = ""
+    while 1:
+        next = stream.next()
+        if next == ("DELIM", ")"):
+            break
+        subselector += typing.cast(str, next.value)
+    result = parse(subselector)
+    return result
 
 
 def parse_attrib(selector: Tree, stream: "TokenStream") -> Attrib:
