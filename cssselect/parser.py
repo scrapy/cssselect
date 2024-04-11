@@ -12,9 +12,9 @@
 
 """
 
-import sys
-import re
 import operator
+import re
+import sys
 import typing
 from typing import Iterable, Iterator, List, Optional, Sequence, Tuple, Union
 
@@ -67,9 +67,13 @@ class Selector:
 
     """
 
-    def __init__(self, tree: Tree, pseudo_element: Optional[PseudoElement] = None) -> None:
+    def __init__(
+        self, tree: Tree, pseudo_element: Optional[PseudoElement] = None
+    ) -> None:
         self.parsed_tree = tree
-        if pseudo_element is not None and not isinstance(pseudo_element, FunctionalPseudoElement):
+        if pseudo_element is not None and not isinstance(
+            pseudo_element, FunctionalPseudoElement
+        ):
             pseudo_element = ascii_lower(pseudo_element)
         #: A :class:`FunctionalPseudoElement`,
         #: or the identifier for the pseudo-element as a string,
@@ -247,7 +251,11 @@ class Negation:
         self.subselector = subselector
 
     def __repr__(self) -> str:
-        return "%s[%r:not(%r)]" % (self.__class__.__name__, self.selector, self.subselector)
+        return "%s[%r:not(%r)]" % (
+            self.__class__.__name__,
+            self.selector,
+            self.subselector,
+        )
 
     def canonical(self) -> str:
         subsel = self.subselector.canonical()
@@ -317,7 +325,10 @@ class Matching:
         for s in self.selector_list:
             selarg = s.canonical()
             selector_arguments.append(selarg.lstrip("*"))
-        return "%s:is(%s)" % (self.selector.canonical(), ", ".join(map(str, selector_arguments)))
+        return "%s:is(%s)" % (
+            self.selector.canonical(),
+            ", ".join(map(str, selector_arguments)),
+        )
 
     def specificity(self) -> Tuple[int, int, int]:
         return max(x.specificity() for x in self.selector_list)
@@ -367,14 +378,17 @@ class Attrib:
         attrib: str,
         operator: 'typing.Literal["exists"]',
         value: None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @typing.overload
     def __init__(
-        self, selector: Tree, namespace: Optional[str], attrib: str, operator: str, value: "Token"
-    ) -> None:
-        ...
+        self,
+        selector: Tree,
+        namespace: Optional[str],
+        attrib: str,
+        operator: str,
+        value: "Token",
+    ) -> None: ...
 
     def __init__(
         self,
@@ -415,7 +429,11 @@ class Attrib:
         if self.operator == "exists":
             op = attrib
         else:
-            op = "%s%s%s" % (attrib, self.operator, typing.cast("Token", self.value).css())
+            op = "%s%s%s" % (
+                attrib,
+                self.operator,
+                typing.cast("Token", self.value).css(),
+            )
 
         return "%s[%s]" % (self.selector.canonical(), op)
 
@@ -433,7 +451,9 @@ class Element:
 
     """
 
-    def __init__(self, namespace: Optional[str] = None, element: Optional[str] = None) -> None:
+    def __init__(
+        self, namespace: Optional[str] = None, element: Optional[str] = None
+    ) -> None:
         self.namespace = namespace
         self.element = element
 
@@ -486,7 +506,12 @@ class CombinedSelector:
             comb = "<followed>"
         else:
             comb = self.combinator
-        return "%s[%r %s %r]" % (self.__class__.__name__, self.selector, comb, self.subselector)
+        return "%s[%r %s %r]" % (
+            self.__class__.__name__,
+            self.selector,
+            comb,
+            self.subselector,
+        )
 
     def canonical(self) -> str:
         subsel = self.subselector.canonical()
@@ -509,7 +534,9 @@ _el_re = re.compile(r"^[ \t\r\n\f]*([a-zA-Z]+)[ \t\r\n\f]*$")
 _id_re = re.compile(r"^[ \t\r\n\f]*([a-zA-Z]*)#([a-zA-Z0-9_-]+)[ \t\r\n\f]*$")
 
 # foo.bar or .bar
-_class_re = re.compile(r"^[ \t\r\n\f]*([a-zA-Z]*)\.([a-zA-Z][a-zA-Z0-9_-]*)[ \t\r\n\f]*$")
+_class_re = re.compile(
+    r"^[ \t\r\n\f]*([a-zA-Z]*)\.([a-zA-Z][a-zA-Z0-9_-]*)[ \t\r\n\f]*$"
+)
 
 
 def parse(css: str) -> List[Selector]:
@@ -536,7 +563,9 @@ def parse(css: str) -> List[Selector]:
         return [Selector(Hash(Element(element=match.group(1) or None), match.group(2)))]
     match = _class_re.match(css)
     if match is not None:
-        return [Selector(Class(Element(element=match.group(1) or None), match.group(2)))]
+        return [
+            Selector(Class(Element(element=match.group(1) or None), match.group(2)))
+        ]
 
     stream = TokenStream(tokenize(css))
     stream.source = css
@@ -708,7 +737,10 @@ def parse_arguments(stream: "TokenStream") -> List["Token"]:
     while 1:
         stream.skip_whitespace()
         next = stream.next()
-        if next.type in ("IDENT", "STRING", "NUMBER") or next in [("DELIM", "+"), ("DELIM", "-")]:
+        if next.type in ("IDENT", "STRING", "NUMBER") or next in [
+            ("DELIM", "+"),
+            ("DELIM", "-"),
+        ]:
             arguments.append(next)
         elif next == ("DELIM", ")"):
             return arguments
@@ -729,7 +761,10 @@ def parse_relative_selector(stream: "TokenStream") -> Tuple["Token", Selector]:
         combinator = Token("DELIM", " ", pos=0)
 
     while 1:
-        if next.type in ("IDENT", "STRING", "NUMBER") or next in [("DELIM", "."), ("DELIM", "*")]:
+        if next.type in ("IDENT", "STRING", "NUMBER") or next in [
+            ("DELIM", "."),
+            ("DELIM", "*"),
+        ]:
             subselector += typing.cast(str, next.value)
         elif next == ("DELIM", ")"):
             result = parse(subselector)
@@ -787,7 +822,9 @@ def parse_attrib(selector: Tree, stream: "TokenStream") -> Attrib:
             return Attrib(selector, namespace, typing.cast(str, attrib), "exists", None)
         elif next == ("DELIM", "="):
             op = "="
-        elif next.is_delim("^", "$", "*", "~", "|", "!") and (stream.peek() == ("DELIM", "=")):
+        elif next.is_delim("^", "$", "*", "~", "|", "!") and (
+            stream.peek() == ("DELIM", "=")
+        ):
             op = typing.cast(str, next.value) + "="
             stream.next()
         else:
@@ -850,12 +887,12 @@ class Token(Tuple[str, Optional[str]]):
         type_: 'typing.Literal["IDENT", "HASH", "STRING", "S", "DELIM", "NUMBER"]',
         value: str,
         pos: int,
-    ) -> "Token":
-        ...
+    ) -> "Token": ...
 
     @typing.overload
-    def __new__(cls, type_: 'typing.Literal["EOF"]', value: None, pos: int) -> "Token":
-        ...
+    def __new__(
+        cls, type_: 'typing.Literal["EOF"]', value: None, pos: int
+    ) -> "Token": ...
 
     def __new__(cls, type_: str, value: Optional[str], pos: int) -> "Token":
         obj = tuple.__new__(cls, (type_, value))
@@ -910,8 +947,7 @@ if typing.TYPE_CHECKING:
     class MatchFunc(typing.Protocol):
         def __call__(
             self, string: str, pos: int = ..., endpos: int = ...
-        ) -> Optional["re.Match[str]"]:
-            ...
+        ) -> Optional["re.Match[str]"]: ...
 
 
 def _compile(pattern: str) -> "MatchFunc":
@@ -970,7 +1006,8 @@ def tokenize(s: str) -> Iterator[Token]:
         match = _match_hash(s, pos=pos)
         if match:
             value = _sub_simple_escape(
-                _replace_simple, _sub_unicode_escape(_replace_unicode, match.group()[1:])
+                _replace_simple,
+                _sub_unicode_escape(_replace_unicode, match.group()[1:]),
             )
             yield Token("HASH", value, pos)
             pos = match.end()
@@ -987,7 +1024,9 @@ def tokenize(s: str) -> Iterator[Token]:
                 raise SelectorSyntaxError("Invalid string at %s" % pos)
             value = _sub_simple_escape(
                 _replace_simple,
-                _sub_unicode_escape(_replace_unicode, _sub_newline_escape("", match.group())),
+                _sub_unicode_escape(
+                    _replace_unicode, _sub_newline_escape("", match.group())
+                ),
             )
             yield Token("STRING", value, pos)
             pos = end_pos + 1
