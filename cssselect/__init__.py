@@ -14,13 +14,13 @@
 """
 
 from cssselect.parser import (
-    parse,
-    Selector,
     FunctionalPseudoElement,
+    Selector,
     SelectorError,
     SelectorSyntaxError,
+    parse,
 )
-from cssselect.xpath import GenericTranslator, HTMLTranslator, ExpressionError
+from cssselect.xpath import ExpressionError, GenericTranslator, HTMLTranslator
 
 __all__ = (
     "ExpressionError",

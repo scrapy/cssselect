@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 
-import re
 import os.path
+import re
 
 from setuptools import setup
-
 
 ROOT = os.path.dirname(__file__)
 with open(os.path.join(ROOT, "README.rst")) as readme_file:

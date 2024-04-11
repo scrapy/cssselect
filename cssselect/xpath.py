@@ -18,23 +18,23 @@ import warnings
 from typing import Optional
 
 from cssselect.parser import (
-    parse,
-    parse_series,
+    Attrib,
+    Class,
+    CombinedSelector,
+    Element,
+    Function,
+    Hash,
+    Matching,
+    Negation,
+    Pseudo,
     PseudoElement,
+    Relation,
     Selector,
     SelectorError,
-    Tree,
-    Element,
-    Hash,
-    Class,
-    Function,
-    Pseudo,
-    Attrib,
-    Negation,
-    Relation,
-    Matching,
     SpecificityAdjustment,
-    CombinedSelector,
+    Tree,
+    parse,
+    parse_series,
 )
 
 
@@ -58,7 +58,11 @@ class ExpressionError(SelectorError, RuntimeError):
 
 class XPathExpr:
     def __init__(
-        self, path: str = "", element: str = "*", condition: str = "", star_prefix: bool = False
+        self,
+        path: str = "",
+        element: str = "*",
+        condition: str = "",
+        star_prefix: bool = False,
     ) -> None:
         self.path = path
         self.element = element
@@ -84,7 +88,9 @@ class XPathExpr:
         if self.element == "*":
             # We weren't doing a test anyway
             return
-        self.add_condition("name() = %s" % GenericTranslator.xpath_literal(self.element))
+        self.add_condition(
+            "name() = %s" % GenericTranslator.xpath_literal(self.element)
+        )
         self.element = "*"
 
     def add_star_prefix(self) -> None:
@@ -107,7 +113,9 @@ class XPathExpr:
             path += other.path
         self.path = path
         if not has_inner_condition:
-            self.element = other.element + closing_combiner if closing_combiner else other.element
+            self.element = (
+                other.element + closing_combiner if closing_combiner else other.element
+            )
             self.condition = other.condition
         else:
             self.element = other.element
@@ -259,7 +267,9 @@ class GenericTranslator:
             xpath = self.xpath_pseudo_element(xpath, selector.pseudo_element)
         return (prefix or "") + str(xpath)
 
-    def xpath_pseudo_element(self, xpath: XPathExpr, pseudo_element: PseudoElement) -> XPathExpr:
+    def xpath_pseudo_element(
+        self, xpath: XPathExpr, pseudo_element: PseudoElement
+    ) -> XPathExpr:
         """Translate a pseudo-element.
 
         Defaults to not supporting pseudo-elements at all,
@@ -300,7 +310,8 @@ class GenericTranslator:
         combinator = self.combinator_mapping[combined.combinator]
         method = getattr(self, "xpath_%s_combinator" % combinator)
         return typing.cast(
-            XPathExpr, method(self.xpath(combined.selector), self.xpath(combined.subselector))
+            XPathExpr,
+            method(self.xpath(combined.selector), self.xpath(combined.subselector)),
         )
 
     def xpath_negation(self, negation: Negation) -> XPathExpr:
@@ -381,7 +392,9 @@ class GenericTranslator:
             value = typing.cast(str, selector.value.value).lower()
         else:
             value = selector.value.value
-        return typing.cast(XPathExpr, method(self.xpath(selector.selector), attrib, value))
+        return typing.cast(
+            XPathExpr, method(self.xpath(selector.selector), attrib, value)
+        )
 
     def xpath_class(self, class_selector: Class) -> XPathExpr:
         """Translate a class selector."""
@@ -416,7 +429,9 @@ class GenericTranslator:
 
     # CombinedSelector: dispatch by combinator
 
-    def xpath_descendant_combinator(self, left: XPathExpr, right: XPathExpr) -> XPathExpr:
+    def xpath_descendant_combinator(
+        self, left: XPathExpr, right: XPathExpr
+    ) -> XPathExpr:
         """right is a child, grand-child or further descendant of left"""
         return left.join("/descendant-or-self::*/", right)
 
@@ -424,21 +439,31 @@ class GenericTranslator:
         """right is an immediate child of left"""
         return left.join("/", right)
 
-    def xpath_direct_adjacent_combinator(self, left: XPathExpr, right: XPathExpr) -> XPathExpr:
+    def xpath_direct_adjacent_combinator(
+        self, left: XPathExpr, right: XPathExpr
+    ) -> XPathExpr:
         """right is a sibling immediately after left"""
         xpath = left.join("/following-sibling::", right)
         xpath.add_name_test()
         return xpath.add_condition("position() = 1")
 
-    def xpath_indirect_adjacent_combinator(self, left: XPathExpr, right: XPathExpr) -> XPathExpr:
+    def xpath_indirect_adjacent_combinator(
+        self, left: XPathExpr, right: XPathExpr
+    ) -> XPathExpr:
         """right is a sibling after left, immediately or not"""
         return left.join("/following-sibling::", right)
 
-    def xpath_relation_descendant_combinator(self, left: XPathExpr, right: XPathExpr) -> XPathExpr:
+    def xpath_relation_descendant_combinator(
+        self, left: XPathExpr, right: XPathExpr
+    ) -> XPathExpr:
         """right is a child, grand-child or further descendant of left; select left"""
-        return left.join("[descendant::", right, closing_combiner="]", has_inner_condition=True)
+        return left.join(
+            "[descendant::", right, closing_combiner="]", has_inner_condition=True
+        )
 
-    def xpath_relation_child_combinator(self, left: XPathExpr, right: XPathExpr) -> XPathExpr:
+    def xpath_relation_child_combinator(
+        self, left: XPathExpr, right: XPathExpr
+    ) -> XPathExpr:
         """right is an immediate child of left; select left"""
         return left.join("[./", right, closing_combiner="]")
 
@@ -447,7 +472,9 @@ class GenericTranslator:
     ) -> XPathExpr:
         """right is a sibling immediately after left; select left"""
         xpath = left.add_condition(
-            "following-sibling::*[(name() = '{}') and (position() = 1)]".format(right.element)
+            "following-sibling::*[(name() = '{}') and (position() = 1)]".format(
+                right.element
+            )
         )
         return xpath
 
@@ -460,7 +487,11 @@ class GenericTranslator:
     # Function: dispatch by function/pseudo-class name
 
     def xpath_nth_child_function(
-        self, xpath: XPathExpr, function: Function, last: bool = False, add_name_test: bool = True
+        self,
+        xpath: XPathExpr,
+        function: Function,
+        last: bool = False,
+        add_name_test: bool = True,
     ) -> XPathExpr:
         try:
             a, b = parse_series(function.arguments)
@@ -589,28 +620,41 @@ class GenericTranslator:
             template = "(%s)"
         else:
             template = "%s"
-        xpath.add_condition(" and ".join(template % expression for expression in expressions))
+        xpath.add_condition(
+            " and ".join(template % expression for expression in expressions)
+        )
         return xpath
 
-    def xpath_nth_last_child_function(self, xpath: XPathExpr, function: Function) -> XPathExpr:
+    def xpath_nth_last_child_function(
+        self, xpath: XPathExpr, function: Function
+    ) -> XPathExpr:
         return self.xpath_nth_child_function(xpath, function, last=True)
 
-    def xpath_nth_of_type_function(self, xpath: XPathExpr, function: Function) -> XPathExpr:
+    def xpath_nth_of_type_function(
+        self, xpath: XPathExpr, function: Function
+    ) -> XPathExpr:
         if xpath.element == "*":
             raise ExpressionError("*:nth-of-type() is not implemented")
         return self.xpath_nth_child_function(xpath, function, add_name_test=False)
 
-    def xpath_nth_last_of_type_function(self, xpath: XPathExpr, function: Function) -> XPathExpr:
+    def xpath_nth_last_of_type_function(
+        self, xpath: XPathExpr, function: Function
+    ) -> XPathExpr:
         if xpath.element == "*":
             raise ExpressionError("*:nth-of-type() is not implemented")
-        return self.xpath_nth_child_function(xpath, function, last=True, add_name_test=False)
+        return self.xpath_nth_child_function(
+            xpath, function, last=True, add_name_test=False
+        )
 
-    def xpath_contains_function(self, xpath: XPathExpr, function: Function) -> XPathExpr:
+    def xpath_contains_function(
+        self, xpath: XPathExpr, function: Function
+    ) -> XPathExpr:
         # Defined there, removed in later drafts:
         # http://www.w3.org/TR/2001/CR-css3-selectors-20011113/#content-selectors
         if function.argument_types() not in (["STRING"], ["IDENT"]):
             raise ExpressionError(
-                "Expected a single string or ident for :contains(), got %r" % function.arguments
+                "Expected a single string or ident for :contains(), got %r"
+                % function.arguments
             )
         value = typing.cast(str, function.arguments[0].value)
         return xpath.add_condition("contains(., %s)" % self.xpath_literal(value))
@@ -618,7 +662,8 @@ class GenericTranslator:
     def xpath_lang_function(self, xpath: XPathExpr, function: Function) -> XPathExpr:
         if function.argument_types() not in (["STRING"], ["IDENT"]):
             raise ExpressionError(
-                "Expected a single string or ident for :lang(), got %r" % function.arguments
+                "Expected a single string or ident for :lang(), got %r"
+                % function.arguments
             )
         value = typing.cast(str, function.arguments[0].value)
         return xpath.add_condition("lang(%s)" % (self.xpath_literal(value)))
@@ -679,12 +724,16 @@ class GenericTranslator:
 
     # Attrib: dispatch by attribute operator
 
-    def xpath_attrib_exists(self, xpath: XPathExpr, name: str, value: Optional[str]) -> XPathExpr:
+    def xpath_attrib_exists(
+        self, xpath: XPathExpr, name: str, value: Optional[str]
+    ) -> XPathExpr:
         assert not value
         xpath.add_condition(name)
         return xpath
 
-    def xpath_attrib_equals(self, xpath: XPathExpr, name: str, value: Optional[str]) -> XPathExpr:
+    def xpath_attrib_equals(
+        self, xpath: XPathExpr, name: str, value: Optional[str]
+    ) -> XPathExpr:
         assert value is not None
         xpath.add_condition("%s = %s" % (name, self.xpath_literal(value)))
         return xpath
@@ -695,7 +744,9 @@ class GenericTranslator:
         assert value is not None
         # FIXME: this seems like a weird hack...
         if value:
-            xpath.add_condition("not(%s) or %s != %s" % (name, name, self.xpath_literal(value)))
+            xpath.add_condition(
+                "not(%s) or %s != %s" % (name, name, self.xpath_literal(value))
+            )
         else:
             xpath.add_condition("%s != %s" % (name, self.xpath_literal(value)))
         return xpath
@@ -719,7 +770,13 @@ class GenericTranslator:
         # Weird, but true...
         xpath.add_condition(
             "%s and (%s = %s or starts-with(%s, %s))"
-            % (name, name, self.xpath_literal(value), name, self.xpath_literal(value + "-"))
+            % (
+                name,
+                name,
+                self.xpath_literal(value),
+                name,
+                self.xpath_literal(value + "-"),
+            )
         )
         return xpath
 
@@ -798,7 +855,8 @@ class HTMLTranslator(GenericTranslator):
     def xpath_lang_function(self, xpath: XPathExpr, function: Function) -> XPathExpr:
         if function.argument_types() not in (["STRING"], ["IDENT"]):
             raise ExpressionError(
-                "Expected a single string or ident for :lang(), got %r" % function.arguments
+                "Expected a single string or ident for :lang(), got %r"
+                % function.arguments
             )
         value = function.arguments[0].value
         assert value
@@ -807,7 +865,8 @@ class HTMLTranslator(GenericTranslator):
             # XPath 1.0 has no lower-case function...
             "translate(@%s, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "
             "'abcdefghijklmnopqrstuvwxyz'), "
-            "'-'), %s)]" % (self.lang_attribute, self.xpath_literal(value.lower() + "-"))
+            "'-'), %s)]"
+            % (self.lang_attribute, self.xpath_literal(value.lower() + "-"))
         )
 
     def xpath_link_pseudo(self, xpath: XPathExpr) -> XPathExpr:  # type: ignore

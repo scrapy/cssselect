@@ -4,6 +4,7 @@ ignore =
     W503
     # too many leading '#' for block comment
     E266
+    E704
 exclude =
     .git
     .tox
