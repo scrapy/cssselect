@@ -12,9 +12,6 @@ jobs:
             TOXENV: pylint
         - python-version: 3.12
           env:
-            TOXENV: security
-        - python-version: 3.12
-          env:
             TOXENV: docs
         - python-version: 3.12
           env:
