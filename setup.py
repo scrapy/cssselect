@@ -22,10 +22,10 @@ setup(
     maintainer_email="paul.tremberth@gmail.com",
     description="cssselect parses CSS3 Selectors and translates them to XPath 1.0",
     long_description=README,
+    long_description_content_type="text/x-rst",
     url="https://github.com/scrapy/cssselect",
     license="BSD",
     packages=["cssselect"],
-    test_suite="cssselect.tests",
     package_data={
         "cssselect": ["py.typed"],
     },
