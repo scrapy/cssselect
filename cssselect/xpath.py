@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
     cssselect.xpath
     ===============
@@ -12,9 +11,10 @@
 
 """
 
+from __future__ import annotations
+
 import re
 import typing
-from typing import Optional
 
 from cssselect.parser import (
     Attrib,
@@ -65,7 +65,7 @@ class XPathExpr:
     def __repr__(self) -> str:
         return "%s[%s]" % (self.__class__.__name__, self)
 
-    def add_condition(self, condition: str, conjuction: str = "and") -> "XPathExpr":
+    def add_condition(self, condition: str, conjuction: str = "and") -> XPathExpr:
         if self.condition:
             self.condition = "(%s) %s (%s)" % (self.condition, conjuction, condition)
         else:
@@ -91,10 +91,10 @@ class XPathExpr:
     def join(
         self,
         combiner: str,
-        other: "XPathExpr",
-        closing_combiner: Optional[str] = None,
+        other: XPathExpr,
+        closing_combiner: str | None = None,
         has_inner_condition: bool = False,
-    ) -> "XPathExpr":
+    ) -> XPathExpr:
         path = str(self) + combiner
         # Any "star prefix" is redundant when joining.
         if other.path != "*/":
@@ -713,21 +713,21 @@ class GenericTranslator:
     # Attrib: dispatch by attribute operator
 
     def xpath_attrib_exists(
-        self, xpath: XPathExpr, name: str, value: Optional[str]
+        self, xpath: XPathExpr, name: str, value: str | None
     ) -> XPathExpr:
         assert not value
         xpath.add_condition(name)
         return xpath
 
     def xpath_attrib_equals(
-        self, xpath: XPathExpr, name: str, value: Optional[str]
+        self, xpath: XPathExpr, name: str, value: str | None
     ) -> XPathExpr:
         assert value is not None
         xpath.add_condition("%s = %s" % (name, self.xpath_literal(value)))
         return xpath
 
     def xpath_attrib_different(
-        self, xpath: XPathExpr, name: str, value: Optional[str]
+        self, xpath: XPathExpr, name: str, value: str | None
     ) -> XPathExpr:
         assert value is not None
         # FIXME: this seems like a weird hack...
@@ -740,7 +740,7 @@ class GenericTranslator:
         return xpath
 
     def xpath_attrib_includes(
-        self, xpath: XPathExpr, name: str, value: Optional[str]
+        self, xpath: XPathExpr, name: str, value: str | None
     ) -> XPathExpr:
         if value and is_non_whitespace(value):
             xpath.add_condition(
@@ -752,7 +752,7 @@ class GenericTranslator:
         return xpath
 
     def xpath_attrib_dashmatch(
-        self, xpath: XPathExpr, name: str, value: Optional[str]
+        self, xpath: XPathExpr, name: str, value: str | None
     ) -> XPathExpr:
         assert value is not None
         # Weird, but true...
@@ -769,7 +769,7 @@ class GenericTranslator:
         return xpath
 
     def xpath_attrib_prefixmatch(
-        self, xpath: XPathExpr, name: str, value: Optional[str]
+        self, xpath: XPathExpr, name: str, value: str | None
     ) -> XPathExpr:
         if value:
             xpath.add_condition(
@@ -780,7 +780,7 @@ class GenericTranslator:
         return xpath
 
     def xpath_attrib_suffixmatch(
-        self, xpath: XPathExpr, name: str, value: Optional[str]
+        self, xpath: XPathExpr, name: str, value: str | None
     ) -> XPathExpr:
         if value:
             # Oddly there is a starts-with in XPath 1.0, but not ends-with
@@ -793,7 +793,7 @@ class GenericTranslator:
         return xpath
 
     def xpath_attrib_substringmatch(
-        self, xpath: XPathExpr, name: str, value: Optional[str]
+        self, xpath: XPathExpr, name: str, value: str | None
     ) -> XPathExpr:
         if value:
             # Attribute selectors are case sensitive

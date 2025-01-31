@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
     Tests for cssselect
     ===================
@@ -17,10 +16,12 @@
 
 """
 
+from __future__ import annotations
+
 import sys
 import typing
 import unittest
-from typing import List, Optional, Sequence, Tuple
+from collections.abc import Sequence
 
 from lxml import etree, html
 
@@ -70,7 +71,7 @@ class TestCssselect(unittest.TestCase):
         ]
 
     def test_parser(self) -> None:
-        def repr_parse(css: str) -> List[str]:
+        def repr_parse(css: str) -> list[str]:
             selectors = parse(css)
             for selector in selectors:
                 assert selector.pseudo_element is None
@@ -79,7 +80,7 @@ class TestCssselect(unittest.TestCase):
                 for selector in selectors
             ]
 
-        def parse_many(first: str, *others: str) -> List[str]:
+        def parse_many(first: str, *others: str) -> list[str]:
             result = repr_parse(first)
             for other in others:
                 assert repr_parse(other) == result
@@ -185,8 +186,8 @@ class TestCssselect(unittest.TestCase):
         ]
 
     def test_pseudo_elements(self) -> None:
-        def parse_pseudo(css: str) -> List[Tuple[str, Optional[str]]]:
-            result: List[Tuple[str, Optional[str]]] = []
+        def parse_pseudo(css: str) -> list[tuple[str, str | None]]:
+            result: list[tuple[str, str | None]] = []
             for selector in parse(css):
                 pseudo = selector.pseudo_element
                 pseudo = str(pseudo) if pseudo else pseudo
@@ -196,7 +197,7 @@ class TestCssselect(unittest.TestCase):
                 result.append((selector_as_str, pseudo))
             return result
 
-        def parse_one(css: str) -> Tuple[str, Optional[str]]:
+        def parse_one(css: str) -> tuple[str, str | None]:
             result = parse_pseudo(css)
             assert len(result) == 1
             return result[0]
@@ -280,7 +281,7 @@ class TestCssselect(unittest.TestCase):
         assert test_pseudo_repr(":scope") == "Pseudo[Element[*]:scope]"
 
     def test_specificity(self) -> None:
-        def specificity(css: str) -> Tuple[int, int, int]:
+        def specificity(css: str) -> tuple[int, int, int]:
             selectors = parse(css)
             assert len(selectors) == 1
             return selectors[0].specificity()
@@ -326,7 +327,7 @@ class TestCssselect(unittest.TestCase):
         )
 
     def test_css_export(self) -> None:
-        def css2css(css: str, res: Optional[str] = None) -> None:
+        def css2css(css: str, res: str | None = None) -> None:
             selectors = parse(css)
             assert len(selectors) == 1
             assert selectors[0].canonical() == (res or css)
@@ -365,7 +366,7 @@ class TestCssselect(unittest.TestCase):
         css2css("foo > *")
 
     def test_parse_errors(self) -> None:
-        def get_error(css: str) -> Optional[str]:
+        def get_error(css: str) -> str | None:
             try:
                 parse(css)
             except SelectorSyntaxError:
@@ -725,13 +726,11 @@ class TestCssselect(unittest.TestCase):
         assert str(XPathExpr("", "", condition="@href")) == "[@href]"
 
         document = etree.fromstring(OPERATOR_PRECEDENCE_IDS)
-        sort_key = dict(
-            (el, count) for count, el in enumerate(document.iter())
-        ).__getitem__
+        sort_key = {el: count for count, el in enumerate(document.iter())}.__getitem__
 
-        def operator_id(selector: str) -> List[str]:
+        def operator_id(selector: str) -> list[str]:
             xpath = CustomTranslator().css_to_xpath(selector)
-            items = typing.cast(List["etree._Element"], document.xpath(xpath))
+            items = typing.cast(list["etree._Element"], document.xpath(xpath))
             items.sort(key=sort_key)
             return [element.get("id", "nil") for element in items]
 
@@ -740,7 +739,7 @@ class TestCssselect(unittest.TestCase):
         assert operator_id("[href]:first-or-second") == ["second"]
 
     def test_series(self) -> None:
-        def series(css: str) -> Optional[Tuple[int, int]]:
+        def series(css: str) -> tuple[int, int] | None:
             (selector,) = parse(":nth-child(%s)" % css)
             args = typing.cast(FunctionalPseudoElement, selector.parsed_tree).arguments
             try:
@@ -769,14 +768,12 @@ class TestCssselect(unittest.TestCase):
 
     def test_lang(self) -> None:
         document = etree.fromstring(XMLLANG_IDS)
-        sort_key = dict(
-            (el, count) for count, el in enumerate(document.iter())
-        ).__getitem__
+        sort_key = {el: count for count, el in enumerate(document.iter())}.__getitem__
         css_to_xpath = GenericTranslator().css_to_xpath
 
-        def langid(selector: str) -> List[str]:
+        def langid(selector: str) -> list[str]:
             xpath = css_to_xpath(selector)
-            items = typing.cast(List["etree._Element"], document.xpath(xpath))
+            items = typing.cast(list["etree._Element"], document.xpath(xpath))
             items.sort(key=sort_key)
             return [element.get("id", "nil") for element in items]
 
@@ -799,7 +796,7 @@ class TestCssselect(unittest.TestCase):
     def test_argument_types(self) -> None:
         class CustomTranslator(GenericTranslator):
             def __init__(self) -> None:
-                self.argument_types: List[str] = []
+                self.argument_types: list[str] = []
 
             def xpath_pseudo_element(
                 self, xpath: XPathExpr, pseudo_element: PseudoElement
@@ -809,12 +806,12 @@ class TestCssselect(unittest.TestCase):
                 ).argument_types()
                 return xpath
 
-        def argument_types(css: str) -> List[str]:
+        def argument_types(css: str) -> list[str]:
             translator = CustomTranslator()
             translator.css_to_xpath(css)
             return translator.argument_types
 
-        mappings: List[Tuple[str, List[str]]] = [
+        mappings: list[tuple[str, list[str]]] = [
             ("", []),
             ("ident", ["IDENT"]),
             ('"string"', ["STRING"]),
@@ -826,23 +823,21 @@ class TestCssselect(unittest.TestCase):
 
     def test_select(self) -> None:
         document = etree.fromstring(HTML_IDS)
-        sort_key = dict(
-            (el, count) for count, el in enumerate(document.iter())
-        ).__getitem__
+        sort_key = {el: count for count, el in enumerate(document.iter())}.__getitem__
         css_to_xpath = GenericTranslator().css_to_xpath
         html_css_to_xpath = HTMLTranslator().css_to_xpath
 
-        def select_ids(selector: str, html_only: bool) -> List[str]:
+        def select_ids(selector: str, html_only: bool) -> list[str]:
             xpath = css_to_xpath(selector)
-            items = typing.cast(List["etree._Element"], document.xpath(xpath))
+            items = typing.cast(list["etree._Element"], document.xpath(xpath))
             if html_only:
                 assert items == []
                 xpath = html_css_to_xpath(selector)
-                items = typing.cast(List["etree._Element"], document.xpath(xpath))
+                items = typing.cast(list["etree._Element"], document.xpath(xpath))
             items.sort(key=sort_key)
             return [element.get("id", "nil") for element in items]
 
-        def pcss(main: str, *selectors: str, **kwargs: bool) -> List[str]:
+        def pcss(main: str, *selectors: str, **kwargs: bool) -> list[str]:
             html_only = kwargs.pop("html_only", False)
             result = select_ids(main, html_only)
             for selector in selectors:
@@ -1072,14 +1067,14 @@ class TestCssselect(unittest.TestCase):
 
     def test_select_shakespeare(self) -> None:
         document = html.document_fromstring(HTML_SHAKESPEARE)
-        body = typing.cast(List["etree._Element"], document.xpath("//body"))[0]
+        body = typing.cast(list["etree._Element"], document.xpath("//body"))[0]
         css_to_xpath = GenericTranslator().css_to_xpath
 
         basestring_ = (str, bytes)
 
         def count(selector: str) -> int:
             xpath = css_to_xpath(selector)
-            results = typing.cast(List["etree._Element"], body.xpath(xpath))
+            results = typing.cast(list["etree._Element"], body.xpath(xpath))
             assert not isinstance(results, basestring_)
             found = set()
             for item in results:

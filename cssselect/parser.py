@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
     cssselect.parser
     ================
@@ -12,11 +11,14 @@
 
 """
 
+from __future__ import annotations
+
 import operator
 import re
 import sys
 import typing
-from typing import Iterable, Iterator, List, Optional, Sequence, Tuple, Union
+from collections.abc import Iterable, Iterator, Sequence
+from typing import Optional, Union
 
 
 def ascii_lower(string: str) -> str:
@@ -67,9 +69,7 @@ class Selector:
 
     """
 
-    def __init__(
-        self, tree: Tree, pseudo_element: Optional[PseudoElement] = None
-    ) -> None:
+    def __init__(self, tree: Tree, pseudo_element: PseudoElement | None = None) -> None:
         self.parsed_tree = tree
         if pseudo_element is not None and not isinstance(
             pseudo_element, FunctionalPseudoElement
@@ -119,7 +119,7 @@ class Selector:
             res = res.lstrip("*")
         return res
 
-    def specificity(self) -> Tuple[int, int, int]:
+    def specificity(self) -> tuple[int, int, int]:
         """Return the specificity_ of this selector as a tuple of 3 integers.
 
         .. _specificity: http://www.w3.org/TR/selectors/#specificity
@@ -146,7 +146,7 @@ class Class:
     def canonical(self) -> str:
         return "%s.%s" % (self.selector.canonical(), self.class_name)
 
-    def specificity(self) -> Tuple[int, int, int]:
+    def specificity(self) -> tuple[int, int, int]:
         a, b, c = self.selector.specificity()
         b += 1
         return a, b, c
@@ -170,7 +170,7 @@ class FunctionalPseudoElement:
 
     """
 
-    def __init__(self, name: str, arguments: Sequence["Token"]):
+    def __init__(self, name: str, arguments: Sequence[Token]):
         self.name = ascii_lower(name)
         self.arguments = arguments
 
@@ -181,7 +181,7 @@ class FunctionalPseudoElement:
             [token.value for token in self.arguments],
         )
 
-    def argument_types(self) -> List[str]:
+    def argument_types(self) -> list[str]:
         return [token.type for token in self.arguments]
 
     def canonical(self) -> str:
@@ -194,7 +194,7 @@ class Function:
     Represents selector:name(expr)
     """
 
-    def __init__(self, selector: Tree, name: str, arguments: Sequence["Token"]) -> None:
+    def __init__(self, selector: Tree, name: str, arguments: Sequence[Token]) -> None:
         self.selector = selector
         self.name = ascii_lower(name)
         self.arguments = arguments
@@ -207,14 +207,14 @@ class Function:
             [token.value for token in self.arguments],
         )
 
-    def argument_types(self) -> List[str]:
+    def argument_types(self) -> list[str]:
         return [token.type for token in self.arguments]
 
     def canonical(self) -> str:
         args = "".join(token.css() for token in self.arguments)
         return "%s:%s(%s)" % (self.selector.canonical(), self.name, args)
 
-    def specificity(self) -> Tuple[int, int, int]:
+    def specificity(self) -> tuple[int, int, int]:
         a, b, c = self.selector.specificity()
         b += 1
         return a, b, c
@@ -235,7 +235,7 @@ class Pseudo:
     def canonical(self) -> str:
         return "%s:%s" % (self.selector.canonical(), self.ident)
 
-    def specificity(self) -> Tuple[int, int, int]:
+    def specificity(self) -> tuple[int, int, int]:
         a, b, c = self.selector.specificity()
         b += 1
         return a, b, c
@@ -263,7 +263,7 @@ class Negation:
             subsel = subsel.lstrip("*")
         return "%s:not(%s)" % (self.selector.canonical(), subsel)
 
-    def specificity(self) -> Tuple[int, int, int]:
+    def specificity(self) -> tuple[int, int, int]:
         a1, b1, c1 = self.selector.specificity()
         a2, b2, c2 = self.subselector.specificity()
         return a1 + a2, b1 + b2, c1 + c2
@@ -274,7 +274,7 @@ class Relation:
     Represents selector:has(subselector)
     """
 
-    def __init__(self, selector: Tree, combinator: "Token", subselector: Selector):
+    def __init__(self, selector: Tree, combinator: Token, subselector: Selector):
         self.selector = selector
         self.combinator = combinator
         self.subselector = subselector
@@ -295,7 +295,7 @@ class Relation:
             subsel = subsel.lstrip("*")
         return "%s:has(%s)" % (self.selector.canonical(), subsel)
 
-    def specificity(self) -> Tuple[int, int, int]:
+    def specificity(self) -> tuple[int, int, int]:
         a1, b1, c1 = self.selector.specificity()
         try:
             a2, b2, c2 = self.subselector[-1].specificity()  # type: ignore
@@ -330,7 +330,7 @@ class Matching:
             ", ".join(map(str, selector_arguments)),
         )
 
-    def specificity(self) -> Tuple[int, int, int]:
+    def specificity(self) -> tuple[int, int, int]:
         return max(x.specificity() for x in self.selector_list)
 
 
@@ -340,7 +340,7 @@ class SpecificityAdjustment:
     Same as selector:is(selector_list), but its specificity is always 0
     """
 
-    def __init__(self, selector: Tree, selector_list: List[Tree]):
+    def __init__(self, selector: Tree, selector_list: list[Tree]):
         self.selector = selector
         self.selector_list = selector_list
 
@@ -361,7 +361,7 @@ class SpecificityAdjustment:
             ", ".join(map(str, selector_arguments)),
         )
 
-    def specificity(self) -> Tuple[int, int, int]:
+    def specificity(self) -> tuple[int, int, int]:
         return 0, 0, 0
 
 
@@ -374,9 +374,9 @@ class Attrib:
     def __init__(
         self,
         selector: Tree,
-        namespace: Optional[str],
+        namespace: str | None,
         attrib: str,
-        operator: 'typing.Literal["exists"]',
+        operator: typing.Literal["exists"],
         value: None,
     ) -> None: ...
 
@@ -384,19 +384,19 @@ class Attrib:
     def __init__(
         self,
         selector: Tree,
-        namespace: Optional[str],
+        namespace: str | None,
         attrib: str,
         operator: str,
-        value: "Token",
+        value: Token,
     ) -> None: ...
 
     def __init__(
         self,
         selector: Tree,
-        namespace: Optional[str],
+        namespace: str | None,
         attrib: str,
         operator: str,
-        value: Optional["Token"],
+        value: Token | None,
     ) -> None:
         self.selector = selector
         self.namespace = namespace
@@ -437,7 +437,7 @@ class Attrib:
 
         return "%s[%s]" % (self.selector.canonical(), op)
 
-    def specificity(self) -> Tuple[int, int, int]:
+    def specificity(self) -> tuple[int, int, int]:
         a, b, c = self.selector.specificity()
         b += 1
         return a, b, c
@@ -452,7 +452,7 @@ class Element:
     """
 
     def __init__(
-        self, namespace: Optional[str] = None, element: Optional[str] = None
+        self, namespace: str | None = None, element: str | None = None
     ) -> None:
         self.namespace = namespace
         self.element = element
@@ -466,7 +466,7 @@ class Element:
             element = "%s|%s" % (self.namespace, element)
         return element
 
-    def specificity(self) -> Tuple[int, int, int]:
+    def specificity(self) -> tuple[int, int, int]:
         if self.element:
             return 0, 0, 1
         else:
@@ -488,7 +488,7 @@ class Hash:
     def canonical(self) -> str:
         return "%s#%s" % (self.selector.canonical(), self.id)
 
-    def specificity(self) -> Tuple[int, int, int]:
+    def specificity(self) -> tuple[int, int, int]:
         a, b, c = self.selector.specificity()
         a += 1
         return a, b, c
@@ -519,7 +519,7 @@ class CombinedSelector:
             subsel = subsel.lstrip("*")
         return "%s %s %s" % (self.selector.canonical(), self.combinator, subsel)
 
-    def specificity(self) -> Tuple[int, int, int]:
+    def specificity(self) -> tuple[int, int, int]:
         a1, b1, c1 = self.selector.specificity()
         a2, b2, c2 = self.subselector.specificity()
         return a1 + a2, b1 + b2, c1 + c2
@@ -539,7 +539,7 @@ _class_re = re.compile(
 )
 
 
-def parse(css: str) -> List[Selector]:
+def parse(css: str) -> list[Selector]:
     """Parse a CSS *group of selectors*.
 
     If you don't care about pseudo-elements or selector specificity,
@@ -581,7 +581,7 @@ def parse(css: str) -> List[Selector]:
 #        raise
 
 
-def parse_selector_group(stream: "TokenStream") -> Iterator[Selector]:
+def parse_selector_group(stream: TokenStream) -> Iterator[Selector]:
     stream.skip_whitespace()
     while 1:
         yield Selector(*parse_selector(stream))
@@ -592,7 +592,7 @@ def parse_selector_group(stream: "TokenStream") -> Iterator[Selector]:
             break
 
 
-def parse_selector(stream: "TokenStream") -> Tuple[Tree, Optional[PseudoElement]]:
+def parse_selector(stream: TokenStream) -> tuple[Tree, PseudoElement | None]:
     result, pseudo_element = parse_simple_selector(stream)
     while 1:
         stream.skip_whitespace()
@@ -617,8 +617,8 @@ def parse_selector(stream: "TokenStream") -> Tuple[Tree, Optional[PseudoElement]
 
 
 def parse_simple_selector(
-    stream: "TokenStream", inside_negation: bool = False
-) -> Tuple[Tree, Optional[PseudoElement]]:
+    stream: TokenStream, inside_negation: bool = False
+) -> tuple[Tree, PseudoElement | None]:
     stream.skip_whitespace()
     selector_start = len(stream.used)
     peek = stream.peek()
@@ -637,7 +637,7 @@ def parse_simple_selector(
     else:
         element = namespace = None
     result: Tree = Element(namespace, element)
-    pseudo_element: Optional[PseudoElement] = None
+    pseudo_element: PseudoElement | None = None
     while 1:
         peek = stream.peek()
         if (
@@ -732,8 +732,8 @@ def parse_simple_selector(
     return result, pseudo_element
 
 
-def parse_arguments(stream: "TokenStream") -> List["Token"]:
-    arguments: List["Token"] = []
+def parse_arguments(stream: TokenStream) -> list[Token]:
+    arguments: list[Token] = []
     while 1:
         stream.skip_whitespace()
         next = stream.next()
@@ -748,7 +748,7 @@ def parse_arguments(stream: "TokenStream") -> List["Token"]:
             raise SelectorSyntaxError("Expected an argument, got %s" % (next,))
 
 
-def parse_relative_selector(stream: "TokenStream") -> Tuple["Token", Selector]:
+def parse_relative_selector(stream: TokenStream) -> tuple[Token, Selector]:
     stream.skip_whitespace()
     subselector = ""
     next = stream.next()
@@ -774,7 +774,7 @@ def parse_relative_selector(stream: "TokenStream") -> Tuple["Token", Selector]:
         next = stream.next()
 
 
-def parse_simple_selector_arguments(stream: "TokenStream") -> List[Tree]:
+def parse_simple_selector_arguments(stream: TokenStream) -> list[Tree]:
     arguments = []
     while 1:
         result, pseudo_element = parse_simple_selector(stream, True)
@@ -796,13 +796,13 @@ def parse_simple_selector_arguments(stream: "TokenStream") -> List[Tree]:
     return arguments
 
 
-def parse_attrib(selector: Tree, stream: "TokenStream") -> Attrib:
+def parse_attrib(selector: Tree, stream: TokenStream) -> Attrib:
     stream.skip_whitespace()
     attrib = stream.next_ident_or_star()
     if attrib is None and stream.peek() != ("DELIM", "|"):
         raise SelectorSyntaxError("Expected '|', got %s" % (stream.peek(),))
-    namespace: Optional[str]
-    op: Optional[str]
+    namespace: str | None
+    op: str | None
     if stream.peek() == ("DELIM", "|"):
         stream.next()
         if stream.peek() == ("DELIM", "="):
@@ -840,7 +840,7 @@ def parse_attrib(selector: Tree, stream: "TokenStream") -> Attrib:
     return Attrib(selector, namespace, typing.cast(str, attrib), op, value)
 
 
-def parse_series(tokens: Iterable["Token"]) -> Tuple[int, int]:
+def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:
     """
     Parses the arguments for :nth-child() and friends.
 
@@ -880,21 +880,19 @@ def parse_series(tokens: Iterable["Token"]) -> Tuple[int, int]:
 #### Token objects
 
 
-class Token(Tuple[str, Optional[str]]):
+class Token(tuple[str, Optional[str]]):
     @typing.overload
     def __new__(
         cls,
-        type_: 'typing.Literal["IDENT", "HASH", "STRING", "S", "DELIM", "NUMBER"]',
+        type_: typing.Literal["IDENT", "HASH", "STRING", "S", "DELIM", "NUMBER"],
         value: str,
         pos: int,
-    ) -> "Token": ...
+    ) -> Token: ...
 
     @typing.overload
-    def __new__(
-        cls, type_: 'typing.Literal["EOF"]', value: None, pos: int
-    ) -> "Token": ...
+    def __new__(cls, type_: typing.Literal["EOF"], value: None, pos: int) -> Token: ...
 
-    def __new__(cls, type_: str, value: Optional[str], pos: int) -> "Token":
+    def __new__(cls, type_: str, value: str | None, pos: int) -> Token:
         obj = tuple.__new__(cls, (type_, value))
         obj.pos = pos
         return obj
@@ -912,7 +910,7 @@ class Token(Tuple[str, Optional[str]]):
         return self[0]
 
     @property
-    def value(self) -> Optional[str]:
+    def value(self) -> str | None:
         return self[1]
 
     def css(self) -> str:
@@ -923,7 +921,7 @@ class Token(Tuple[str, Optional[str]]):
 
 
 class EOFToken(Token):
-    def __new__(cls, pos: int) -> "EOFToken":
+    def __new__(cls, pos: int) -> EOFToken:
         return typing.cast("EOFToken", Token.__new__(cls, "EOF", None, pos))
 
     def __repr__(self) -> str:
@@ -947,10 +945,10 @@ if typing.TYPE_CHECKING:
     class MatchFunc(typing.Protocol):
         def __call__(
             self, string: str, pos: int = ..., endpos: int = ...
-        ) -> Optional["re.Match[str]"]: ...
+        ) -> re.Match[str] | None: ...
 
 
-def _compile(pattern: str) -> "MatchFunc":
+def _compile(pattern: str) -> MatchFunc:
     return re.compile(pattern % vars(TokenMacros), re.IGNORECASE).match
 
 
@@ -971,7 +969,7 @@ _sub_newline_escape = re.compile(r"\\(?:\n|\r\n|\r|\f)").sub
 _replace_simple = operator.methodcaller("group", 1)
 
 
-def _replace_unicode(match: "re.Match[str]") -> str:
+def _replace_unicode(match: re.Match[str]) -> str:
     codepoint = int(match.group(1), 16)
     if codepoint > sys.maxunicode:
         codepoint = 0xFFFD
@@ -1056,11 +1054,11 @@ def tokenize(s: str) -> Iterator[Token]:
 
 
 class TokenStream:
-    def __init__(self, tokens: Iterable[Token], source: Optional[str] = None) -> None:
-        self.used: List[Token] = []
+    def __init__(self, tokens: Iterable[Token], source: str | None = None) -> None:
+        self.used: list[Token] = []
         self.tokens = iter(tokens)
         self.source = source
-        self.peeked: Optional[Token] = None
+        self.peeked: Token | None = None
         self._peeking = False
         self.next_token = self.tokens.__next__
 
@@ -1086,7 +1084,7 @@ class TokenStream:
             raise SelectorSyntaxError("Expected ident, got %s" % (next,))
         return typing.cast(str, next.value)
 
-    def next_ident_or_star(self) -> Optional[str]:
+    def next_ident_or_star(self) -> str | None:
         next = self.next()
         if next.type == "IDENT":
             return next.value

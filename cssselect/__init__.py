@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
     CSS Selectors based on XPath
     ============================
