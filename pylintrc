@@ -5,7 +5,6 @@ extension-pkg-allow-list=lxml
 [MESSAGES CONTROL]
 enable=useless-suppression
 disable=consider-using-f-string,
-        duplicate-string-formatting-argument,
         fixme,
         invalid-name,
         line-too-long,

@@ -78,10 +78,7 @@ class TestCssselect(unittest.TestCase):
             selectors = parse(css)
             for selector in selectors:
                 assert selector.pseudo_element is None
-            return [
-                repr(selector.parsed_tree).replace("(u'", "('")
-                for selector in selectors
-            ]
+            return [repr(selector.parsed_tree) for selector in selectors]
 
         def parse_many(first: str, *others: str) -> list[str]:
             result = repr_parse(first)
@@ -196,7 +193,7 @@ class TestCssselect(unittest.TestCase):
                 pseudo = str(pseudo) if pseudo else pseudo
                 # No Symbol here
                 assert pseudo is None or isinstance(pseudo, str)
-                selector_as_str = repr(selector.parsed_tree).replace("(u'", "('")
+                selector_as_str = repr(selector.parsed_tree)
                 result.append((selector_as_str, pseudo))
             return result
 
@@ -373,8 +370,7 @@ class TestCssselect(unittest.TestCase):
             try:
                 parse(css)
             except SelectorSyntaxError:
-                # Py2, Py3, ...
-                return str(sys.exc_info()[1]).replace("(u'", "('")
+                return str(sys.exc_info()[1])
             return None
 
         assert get_error("attributes(href)/html/body/a") == (

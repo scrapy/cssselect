@@ -16,8 +16,7 @@ from __future__ import annotations
 import operator
 import re
 import sys
-import typing
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Literal, Optional, Protocol, Union, cast, overload
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Sequence
@@ -375,17 +374,17 @@ class Attrib:
     Represents selector[namespace|attrib operator value]
     """
 
-    @typing.overload
+    @overload
     def __init__(
         self,
         selector: Tree,
         namespace: str | None,
         attrib: str,
-        operator: typing.Literal["exists"],
+        operator: Literal["exists"],
         value: None,
     ) -> None: ...
 
-    @typing.overload
+    @overload
     def __init__(
         self,
         selector: Tree,
@@ -607,7 +606,7 @@ def parse_selector(stream: TokenStream) -> tuple[Tree, PseudoElement | None]:
             )
         if peek.is_delim("+", ">", "~"):
             # A combinator
-            combinator = typing.cast(str, stream.next().value)
+            combinator = cast(str, stream.next().value)
             stream.skip_whitespace()
         else:
             # By exclusion, the last parse_simple_selector() ended
@@ -653,7 +652,7 @@ def parse_simple_selector(
                 "Got pseudo-element ::%s not at the end of a selector" % pseudo_element
             )
         if peek.type == "HASH":
-            result = Hash(result, typing.cast(str, stream.next().value))
+            result = Hash(result, cast(str, stream.next().value))
         elif peek == ("DELIM", "."):
             stream.next()
             result = Class(result, stream.next_ident())
@@ -766,7 +765,7 @@ def parse_relative_selector(stream: TokenStream) -> tuple[Token, Selector]:
             ("DELIM", "."),
             ("DELIM", "*"),
         ]:
-            subselector += typing.cast(str, next.value)
+            subselector += cast(str, next.value)
         elif next == ("DELIM", ")"):
             result = parse(subselector)
             return combinator, result[0]
@@ -820,13 +819,13 @@ def parse_attrib(selector: Tree, stream: TokenStream) -> Attrib:
         stream.skip_whitespace()
         next = stream.next()
         if next == ("DELIM", "]"):
-            return Attrib(selector, namespace, typing.cast(str, attrib), "exists", None)
+            return Attrib(selector, namespace, cast(str, attrib), "exists", None)
         if next == ("DELIM", "="):
             op = "="
         elif next.is_delim("^", "$", "*", "~", "|", "!") and (
             stream.peek() == ("DELIM", "=")
         ):
-            op = typing.cast(str, next.value) + "="
+            op = cast(str, next.value) + "="
             stream.next()
         else:
             raise SelectorSyntaxError("Operator expected, got %s" % (next,))
@@ -838,7 +837,7 @@ def parse_attrib(selector: Tree, stream: TokenStream) -> Attrib:
     next = stream.next()
     if next != ("DELIM", "]"):
         raise SelectorSyntaxError("Expected ']', got %s" % (next,))
-    return Attrib(selector, namespace, typing.cast(str, attrib), op, value)
+    return Attrib(selector, namespace, cast(str, attrib), op, value)
 
 
 def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:
@@ -852,7 +851,7 @@ def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:
     for token in tokens:
         if token.type == "STRING":
             raise ValueError("String tokens not allowed in series.")
-    s = "".join(typing.cast(str, token.value) for token in tokens).strip()
+    s = "".join(cast(str, token.value) for token in tokens).strip()
     if s == "odd":
         return 2, 1
     if s == "even":
@@ -878,16 +877,16 @@ def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:
 
 
 class Token(tuple[str, Optional[str]]):  # noqa: SLOT001
-    @typing.overload
+    @overload
     def __new__(
         cls,
-        type_: typing.Literal["IDENT", "HASH", "STRING", "S", "DELIM", "NUMBER"],
+        type_: Literal["IDENT", "HASH", "STRING", "S", "DELIM", "NUMBER"],
         value: str,
         pos: int,
     ) -> Self: ...
 
-    @typing.overload
-    def __new__(cls, type_: typing.Literal["EOF"], value: None, pos: int) -> Self: ...
+    @overload
+    def __new__(cls, type_: Literal["EOF"], value: None, pos: int) -> Self: ...
 
     def __new__(cls, type_: str, value: str | None, pos: int) -> Self:
         obj = tuple.__new__(cls, (type_, value))
@@ -913,7 +912,7 @@ class Token(tuple[str, Optional[str]]):  # noqa: SLOT001
     def css(self) -> str:
         if self.type == "STRING":
             return repr(self.value)
-        return typing.cast(str, self.value)
+        return cast(str, self.value)
 
 
 class EOFToken(Token):
@@ -936,12 +935,10 @@ class TokenMacros:
     nmstart = "[_a-z]|%s|%s" % (escape, nonascii)
 
 
-if typing.TYPE_CHECKING:
-
-    class MatchFunc(typing.Protocol):
-        def __call__(
-            self, string: str, pos: int = ..., endpos: int = ...
-        ) -> re.Match[str] | None: ...
+class MatchFunc(Protocol):
+    def __call__(
+        self, string: str, pos: int = ..., endpos: int = ...
+    ) -> re.Match[str] | None: ...
 
 
 def _compile(pattern: str) -> MatchFunc:
@@ -1062,7 +1059,7 @@ class TokenStream:
             self._peeking = False
             assert self.peeked is not None
             self.used.append(self.peeked)
-            return typing.cast(Token, self.peeked)
+            return self.peeked
         next = self.next_token()
         self.used.append(next)
         return next
@@ -1071,13 +1068,14 @@ class TokenStream:
         if not self._peeking:
             self.peeked = self.next_token()
             self._peeking = True
-        return typing.cast(Token, self.peeked)
+        assert self.peeked is not None
+        return self.peeked
 
     def next_ident(self) -> str:
         next = self.next()
         if next.type != "IDENT":
             raise SelectorSyntaxError("Expected ident, got %s" % (next,))
-        return typing.cast(str, next.value)
+        return cast(str, next.value)
 
     def next_ident_or_star(self) -> str | None:
         next = self.next()
