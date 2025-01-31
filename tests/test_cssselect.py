@@ -1,18 +1,18 @@
 #!/usr/bin/env python
 """
-    Tests for cssselect
-    ===================
+Tests for cssselect
+===================
 
-    These tests can be run either by py.test or by the standard library's
-    unittest. They use plain ``assert`` statements and do little reporting
-    themselves in case of failure.
+These tests can be run either by py.test or by the standard library's
+unittest. They use plain ``assert`` statements and do little reporting
+themselves in case of failure.
 
-    Use py.test to get fancy error reporting and assert introspection.
+Use py.test to get fancy error reporting and assert introspection.
 
 
-    :copyright: (c) 2007-2012 Ian Bicking and contributors.
-                See AUTHORS for more details.
-    :license: BSD, see LICENSE for more details.
+:copyright: (c) 2007-2012 Ian Bicking and contributors.
+See AUTHORS for more details.
+:license: BSD, see LICENSE for more details.
 
 """
 
@@ -21,7 +21,7 @@ from __future__ import annotations
 import sys
 import typing
 import unittest
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from lxml import etree, html
 
@@ -41,6 +41,9 @@ from cssselect.parser import (
     tokenize,
 )
 from cssselect.xpath import XPathExpr
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 class TestCssselect(unittest.TestCase):
@@ -453,7 +456,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e[foo|bar]") == "e[@foo:bar]"
         assert xpath('e[foo="bar"]') == "e[@foo = 'bar']"
         assert xpath('e[foo~="bar"]') == (
-            "e[@foo and contains(" "concat(' ', normalize-space(@foo), ' '), ' bar ')]"
+            "e[@foo and contains(concat(' ', normalize-space(@foo), ' '), ' bar ')]"
         )
         assert xpath('e[foo^="bar"]') == ("e[@foo and starts-with(@foo, 'bar')]")
         assert xpath('e[foo$="bar"]') == (
@@ -461,7 +464,7 @@ class TestCssselect(unittest.TestCase):
         )
         assert xpath('e[foo*="bar"]') == ("e[@foo and contains(@foo, 'bar')]")
         assert xpath('e[hreflang|="en"]') == (
-            "e[@hreflang and (" "@hreflang = 'en' or starts-with(@hreflang, 'en-'))]"
+            "e[@hreflang and (@hreflang = 'en' or starts-with(@hreflang, 'en-'))]"
         )
 
         # --- nth-* and nth-last-* -------------------------------------
@@ -720,7 +723,7 @@ class TestCssselect(unittest.TestCase):
         )
         assert xpath(":scope") == "descendant-or-self::*[1]"
         assert xpath(":first-or-second[href]") == (
-            "descendant-or-self::*[(@id = 'first' or @id = 'second') " "and (@href)]"
+            "descendant-or-self::*[(@id = 'first' or @id = 'second') and (@href)]"
         )
 
         assert str(XPathExpr("", "", condition="@href")) == "[@href]"
@@ -1522,7 +1525,7 @@ HTML_SHAKESPEARE = """
 </div>
 </body>
 </html>
-"""  # noqa: W191,E101
+"""
 
 
 if __name__ == "__main__":

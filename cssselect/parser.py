@@ -1,13 +1,13 @@
 """
-    cssselect.parser
-    ================
+cssselect.parser
+================
 
-    Tokenizer, parser and parsed objects for CSS selectors.
+Tokenizer, parser and parsed objects for CSS selectors.
 
 
-    :copyright: (c) 2007-2012 Ian Bicking and contributors.
-                See AUTHORS for more details.
-    :license: BSD, see LICENSE for more details.
+:copyright: (c) 2007-2012 Ian Bicking and contributors.
+See AUTHORS for more details.
+:license: BSD, see LICENSE for more details.
 
 """
 
@@ -17,8 +17,13 @@ import operator
 import re
 import sys
 import typing
-from collections.abc import Iterable, Iterator, Sequence
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator, Sequence
+
+    # typing.Self requires Python 3.11
+    from typing_extensions import Self
 
 
 def ascii_lower(string: str) -> str:
@@ -288,7 +293,7 @@ class Relation:
 
     def canonical(self) -> str:
         try:
-            subsel = self.subselector[0].canonical()  # type: ignore
+            subsel = self.subselector[0].canonical()  # type: ignore[index]
         except TypeError:
             subsel = self.subselector.canonical()
         if len(subsel) > 1:
@@ -298,7 +303,7 @@ class Relation:
     def specificity(self) -> tuple[int, int, int]:
         a1, b1, c1 = self.selector.specificity()
         try:
-            a2, b2, c2 = self.subselector[-1].specificity()  # type: ignore
+            a2, b2, c2 = self.subselector[-1].specificity()  # type: ignore[index]
         except TypeError:
             a2, b2, c2 = self.subselector.specificity()
         return a1 + a2, b1 + b2, c1 + c2
@@ -411,14 +416,13 @@ class Attrib:
             attrib = self.attrib
         if self.operator == "exists":
             return "%s[%r[%s]]" % (self.__class__.__name__, self.selector, attrib)
-        else:
-            return "%s[%r[%s %s %r]]" % (
-                self.__class__.__name__,
-                self.selector,
-                attrib,
-                self.operator,
-                typing.cast("Token", self.value).value,
-            )
+        return "%s[%r[%s %s %r]]" % (
+            self.__class__.__name__,
+            self.selector,
+            attrib,
+            self.operator,
+            typing.cast("Token", self.value).value,
+        )
 
     def canonical(self) -> str:
         if self.namespace:
@@ -469,8 +473,7 @@ class Element:
     def specificity(self) -> tuple[int, int, int]:
         if self.element:
             return 0, 0, 1
-        else:
-            return 0, 0, 0
+        return 0, 0, 0
 
 
 class Hash:
@@ -502,10 +505,7 @@ class CombinedSelector:
         self.subselector = subselector
 
     def __repr__(self) -> str:
-        if self.combinator == " ":
-            comb = "<followed>"
-        else:
-            comb = self.combinator
+        comb = "<followed>" if self.combinator == " " else self.combinator
         return "%s[%r %s %r]" % (
             self.__class__.__name__,
             self.selector,
@@ -680,21 +680,20 @@ def parse_simple_selector(
                 continue
             if stream.peek() != ("DELIM", "("):
                 result = Pseudo(result, ident)
-                if repr(result) == "Pseudo[Element[*]:scope]":
-                    if not (
-                        len(stream.used) == 2
-                        or (len(stream.used) == 3 and stream.used[0].type == "S")
-                        or (len(stream.used) >= 3 and stream.used[-3].is_delim(","))
-                        or (
-                            len(stream.used) >= 4
-                            and stream.used[-3].type == "S"
-                            and stream.used[-4].is_delim(",")
-                        )
-                    ):
-                        raise SelectorSyntaxError(
-                            'Got immediate child pseudo-element ":scope" '
-                            "not at the start of a selector"
-                        )
+                if repr(result) == "Pseudo[Element[*]:scope]" and not (
+                    len(stream.used) == 2
+                    or (len(stream.used) == 3 and stream.used[0].type == "S")
+                    or (len(stream.used) >= 3 and stream.used[-3].is_delim(","))
+                    or (
+                        len(stream.used) >= 4
+                        and stream.used[-3].type == "S"
+                        and stream.used[-4].is_delim(",")
+                    )
+                ):
+                    raise SelectorSyntaxError(
+                        'Got immediate child pseudo-element ":scope" '
+                        "not at the start of a selector"
+                    )
                 continue
             stream.next()
             stream.skip_whitespace()
@@ -734,7 +733,7 @@ def parse_simple_selector(
 
 def parse_arguments(stream: TokenStream) -> list[Token]:
     arguments: list[Token] = []
-    while 1:
+    while 1:  # noqa: RET503
         stream.skip_whitespace()
         next = stream.next()
         if next.type in ("IDENT", "STRING", "NUMBER") or next in [
@@ -760,7 +759,7 @@ def parse_relative_selector(stream: TokenStream) -> tuple[Token, Selector]:
     else:
         combinator = Token("DELIM", " ", pos=0)
 
-    while 1:
+    while 1:  # noqa: RET503
         if next.type in ("IDENT", "STRING", "NUMBER") or next in [
             ("DELIM", "."),
             ("DELIM", "*"),
@@ -820,7 +819,7 @@ def parse_attrib(selector: Tree, stream: TokenStream) -> Attrib:
         next = stream.next()
         if next == ("DELIM", "]"):
             return Attrib(selector, namespace, typing.cast(str, attrib), "exists", None)
-        elif next == ("DELIM", "="):
+        if next == ("DELIM", "="):
             op = "="
         elif next.is_delim("^", "$", "*", "~", "|", "!") and (
             stream.peek() == ("DELIM", "=")
@@ -854,9 +853,9 @@ def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:
     s = "".join(typing.cast(str, token.value) for token in tokens).strip()
     if s == "odd":
         return 2, 1
-    elif s == "even":
+    if s == "even":
         return 2, 0
-    elif s == "n":
+    if s == "n":
         return 1, 0
     if "n" not in s:
         # Just b
@@ -865,34 +864,30 @@ def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:
     a_as_int: int
     if not a:
         a_as_int = 1
-    elif a == "-" or a == "+":
+    elif a in {"-", "+"}:
         a_as_int = int(a + "1")
     else:
         a_as_int = int(a)
-    b_as_int: int
-    if not b:
-        b_as_int = 0
-    else:
-        b_as_int = int(b)
+    b_as_int = int(b) if b else 0
     return a_as_int, b_as_int
 
 
 #### Token objects
 
 
-class Token(tuple[str, Optional[str]]):
+class Token(tuple[str, Optional[str]]):  # noqa: SLOT001
     @typing.overload
     def __new__(
         cls,
         type_: typing.Literal["IDENT", "HASH", "STRING", "S", "DELIM", "NUMBER"],
         value: str,
         pos: int,
-    ) -> Token: ...
+    ) -> Self: ...
 
     @typing.overload
-    def __new__(cls, type_: typing.Literal["EOF"], value: None, pos: int) -> Token: ...
+    def __new__(cls, type_: typing.Literal["EOF"], value: None, pos: int) -> Self: ...
 
-    def __new__(cls, type_: str, value: str | None, pos: int) -> Token:
+    def __new__(cls, type_: str, value: str | None, pos: int) -> Self:
         obj = tuple.__new__(cls, (type_, value))
         obj.pos = pos
         return obj
@@ -916,13 +911,12 @@ class Token(tuple[str, Optional[str]]):
     def css(self) -> str:
         if self.type == "STRING":
             return repr(self.value)
-        else:
-            return typing.cast(str, self.value)
+        return typing.cast(str, self.value)
 
 
 class EOFToken(Token):
-    def __new__(cls, pos: int) -> EOFToken:
-        return typing.cast("EOFToken", Token.__new__(cls, "EOF", None, pos))
+    def __new__(cls, pos: int) -> Self:
+        return Token.__new__(cls, "EOF", None, pos)
 
     def __repr__(self) -> str:
         return "<%s at %i>" % (self.type, self.pos)
@@ -962,7 +956,7 @@ _match_string_by_quote = {
 }
 
 _sub_simple_escape = re.compile(r"\\(.)").sub
-_sub_unicode_escape = re.compile(TokenMacros.unicode_escape, re.I).sub
+_sub_unicode_escape = re.compile(TokenMacros.unicode_escape, re.IGNORECASE).sub
 _sub_newline_escape = re.compile(r"\\(?:\n|\r\n|\r|\f)").sub
 
 # Same as r'\1', but faster on CPython
@@ -978,8 +972,7 @@ def _replace_unicode(match: re.Match[str]) -> str:
 
 def unescape_ident(value: str) -> str:
     value = _sub_unicode_escape(_replace_unicode, value)
-    value = _sub_simple_escape(_replace_simple, value)
-    return value
+    return _sub_simple_escape(_replace_simple, value)
 
 
 def tokenize(s: str) -> Iterator[Token]:
@@ -1067,10 +1060,9 @@ class TokenStream:
             self._peeking = False
             self.used.append(typing.cast(Token, self.peeked))
             return typing.cast(Token, self.peeked)
-        else:
-            next = self.next_token()
-            self.used.append(next)
-            return next
+        next = self.next_token()
+        self.used.append(next)
+        return next
 
     def peek(self) -> Token:
         if not self._peeking:
@@ -1088,10 +1080,9 @@ class TokenStream:
         next = self.next()
         if next.type == "IDENT":
             return next.value
-        elif next == ("DELIM", "*"):
+        if next == ("DELIM", "*"):
             return None
-        else:
-            raise SelectorSyntaxError("Expected ident or '*', got %s" % (next,))
+        raise SelectorSyntaxError("Expected ident or '*', got %s" % (next,))
 
     def skip_whitespace(self) -> None:
         peek = self.peek()
