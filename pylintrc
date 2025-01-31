@@ -1,21 +1,19 @@
 [MASTER]
 persistent=no
+extension-pkg-allow-list=lxml
 
 [MESSAGES CONTROL]
-disable=assignment-from-no-return,
-        c-extension-no-member,
-        consider-using-f-string,
-        consider-using-in,
+enable=useless-suppression
+disable=consider-using-f-string,
+        duplicate-string-formatting-argument,
         fixme,
-        inconsistent-return-statements,
         invalid-name,
+        line-too-long,
         missing-class-docstring,
         missing-function-docstring,
         missing-module-docstring,
-        multiple-imports,
-        no-else-return,
         no-member,
-        raise-missing-from,
+        not-callable,
         redefined-builtin,
         redefined-outer-name,
         too-few-public-methods,
@@ -26,8 +24,4 @@ disable=assignment-from-no-return,
         too-many-positional-arguments,
         too-many-public-methods,
         too-many-statements,
-        undefined-variable,
-        unidiomatic-typecheck,
-        unspecified-encoding,
         unused-argument,
-        unused-import,

@@ -195,7 +195,7 @@ class TestCssselect(unittest.TestCase):
                 pseudo = selector.pseudo_element
                 pseudo = str(pseudo) if pseudo else pseudo
                 # No Symbol here
-                assert pseudo is None or type(pseudo) is str
+                assert pseudo is None or isinstance(pseudo, str)
                 selector_as_str = repr(selector.parsed_tree).replace("(u'", "('")
                 result.append((selector_as_str, pseudo))
             return result
