@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import re
 import typing
+from collections.abc import Callable
+from typing import Optional
 
 from cssselect.parser import (
     Attrib,
@@ -286,21 +288,25 @@ class GenericTranslator:
     def xpath(self, parsed_selector: Tree) -> XPathExpr:
         """Translate any parsed selector object."""
         type_name = type(parsed_selector).__name__
-        method = getattr(self, "xpath_%s" % type_name.lower(), None)
+        method = typing.cast(
+            Optional[Callable[[Tree], XPathExpr]],
+            getattr(self, "xpath_%s" % type_name.lower(), None),
+        )
         if method is None:
             raise ExpressionError("%s is not supported." % type_name)
-        return typing.cast(XPathExpr, method(parsed_selector))
+        return method(parsed_selector)
 
     # Dispatched by parsed object type
 
     def xpath_combinedselector(self, combined: CombinedSelector) -> XPathExpr:
         """Translate a combined selector."""
         combinator = self.combinator_mapping[combined.combinator]
-        method = getattr(self, "xpath_%s_combinator" % combinator)
-        return typing.cast(
-            XPathExpr,
-            method(self.xpath(combined.selector), self.xpath(combined.subselector)),
+        method = typing.cast(
+            Callable[[XPathExpr, XPathExpr], XPathExpr],
+            getattr(self, "xpath_%s_combinator" % combinator),
         )
+
+        return method(self.xpath(combined.selector), self.xpath(combined.subselector))
 
     def xpath_negation(self, negation: Negation) -> XPathExpr:
         xpath = self.xpath(negation.selector)
@@ -315,12 +321,15 @@ class GenericTranslator:
         combinator = relation.combinator
         subselector = relation.subselector
         right = self.xpath(subselector.parsed_tree)
-        method = getattr(
-            self,
-            "xpath_relation_%s_combinator"
-            % self.combinator_mapping[typing.cast(str, combinator.value)],
+        method = typing.cast(
+            Callable[[XPathExpr, XPathExpr], XPathExpr],
+            getattr(
+                self,
+                "xpath_relation_%s_combinator"
+                % self.combinator_mapping[typing.cast(str, combinator.value)],
+            ),
         )
-        return typing.cast(XPathExpr, method(xpath, right))
+        return method(xpath, right)
 
     def xpath_matching(self, matching: Matching) -> XPathExpr:
         xpath = self.xpath(matching.selector)
@@ -343,24 +352,32 @@ class GenericTranslator:
     def xpath_function(self, function: Function) -> XPathExpr:
         """Translate a functional pseudo-class."""
         method_name = "xpath_%s_function" % function.name.replace("-", "_")
-        method = getattr(self, method_name, None)
+        method = typing.cast(
+            Optional[Callable[[XPathExpr, Function], XPathExpr]],
+            getattr(self, method_name, None),
+        )
         if not method:
             raise ExpressionError("The pseudo-class :%s() is unknown" % function.name)
-        return typing.cast(XPathExpr, method(self.xpath(function.selector), function))
+        return method(self.xpath(function.selector), function)
 
     def xpath_pseudo(self, pseudo: Pseudo) -> XPathExpr:
         """Translate a pseudo-class."""
         method_name = "xpath_%s_pseudo" % pseudo.ident.replace("-", "_")
-        method = getattr(self, method_name, None)
+        method = typing.cast(
+            Optional[Callable[[XPathExpr], XPathExpr]], getattr(self, method_name, None)
+        )
         if not method:
             # TODO: better error message for pseudo-elements?
             raise ExpressionError("The pseudo-class :%s is unknown" % pseudo.ident)
-        return typing.cast(XPathExpr, method(self.xpath(pseudo.selector)))
+        return method(self.xpath(pseudo.selector))
 
     def xpath_attrib(self, selector: Attrib) -> XPathExpr:
         """Translate an attribute selector."""
         operator = self.attribute_operator_mapping[selector.operator]
-        method = getattr(self, "xpath_attrib_%s" % operator)
+        method = typing.cast(
+            Callable[[XPathExpr, str, Optional[str]], XPathExpr],
+            getattr(self, "xpath_attrib_%s" % operator),
+        )
         if self.lower_case_attribute_names:
             name = selector.attrib.lower()
         else:
@@ -379,9 +396,7 @@ class GenericTranslator:
             value = typing.cast(str, selector.value.value).lower()
         else:
             value = selector.value.value
-        return typing.cast(
-            XPathExpr, method(self.xpath(selector.selector), attrib, value)
-        )
+        return method(self.xpath(selector.selector), attrib, value)
 
     def xpath_class(self, class_selector: Class) -> XPathExpr:
         """Translate a class selector."""

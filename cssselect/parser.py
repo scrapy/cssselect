@@ -416,12 +416,13 @@ class Attrib:
             attrib = self.attrib
         if self.operator == "exists":
             return "%s[%r[%s]]" % (self.__class__.__name__, self.selector, attrib)
+        assert self.value is not None
         return "%s[%r[%s %s %r]]" % (
             self.__class__.__name__,
             self.selector,
             attrib,
             self.operator,
-            typing.cast("Token", self.value).value,
+            self.value.value,
         )
 
     def canonical(self) -> str:
@@ -433,10 +434,11 @@ class Attrib:
         if self.operator == "exists":
             op = attrib
         else:
+            assert self.value is not None
             op = "%s%s%s" % (
                 attrib,
                 self.operator,
-                typing.cast("Token", self.value).css(),
+                self.value.css(),
             )
 
         return "%s[%s]" % (self.selector.canonical(), op)
@@ -1058,7 +1060,8 @@ class TokenStream:
     def next(self) -> Token:
         if self._peeking:
             self._peeking = False
-            self.used.append(typing.cast(Token, self.peeked))
+            assert self.peeked is not None
+            self.used.append(self.peeked)
             return typing.cast(Token, self.peeked)
         next = self.next_token()
         self.used.append(next)
