@@ -307,7 +307,6 @@ class GenericTranslator:
             Callable[[XPathExpr, XPathExpr], XPathExpr],
             getattr(self, "xpath_%s_combinator" % combinator),
         )
-
         return method(self.xpath(combined.selector), self.xpath(combined.subselector))
 
     def xpath_negation(self, negation: Negation) -> XPathExpr:
