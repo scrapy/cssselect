@@ -105,20 +105,20 @@ class Selector:
         if isinstance(self.pseudo_element, FunctionalPseudoElement):
             pseudo_element = repr(self.pseudo_element)
         elif self.pseudo_element:
-            pseudo_element = "::%s" % self.pseudo_element
+            pseudo_element = f"::{self.pseudo_element}"
         else:
             pseudo_element = ""
-        return "%s[%r%s]" % (self.__class__.__name__, self.parsed_tree, pseudo_element)
+        return f"{self.__class__.__name__}[{self.parsed_tree!r}{pseudo_element}]"
 
     def canonical(self) -> str:
         """Return a CSS representation for this selector (a string)"""
         if isinstance(self.pseudo_element, FunctionalPseudoElement):
-            pseudo_element = "::%s" % self.pseudo_element.canonical()
+            pseudo_element = f"::{self.pseudo_element.canonical()}"
         elif self.pseudo_element:
-            pseudo_element = "::%s" % self.pseudo_element
+            pseudo_element = f"::{self.pseudo_element}"
         else:
             pseudo_element = ""
-        res = "%s%s" % (self.parsed_tree.canonical(), pseudo_element)
+        res = f"{self.parsed_tree.canonical()}{pseudo_element}"
         if len(res) > 1:
             res = res.lstrip("*")
         return res
@@ -145,10 +145,10 @@ class Class:
         self.class_name = class_name
 
     def __repr__(self) -> str:
-        return "%s[%r.%s]" % (self.__class__.__name__, self.selector, self.class_name)
+        return f"{self.__class__.__name__}[{self.selector!r}.{self.class_name}]"
 
     def canonical(self) -> str:
-        return "%s.%s" % (self.selector.canonical(), self.class_name)
+        return f"{self.selector.canonical()}.{self.class_name}"
 
     def specificity(self) -> tuple[int, int, int]:
         a, b, c = self.selector.specificity()
@@ -179,18 +179,15 @@ class FunctionalPseudoElement:
         self.arguments = arguments
 
     def __repr__(self) -> str:
-        return "%s[::%s(%r)]" % (
-            self.__class__.__name__,
-            self.name,
-            [token.value for token in self.arguments],
-        )
+        token_values = [token.value for token in self.arguments]
+        return f"{self.__class__.__name__}[::{self.name}({token_values!r})]"
 
     def argument_types(self) -> list[str]:
         return [token.type for token in self.arguments]
 
     def canonical(self) -> str:
         args = "".join(token.css() for token in self.arguments)
-        return "%s(%s)" % (self.name, args)
+        return f"{self.name}({args})"
 
 
 class Function:
@@ -204,19 +201,15 @@ class Function:
         self.arguments = arguments
 
     def __repr__(self) -> str:
-        return "%s[%r:%s(%r)]" % (
-            self.__class__.__name__,
-            self.selector,
-            self.name,
-            [token.value for token in self.arguments],
-        )
+        token_values = [token.value for token in self.arguments]
+        return f"{self.__class__.__name__}[{self.selector!r}:{self.name}({token_values!r})]"
 
     def argument_types(self) -> list[str]:
         return [token.type for token in self.arguments]
 
     def canonical(self) -> str:
         args = "".join(token.css() for token in self.arguments)
-        return "%s:%s(%s)" % (self.selector.canonical(), self.name, args)
+        return f"{self.selector.canonical()}:{self.name}({args})"
 
     def specificity(self) -> tuple[int, int, int]:
         a, b, c = self.selector.specificity()
@@ -234,10 +227,10 @@ class Pseudo:
         self.ident = ascii_lower(ident)
 
     def __repr__(self) -> str:
-        return "%s[%r:%s]" % (self.__class__.__name__, self.selector, self.ident)
+        return f"{self.__class__.__name__}[{self.selector!r}:{self.ident}]"
 
     def canonical(self) -> str:
-        return "%s:%s" % (self.selector.canonical(), self.ident)
+        return f"{self.selector.canonical()}:{self.ident}"
 
     def specificity(self) -> tuple[int, int, int]:
         a, b, c = self.selector.specificity()
@@ -255,17 +248,13 @@ class Negation:
         self.subselector = subselector
 
     def __repr__(self) -> str:
-        return "%s[%r:not(%r)]" % (
-            self.__class__.__name__,
-            self.selector,
-            self.subselector,
-        )
+        return f"{self.__class__.__name__}[{self.selector!r}:not({self.subselector!r})]"
 
     def canonical(self) -> str:
         subsel = self.subselector.canonical()
         if len(subsel) > 1:
             subsel = subsel.lstrip("*")
-        return "%s:not(%s)" % (self.selector.canonical(), subsel)
+        return f"{self.selector.canonical()}:not({subsel})"
 
     def specificity(self) -> tuple[int, int, int]:
         a1, b1, c1 = self.selector.specificity()
@@ -284,11 +273,7 @@ class Relation:
         self.subselector = subselector
 
     def __repr__(self) -> str:
-        return "%s[%r:has(%r)]" % (
-            self.__class__.__name__,
-            self.selector,
-            self.subselector,
-        )
+        return f"{self.__class__.__name__}[{self.selector!r}:has({self.subselector!r})]"
 
     def canonical(self) -> str:
         try:
@@ -297,7 +282,7 @@ class Relation:
             subsel = self.subselector.canonical()
         if len(subsel) > 1:
             subsel = subsel.lstrip("*")
-        return "%s:has(%s)" % (self.selector.canonical(), subsel)
+        return f"{self.selector.canonical()}:has({subsel})"
 
     def specificity(self) -> tuple[int, int, int]:
         a1, b1, c1 = self.selector.specificity()
@@ -318,21 +303,16 @@ class Matching:
         self.selector_list = selector_list
 
     def __repr__(self) -> str:
-        return "%s[%r:is(%s)]" % (
-            self.__class__.__name__,
-            self.selector,
-            ", ".join(map(repr, self.selector_list)),
-        )
+        args_str = ", ".join(repr(s) for s in self.selector_list)
+        return f"{self.__class__.__name__}[{self.selector!r}:is({args_str})]"
 
     def canonical(self) -> str:
         selector_arguments = []
         for s in self.selector_list:
             selarg = s.canonical()
             selector_arguments.append(selarg.lstrip("*"))
-        return "%s:is(%s)" % (
-            self.selector.canonical(),
-            ", ".join(map(str, selector_arguments)),
-        )
+        args_str = ", ".join(str(s) for s in selector_arguments)
+        return f"{self.selector.canonical()}:is({args_str})"
 
     def specificity(self) -> tuple[int, int, int]:
         return max(x.specificity() for x in self.selector_list)
@@ -349,21 +329,16 @@ class SpecificityAdjustment:
         self.selector_list = selector_list
 
     def __repr__(self) -> str:
-        return "%s[%r:where(%s)]" % (
-            self.__class__.__name__,
-            self.selector,
-            ", ".join(map(repr, self.selector_list)),
-        )
+        args_str = ", ".join(repr(s) for s in self.selector_list)
+        return f"{self.__class__.__name__}[{self.selector!r}:where({args_str})]"
 
     def canonical(self) -> str:
         selector_arguments = []
         for s in self.selector_list:
             selarg = s.canonical()
             selector_arguments.append(selarg.lstrip("*"))
-        return "%s:where(%s)" % (
-            self.selector.canonical(),
-            ", ".join(map(str, selector_arguments)),
-        )
+        args_str = ", ".join(str(s) for s in selector_arguments)
+        return f"{self.selector.canonical()}:where({args_str})"
 
     def specificity(self) -> tuple[int, int, int]:
         return 0, 0, 0
@@ -409,38 +384,22 @@ class Attrib:
         self.value = value
 
     def __repr__(self) -> str:
-        if self.namespace:
-            attrib = "%s|%s" % (self.namespace, self.attrib)
-        else:
-            attrib = self.attrib
+        attrib = f"{self.namespace}|{self.attrib}" if self.namespace else self.attrib
         if self.operator == "exists":
-            return "%s[%r[%s]]" % (self.__class__.__name__, self.selector, attrib)
+            return f"{self.__class__.__name__}[{self.selector!r}[{attrib}]]"
         assert self.value is not None
-        return "%s[%r[%s %s %r]]" % (
-            self.__class__.__name__,
-            self.selector,
-            attrib,
-            self.operator,
-            self.value.value,
-        )
+        return f"{self.__class__.__name__}[{self.selector!r}[{attrib} {self.operator} {self.value.value!r}]]"
 
     def canonical(self) -> str:
-        if self.namespace:
-            attrib = "%s|%s" % (self.namespace, self.attrib)
-        else:
-            attrib = self.attrib
+        attrib = f"{self.namespace}|{self.attrib}" if self.namespace else self.attrib
 
         if self.operator == "exists":
             op = attrib
         else:
             assert self.value is not None
-            op = "%s%s%s" % (
-                attrib,
-                self.operator,
-                self.value.css(),
-            )
+            op = f"{attrib}{self.operator}{self.value.css()}"
 
-        return "%s[%s]" % (self.selector.canonical(), op)
+        return f"{self.selector.canonical()}[{op}]"
 
     def specificity(self) -> tuple[int, int, int]:
         a, b, c = self.selector.specificity()
@@ -463,12 +422,12 @@ class Element:
         self.element = element
 
     def __repr__(self) -> str:
-        return "%s[%s]" % (self.__class__.__name__, self.canonical())
+        return f"{self.__class__.__name__}[{self.canonical()}]"
 
     def canonical(self) -> str:
         element = self.element or "*"
         if self.namespace:
-            element = "%s|%s" % (self.namespace, element)
+            element = f"{self.namespace}|{element}"
         return element
 
     def specificity(self) -> tuple[int, int, int]:
@@ -487,10 +446,10 @@ class Hash:
         self.id = id
 
     def __repr__(self) -> str:
-        return "%s[%r#%s]" % (self.__class__.__name__, self.selector, self.id)
+        return f"{self.__class__.__name__}[{self.selector!r}#{self.id}]"
 
     def canonical(self) -> str:
-        return "%s#%s" % (self.selector.canonical(), self.id)
+        return f"{self.selector.canonical()}#{self.id}"
 
     def specificity(self) -> tuple[int, int, int]:
         a, b, c = self.selector.specificity()
@@ -507,18 +466,15 @@ class CombinedSelector:
 
     def __repr__(self) -> str:
         comb = "<followed>" if self.combinator == " " else self.combinator
-        return "%s[%r %s %r]" % (
-            self.__class__.__name__,
-            self.selector,
-            comb,
-            self.subselector,
+        return (
+            f"{self.__class__.__name__}[{self.selector!r} {comb} {self.subselector!r}]"
         )
 
     def canonical(self) -> str:
         subsel = self.subselector.canonical()
         if len(subsel) > 1:
             subsel = subsel.lstrip("*")
-        return "%s %s %s" % (self.selector.canonical(), self.combinator, subsel)
+        return f"{self.selector.canonical()} {self.combinator} {subsel}"
 
     def specificity(self) -> tuple[int, int, int]:
         a1, b1, c1 = self.selector.specificity()
@@ -602,7 +558,7 @@ def parse_selector(stream: TokenStream) -> tuple[Tree, PseudoElement | None]:
             break
         if pseudo_element:
             raise SelectorSyntaxError(
-                "Got pseudo-element ::%s not at the end of a selector" % pseudo_element
+                f"Got pseudo-element ::{pseudo_element} not at the end of a selector"
             )
         if peek.is_delim("+", ">", "~"):
             # A combinator
@@ -649,7 +605,7 @@ def parse_simple_selector(
             break
         if pseudo_element:
             raise SelectorSyntaxError(
-                "Got pseudo-element ::%s not at the end of a selector" % pseudo_element
+                f"Got pseudo-element ::{pseudo_element} not at the end of a selector"
             )
         if peek.type == "HASH":
             result = Hash(result, cast(str, stream.next().value))
@@ -707,11 +663,10 @@ def parse_simple_selector(
                 next = stream.next()
                 if argument_pseudo_element:
                     raise SelectorSyntaxError(
-                        "Got pseudo-element ::%s inside :not() at %s"
-                        % (argument_pseudo_element, next.pos)
+                        f"Got pseudo-element ::{argument_pseudo_element} inside :not() at {next.pos}"
                     )
                 if next != ("DELIM", ")"):
-                    raise SelectorSyntaxError("Expected ')', got %s" % (next,))
+                    raise SelectorSyntaxError(f"Expected ')', got {next}")
                 result = Negation(result, argument)
             elif ident.lower() == "has":
                 combinator, arguments = parse_relative_selector(stream)
@@ -726,9 +681,9 @@ def parse_simple_selector(
             else:
                 result = Function(result, ident, parse_arguments(stream))
         else:
-            raise SelectorSyntaxError("Expected selector, got %s" % (peek,))
+            raise SelectorSyntaxError(f"Expected selector, got {peek}")
     if len(stream.used) == selector_start:
-        raise SelectorSyntaxError("Expected selector, got %s" % (stream.peek(),))
+        raise SelectorSyntaxError(f"Expected selector, got {stream.peek()}")
     return result, pseudo_element
 
 
@@ -745,7 +700,7 @@ def parse_arguments(stream: TokenStream) -> list[Token]:
         elif next == ("DELIM", ")"):
             return arguments
         else:
-            raise SelectorSyntaxError("Expected an argument, got %s" % (next,))
+            raise SelectorSyntaxError(f"Expected an argument, got {next}")
 
 
 def parse_relative_selector(stream: TokenStream) -> tuple[Token, Selector]:
@@ -770,7 +725,7 @@ def parse_relative_selector(stream: TokenStream) -> tuple[Token, Selector]:
             result = parse(subselector)
             return combinator, result[0]
         else:
-            raise SelectorSyntaxError("Expected an argument, got %s" % (next,))
+            raise SelectorSyntaxError(f"Expected an argument, got {next}")
         next = stream.next()
 
 
@@ -780,7 +735,7 @@ def parse_simple_selector_arguments(stream: TokenStream) -> list[Tree]:
         result, pseudo_element = parse_simple_selector(stream, True)
         if pseudo_element:
             raise SelectorSyntaxError(
-                "Got pseudo-element ::%s inside function" % (pseudo_element,)
+                f"Got pseudo-element ::{pseudo_element} inside function"
             )
         stream.skip_whitespace()
         next = stream.next()
@@ -792,7 +747,7 @@ def parse_simple_selector_arguments(stream: TokenStream) -> list[Tree]:
             arguments.append(result)
             break
         else:
-            raise SelectorSyntaxError("Expected an argument, got %s" % (next,))
+            raise SelectorSyntaxError(f"Expected an argument, got {next}")
     return arguments
 
 
@@ -800,7 +755,7 @@ def parse_attrib(selector: Tree, stream: TokenStream) -> Attrib:
     stream.skip_whitespace()
     attrib = stream.next_ident_or_star()
     if attrib is None and stream.peek() != ("DELIM", "|"):
-        raise SelectorSyntaxError("Expected '|', got %s" % (stream.peek(),))
+        raise SelectorSyntaxError(f"Expected '|', got {stream.peek()}")
     namespace: str | None
     op: str | None
     if stream.peek() == ("DELIM", "|"):
@@ -828,15 +783,15 @@ def parse_attrib(selector: Tree, stream: TokenStream) -> Attrib:
             op = cast(str, next.value) + "="
             stream.next()
         else:
-            raise SelectorSyntaxError("Operator expected, got %s" % (next,))
+            raise SelectorSyntaxError(f"Operator expected, got {next}")
     stream.skip_whitespace()
     value = stream.next()
     if value.type not in ("IDENT", "STRING"):
-        raise SelectorSyntaxError("Expected string or ident, got %s" % (value,))
+        raise SelectorSyntaxError(f"Expected string or ident, got {value}")
     stream.skip_whitespace()
     next = stream.next()
     if next != ("DELIM", "]"):
-        raise SelectorSyntaxError("Expected ']', got %s" % (next,))
+        raise SelectorSyntaxError(f"Expected ']', got {next}")
     return Attrib(selector, namespace, cast(str, attrib), op, value)
 
 
@@ -894,7 +849,7 @@ class Token(tuple[str, Optional[str]]):  # noqa: SLOT001
         return obj
 
     def __repr__(self) -> str:
-        return "<%s '%s' at %i>" % (self.type, self.value, self.pos)
+        return f"<{self.type} '{self.value}' at {self.pos}>"
 
     def is_delim(self, *values: str) -> bool:
         return self.type == "DELIM" and self.value in values
@@ -920,7 +875,7 @@ class EOFToken(Token):
         return Token.__new__(cls, "EOF", None, pos)
 
     def __repr__(self) -> str:
-        return "<%s at %i>" % (self.type, self.pos)
+        return f"<{self.type} at {self.pos}>"
 
 
 #### Tokenizer
@@ -931,8 +886,8 @@ class TokenMacros:
     escape = unicode_escape + r"|\\[^\n\r\f0-9a-f]"
     string_escape = r"\\(?:\n|\r\n|\r|\f)|" + escape
     nonascii = r"[^\0-\177]"
-    nmchar = "[_a-z0-9-]|%s|%s" % (escape, nonascii)
-    nmstart = "[_a-z]|%s|%s" % (escape, nonascii)
+    nmchar = f"[_a-z0-9-]|{escape}|{nonascii}"
+    nmstart = f"[_a-z]|{escape}|{nonascii}"
 
 
 class MatchFunc(Protocol):
@@ -1009,9 +964,9 @@ def tokenize(s: str) -> Iterator[Token]:
             assert match, "Should have found at least an empty match"
             end_pos = match.end()
             if end_pos == len_s:
-                raise SelectorSyntaxError("Unclosed string at %s" % pos)
+                raise SelectorSyntaxError(f"Unclosed string at {pos}")
             if s[end_pos] != quote:
-                raise SelectorSyntaxError("Invalid string at %s" % pos)
+                raise SelectorSyntaxError(f"Invalid string at {pos}")
             value = _sub_simple_escape(
                 _replace_simple,
                 _sub_unicode_escape(
@@ -1074,7 +1029,7 @@ class TokenStream:
     def next_ident(self) -> str:
         next = self.next()
         if next.type != "IDENT":
-            raise SelectorSyntaxError("Expected ident, got %s" % (next,))
+            raise SelectorSyntaxError(f"Expected ident, got {next}")
         return cast(str, next.value)
 
     def next_ident_or_star(self) -> str | None:
@@ -1083,7 +1038,7 @@ class TokenStream:
             return next.value
         if next == ("DELIM", "*"):
             return None
-        raise SelectorSyntaxError("Expected ident or '*', got %s" % (next,))
+        raise SelectorSyntaxError(f"Expected ident or '*', got {next}")
 
     def skip_whitespace(self) -> None:
         peek = self.peek()

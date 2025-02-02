@@ -170,9 +170,6 @@ ignore = [
     "S101",
     # Using lxml to parse untrusted data is known to be vulnerable to XML attacks
     "S320",
-
-    # TODO: Use format specifiers instead of percent format
-    "UP031",
 ]
 
 [tool.ruff.lint.pydocstyle]

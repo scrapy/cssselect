@@ -258,7 +258,7 @@ class TestCssselect(unittest.TestCase):
 
         # Special cases for CSS 2.1 pseudo-elements are ignored by default
         for pseudo in ("after", "before", "first-line", "first-letter"):
-            (selector,) = parse("e:%s" % pseudo)
+            (selector,) = parse(f"e:{pseudo}")
             assert selector.pseudo_element == pseudo
             assert GenericTranslator().selector_to_xpath(selector, prefix="") == "e"
 
@@ -631,24 +631,23 @@ class TestCssselect(unittest.TestCase):
                 self, xpath: XPathExpr, pseudo_element: PseudoElement
             ) -> XPathExpr:
                 if isinstance(pseudo_element, FunctionalPseudoElement):
-                    method_name = "xpath_%s_functional_pseudo_element" % (
+                    method_name = "xpath_{}_functional_pseudo_element".format(
                         pseudo_element.name.replace("-", "_")
                     )
                     method = getattr(self, method_name, None)
                     if not method:
                         raise ExpressionError(
-                            "The functional pseudo-element ::%s() is unknown"
-                            % pseudo_element.name
+                            f"The functional pseudo-element ::{pseudo_element.name}() is unknown"
                         )
                     xpath = method(xpath, pseudo_element.arguments)
                 else:
-                    method_name = "xpath_%s_simple_pseudo_element" % (
+                    method_name = "xpath_{}_simple_pseudo_element".format(
                         pseudo_element.replace("-", "_")
                     )
                     method = getattr(self, method_name, None)
                     if not method:
                         raise ExpressionError(
-                            "The pseudo-element ::%s is unknown" % pseudo_element
+                            f"The pseudo-element ::{pseudo_element} is unknown"
                         )
                     xpath = method(xpath)
                 return xpath
@@ -660,7 +659,7 @@ class TestCssselect(unittest.TestCase):
             ) -> XPathExpr:
                 assert function.arguments[0].value
                 nb_attributes = int(function.arguments[0].value)
-                return xpath.add_condition("count(@*)=%d" % nb_attributes)
+                return xpath.add_condition(f"count(@*)={nb_attributes}")
 
             # pseudo-class:
             # elements that have 5 attributes
@@ -674,7 +673,7 @@ class TestCssselect(unittest.TestCase):
             ) -> XPathExpr:
                 attribute_name = arguments[0].value
                 other = XPathExpr(
-                    "@%s" % attribute_name,
+                    f"@{attribute_name}",
                     "",
                 )
                 return xpath.join("/", other)
@@ -739,7 +738,7 @@ class TestCssselect(unittest.TestCase):
 
     def test_series(self) -> None:
         def series(css: str) -> tuple[int, int] | None:
-            (selector,) = parse(":nth-child(%s)" % css)
+            (selector,) = parse(f":nth-child({css})")
             args = typing.cast(FunctionalPseudoElement, selector.parsed_tree).arguments
             try:
                 return parse_series(args)
