@@ -253,5 +253,5 @@ intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 nitpicky = True
 nitpick_ignore = [
     # explicitly not a part of the public API
-    ("py:class", "cssselect.parser.Token"),
+    ("py:class", "Token"),
 ]
