@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 #
 # cssselect documentation build configuration file, created by
 # sphinx-quickstart on Tue Mar 27 14:20:34 2012.
@@ -12,9 +11,8 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import os
 import re
-import sys
+from pathlib import Path
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -51,10 +49,7 @@ copyright = "2012-2017, Simon Sapin, Scrapy developers"
 # built documents.
 #
 # The full version, including alpha/beta/rc tags.
-with open(
-    os.path.join(os.path.dirname(__file__), "..", "cssselect", "__init__.py")
-) as init_file:
-    init_py = init_file.read()
+init_py = (Path(__file__).parent.parent / "cssselect" / "__init__.py").read_text()
 release = re.search('VERSION = "([^"]+)"', init_py).group(1)
 # The short X.Y version.
 version = release.rstrip("dev")
@@ -258,5 +253,5 @@ intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 nitpicky = True
 nitpick_ignore = [
     # explicitly not a part of the public API
-    ("py:class", "cssselect.parser.Token"),
+    ("py:class", "Token"),
 ]

@@ -1,11 +1,179 @@
-[tool.isort]
-profile = "black"
-multi_line_output = 3
+[tool.bumpversion]
+current_version = "1.2.0"
+commit = true
+tag = true
+
+[[tool.bumpversion.files]]
+filename = "cssselect/__init__.py"
+
+[tool.coverage.run]
+branch = true
+source = ["cssselect"]
+
+[tool.coverage.report]
+exclude_also = [
+    "def __repr__",
+    "if sys.version_info",
+    "if __name__ == '__main__':",
+    "if TYPE_CHECKING:",
+]
 
 [tool.mypy]
 check_untyped_defs = true
 ignore_missing_imports = true
 no_warn_no_return = true
 
-[tool.black]
-target-version = ["py38", "py39", "py310", "py311", "py312"]
+[tool.pylint.MASTER]
+persistent = "no"
+extension-pkg-allow-list = ["lxml"]
+
+[tool.pylint."MESSAGES CONTROL"]
+enable = [
+    "useless-suppression",
+]
+disable = [
+    "consider-using-f-string",
+    "fixme",
+    "invalid-name",
+    "line-too-long",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "missing-module-docstring",
+    "no-member",
+    "not-callable",
+    "redefined-builtin",
+    "redefined-outer-name",
+    "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-branches",
+    "too-many-function-args",
+    "too-many-lines",
+    "too-many-locals",
+    "too-many-positional-arguments",
+    "too-many-public-methods",
+    "too-many-statements",
+    "unused-argument",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff.lint]
+extend-select = [
+    # flake8-bugbear
+    "B",
+    # flake8-comprehensions
+    "C4",
+    # pydocstyle
+    "D",
+    # flake8-future-annotations
+    "FA",
+    # flynt
+    "FLY",
+    # refurb
+    "FURB",
+    # isort
+    "I",
+    # flake8-implicit-str-concat
+    "ISC",
+    # flake8-logging
+    "LOG",
+    # Perflint
+    "PERF",
+    # pygrep-hooks
+    "PGH",
+    # flake8-pie
+    "PIE",
+    # pylint
+    "PL",
+    # flake8-use-pathlib
+    "PTH",
+    # flake8-pyi
+    "PYI",
+    # flake8-quotes
+    "Q",
+    # flake8-return
+    "RET",
+    # flake8-raise
+    "RSE",
+    # Ruff-specific rules
+    "RUF",
+    # flake8-bandit
+    "S",
+    # flake8-simplify
+    "SIM",
+    # flake8-slots
+    "SLOT",
+    # flake8-debugger
+    "T10",
+    # flake8-type-checking
+    "TC",
+    # pyupgrade
+    "UP",
+    # pycodestyle warnings
+    "W",
+    # flake8-2020
+    "YTT",
+]
+ignore = [
+    # Missing docstring in public module
+    "D100",
+    # Missing docstring in public class
+    "D101",
+    # Missing docstring in public method
+    "D102",
+    # Missing docstring in public function
+    "D103",
+    # Missing docstring in public package
+    "D104",
+    # Missing docstring in magic method
+    "D105",
+    # Missing docstring in public nested class
+    "D106",
+    # Missing docstring in __init__
+    "D107",
+    # One-line docstring should fit on one line with quotes
+    "D200",
+    # No blank lines allowed after function docstring
+    "D202",
+    # 1 blank line required between summary line and description
+    "D205",
+    # Multi-line docstring closing quotes should be on a separate line
+    "D209",
+    # First line should end with a period
+    "D400",
+    # First line should be in imperative mood; try rephrasing
+    "D401",
+    # First line should not be the function's "signature"
+    "D402",
+    # First word of the first line should be properly capitalized
+    "D403",
+    # Too many return statements
+    "PLR0911",
+    # Too many branches
+    "PLR0912",
+    # Too many arguments in function definition
+    "PLR0913",
+    # Too many statements
+    "PLR0915",
+    # Magic value used in comparison
+    "PLR2004",
+    # String contains ambiguous {}.
+    "RUF001",
+    # Docstring contains ambiguous {}.
+    "RUF002",
+    # Comment contains ambiguous {}.
+    "RUF003",
+    # Mutable class attributes should be annotated with `typing.ClassVar`
+    "RUF012",
+    # Use of `assert` detected
+    "S101",
+    # Using lxml to parse untrusted data is known to be vulnerable to XML attacks
+    "S320",
+
+    # TODO: Use format specifiers instead of percent format
+    "UP031",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"

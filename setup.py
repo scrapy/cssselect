@@ -1,15 +1,11 @@
-# -*- coding: utf-8 -*-
-
-import os.path
 import re
+from pathlib import Path
 
 from setuptools import setup
 
-ROOT = os.path.dirname(__file__)
-with open(os.path.join(ROOT, "README.rst")) as readme_file:
-    README = readme_file.read()
-with open(os.path.join(ROOT, "cssselect", "__init__.py")) as init_file:
-    INIT_PY = init_file.read()
+ROOT = Path(__file__).parent
+README = (ROOT / "README.rst").read_text(encoding="utf-8")
+INIT_PY = (ROOT / "cssselect" / "__init__.py").read_text(encoding="utf-8")
 VERSION = re.search('VERSION = "([^"]+)"', INIT_PY).group(1)
 
 
