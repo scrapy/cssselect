@@ -14,7 +14,7 @@ See AUTHORS for more details.
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 from cssselect.parser import (
     Attrib,
@@ -290,7 +290,7 @@ class GenericTranslator:
         """Translate any parsed selector object."""
         type_name = type(parsed_selector).__name__
         method = cast(
-            "Optional[Callable[[Tree], XPathExpr]]",
+            "Callable[[Tree], XPathExpr] | None",
             getattr(self, f"xpath_{type_name.lower()}", None),
         )
         if method is None:
@@ -352,7 +352,7 @@ class GenericTranslator:
         """Translate a functional pseudo-class."""
         method_name = "xpath_{}_function".format(function.name.replace("-", "_"))
         method = cast(
-            "Optional[Callable[[XPathExpr, Function], XPathExpr]]",
+            "Callable[[XPathExpr, Function], XPathExpr] | None",
             getattr(self, method_name, None),
         )
         if not method:
@@ -363,7 +363,7 @@ class GenericTranslator:
         """Translate a pseudo-class."""
         method_name = "xpath_{}_pseudo".format(pseudo.ident.replace("-", "_"))
         method = cast(
-            "Optional[Callable[[XPathExpr], XPathExpr]]",
+            "Callable[[XPathExpr], XPathExpr] | None",
             getattr(self, method_name, None),
         )
         if not method:
@@ -375,7 +375,7 @@ class GenericTranslator:
         """Translate an attribute selector."""
         operator = self.attribute_operator_mapping[selector.operator]
         method = cast(
-            "Callable[[XPathExpr, str, Optional[str]], XPathExpr]",
+            "Callable[[XPathExpr, str, str | None], XPathExpr]",
             getattr(self, f"xpath_attrib_{operator}"),
         )
         if self.lower_case_attribute_names:
