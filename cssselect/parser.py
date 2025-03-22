@@ -562,7 +562,7 @@ def parse_selector(stream: TokenStream) -> tuple[Tree, PseudoElement | None]:
             )
         if peek.is_delim("+", ">", "~"):
             # A combinator
-            combinator = cast(str, stream.next().value)
+            combinator = cast("str", stream.next().value)
             stream.skip_whitespace()
         else:
             # By exclusion, the last parse_simple_selector() ended
@@ -608,7 +608,7 @@ def parse_simple_selector(
                 f"Got pseudo-element ::{pseudo_element} not at the end of a selector"
             )
         if peek.type == "HASH":
-            result = Hash(result, cast(str, stream.next().value))
+            result = Hash(result, cast("str", stream.next().value))
         elif peek == ("DELIM", "."):
             stream.next()
             result = Class(result, stream.next_ident())
@@ -720,7 +720,7 @@ def parse_relative_selector(stream: TokenStream) -> tuple[Token, Selector]:
             ("DELIM", "."),
             ("DELIM", "*"),
         ]:
-            subselector += cast(str, next.value)
+            subselector += cast("str", next.value)
         elif next == ("DELIM", ")"):
             result = parse(subselector)
             return combinator, result[0]
@@ -774,13 +774,13 @@ def parse_attrib(selector: Tree, stream: TokenStream) -> Attrib:
         stream.skip_whitespace()
         next = stream.next()
         if next == ("DELIM", "]"):
-            return Attrib(selector, namespace, cast(str, attrib), "exists", None)
+            return Attrib(selector, namespace, cast("str", attrib), "exists", None)
         if next == ("DELIM", "="):
             op = "="
         elif next.is_delim("^", "$", "*", "~", "|", "!") and (
             stream.peek() == ("DELIM", "=")
         ):
-            op = cast(str, next.value) + "="
+            op = cast("str", next.value) + "="
             stream.next()
         else:
             raise SelectorSyntaxError(f"Operator expected, got {next}")
@@ -792,7 +792,7 @@ def parse_attrib(selector: Tree, stream: TokenStream) -> Attrib:
     next = stream.next()
     if next != ("DELIM", "]"):
         raise SelectorSyntaxError(f"Expected ']', got {next}")
-    return Attrib(selector, namespace, cast(str, attrib), op, value)
+    return Attrib(selector, namespace, cast("str", attrib), op, value)
 
 
 def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:
@@ -806,7 +806,7 @@ def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:
     for token in tokens:
         if token.type == "STRING":
             raise ValueError("String tokens not allowed in series.")
-    s = "".join(cast(str, token.value) for token in tokens).strip()
+    s = "".join(cast("str", token.value) for token in tokens).strip()
     if s == "odd":
         return 2, 1
     if s == "even":
@@ -867,7 +867,7 @@ class Token(tuple[str, Optional[str]]):  # noqa: SLOT001
     def css(self) -> str:
         if self.type == "STRING":
             return repr(self.value)
-        return cast(str, self.value)
+        return cast("str", self.value)
 
 
 class EOFToken(Token):
@@ -1030,7 +1030,7 @@ class TokenStream:
         next = self.next()
         if next.type != "IDENT":
             raise SelectorSyntaxError(f"Expected ident, got {next}")
-        return cast(str, next.value)
+        return cast("str", next.value)
 
     def next_ident_or_star(self) -> str | None:
         next = self.next()

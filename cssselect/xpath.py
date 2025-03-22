@@ -14,8 +14,7 @@ See AUTHORS for more details.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 from cssselect.parser import (
     Attrib,
@@ -38,6 +37,8 @@ from cssselect.parser import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     # typing.Self requires Python 3.11
     from typing_extensions import Self
 
@@ -289,7 +290,7 @@ class GenericTranslator:
         """Translate any parsed selector object."""
         type_name = type(parsed_selector).__name__
         method = cast(
-            Optional[Callable[[Tree], XPathExpr]],
+            "Callable[[Tree], XPathExpr] | None",
             getattr(self, f"xpath_{type_name.lower()}", None),
         )
         if method is None:
@@ -302,7 +303,7 @@ class GenericTranslator:
         """Translate a combined selector."""
         combinator = self.combinator_mapping[combined.combinator]
         method = cast(
-            Callable[[XPathExpr, XPathExpr], XPathExpr],
+            "Callable[[XPathExpr, XPathExpr], XPathExpr]",
             getattr(self, f"xpath_{combinator}_combinator"),
         )
         return method(self.xpath(combined.selector), self.xpath(combined.subselector))
@@ -321,10 +322,10 @@ class GenericTranslator:
         subselector = relation.subselector
         right = self.xpath(subselector.parsed_tree)
         method = cast(
-            Callable[[XPathExpr, XPathExpr], XPathExpr],
+            "Callable[[XPathExpr, XPathExpr], XPathExpr]",
             getattr(
                 self,
-                f"xpath_relation_{self.combinator_mapping[cast(str, combinator.value)]}_combinator",
+                f"xpath_relation_{self.combinator_mapping[cast('str', combinator.value)]}_combinator",
             ),
         )
         return method(xpath, right)
@@ -351,7 +352,7 @@ class GenericTranslator:
         """Translate a functional pseudo-class."""
         method_name = "xpath_{}_function".format(function.name.replace("-", "_"))
         method = cast(
-            Optional[Callable[[XPathExpr, Function], XPathExpr]],
+            "Callable[[XPathExpr, Function], XPathExpr] | None",
             getattr(self, method_name, None),
         )
         if not method:
@@ -362,7 +363,8 @@ class GenericTranslator:
         """Translate a pseudo-class."""
         method_name = "xpath_{}_pseudo".format(pseudo.ident.replace("-", "_"))
         method = cast(
-            Optional[Callable[[XPathExpr], XPathExpr]], getattr(self, method_name, None)
+            "Callable[[XPathExpr], XPathExpr] | None",
+            getattr(self, method_name, None),
         )
         if not method:
             # TODO: better error message for pseudo-elements?
@@ -373,7 +375,7 @@ class GenericTranslator:
         """Translate an attribute selector."""
         operator = self.attribute_operator_mapping[selector.operator]
         method = cast(
-            Callable[[XPathExpr, str, Optional[str]], XPathExpr],
+            "Callable[[XPathExpr, str, str | None], XPathExpr]",
             getattr(self, f"xpath_attrib_{operator}"),
         )
         if self.lower_case_attribute_names:
@@ -391,7 +393,7 @@ class GenericTranslator:
         if selector.value is None:
             value = None
         elif self.lower_case_attribute_values:
-            value = cast(str, selector.value.value).lower()
+            value = cast("str", selector.value.value).lower()
         else:
             value = selector.value.value
         return method(self.xpath(selector.selector), attrib, value)
@@ -645,7 +647,7 @@ class GenericTranslator:
             raise ExpressionError(
                 f"Expected a single string or ident for :contains(), got {function.arguments!r}"
             )
-        value = cast(str, function.arguments[0].value)
+        value = cast("str", function.arguments[0].value)
         return xpath.add_condition(f"contains(., {self.xpath_literal(value)})")
 
     def xpath_lang_function(self, xpath: XPathExpr, function: Function) -> XPathExpr:
@@ -653,7 +655,7 @@ class GenericTranslator:
             raise ExpressionError(
                 f"Expected a single string or ident for :lang(), got {function.arguments!r}"
             )
-        value = cast(str, function.arguments[0].value)
+        value = cast("str", function.arguments[0].value)
         return xpath.add_condition(f"lang({self.xpath_literal(value)})")
 
     # Pseudo: dispatch by pseudo-class name
