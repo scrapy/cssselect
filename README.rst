@@ -11,8 +11,8 @@ cssselect: CSS Selectors for Python
    :target: https://pypi.python.org/pypi/cssselect
    :alt: Supported Python Versions
 
-.. image:: https://github.com/scrapy/cssselect/actions/workflows/tests.yml/badge.svg
-   :target: https://github.com/scrapy/cssselect/actions/workflows/tests.yml
+.. image:: https://github.com/scrapy/cssselect/actions/workflows/tests-ubuntu.yml/badge.svg
+   :target: https://github.com/scrapy/cssselect/actions/workflows/tests-ubuntu.yml
    :alt: Tests
 
 .. image:: https://img.shields.io/codecov/c/github/scrapy/cssselect/master.svg
