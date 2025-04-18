@@ -33,15 +33,15 @@ path = "cssselect/__init__.py"
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "cssselect",
-    "docs",
-    "tests",
-    "CHANGES",
-    "README.rst",
-    "tox.ini",
+    "/cssselect",
+    "/docs",
+    "/tests",
+    "/CHANGES",
+    "/README.rst",
+    "/tox.ini",
 ]
 exclude = [
-    "docs/_build",
+    "/docs/_build",
 ]
 
 [tool.hatch.build.targets.wheel]
