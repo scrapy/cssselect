@@ -1,3 +1,52 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling>=1.27.0"]
+
+[project]
+name = "cssselect"
+license = "BSD-3-Clause"
+license-files = ["LICENSE", "AUTHORS"]
+description = "cssselect parses CSS3 Selectors and translates them to XPath 1.0"
+readme = "README.rst"
+authors = [{ name = "Ian Bicking", email = "ianb@colorstudy.com" }]
+maintainers = [{ name = "Paul Tremberth", email = "paul.tremberth@gmail.com" }]
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+dynamic = ["version"]
+
+[project.urls]
+"Homepage" = "https://github.com/scrapy/cssselect"
+
+[tool.hatch.version]
+path = "cssselect/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/cssselect",
+    "/docs",
+    "/tests",
+    "/CHANGES",
+    "/README.rst",
+    "/tox.ini",
+]
+exclude = [
+    "/docs/_build",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["cssselect"]
+
 [tool.bumpversion]
 current_version = "1.3.0"
 commit = true
