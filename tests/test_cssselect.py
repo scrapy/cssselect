@@ -23,6 +23,7 @@ import typing
 import unittest
 from typing import TYPE_CHECKING
 
+import pytest
 from lxml import etree, html
 
 from cssselect import (
@@ -268,12 +269,8 @@ class TestCssselect(unittest.TestCase):
         (selector,) = parse("e::foo")
         assert selector.pseudo_element == "foo"
         assert tr.selector_to_xpath(selector, prefix="") == "e"
-        self.assertRaises(
-            ExpressionError,
-            tr.selector_to_xpath,
-            selector,
-            translate_pseudo_elements=True,
-        )
+        with pytest.raises(ExpressionError):
+            tr.selector_to_xpath(selector, translate_pseudo_elements=True)
 
         # Special test for the unicode symbols and ':scope' element if check
         # Errors if use repr() instead of __repr__()
@@ -567,19 +564,32 @@ class TestCssselect(unittest.TestCase):
         assert xpath(r"[h\a0 ref]") == ("*[attribute::*[name() = 'h ref']]")  # h\xa0ref
         assert xpath(r"[h\]ref]") == ("*[attribute::*[name() = 'h]ref']]")
 
-        self.assertRaises(ExpressionError, xpath, ":fİrst-child")
-        self.assertRaises(ExpressionError, xpath, ":first-of-type")
-        self.assertRaises(ExpressionError, xpath, ":only-of-type")
-        self.assertRaises(ExpressionError, xpath, ":last-of-type")
-        self.assertRaises(ExpressionError, xpath, ":nth-of-type(1)")
-        self.assertRaises(ExpressionError, xpath, ":nth-last-of-type(1)")
-        self.assertRaises(ExpressionError, xpath, ":nth-child(n-)")
-        self.assertRaises(ExpressionError, xpath, ":after")
-        self.assertRaises(ExpressionError, xpath, ":lorem-ipsum")
-        self.assertRaises(ExpressionError, xpath, ":lorem(ipsum)")
-        self.assertRaises(ExpressionError, xpath, "::lorem-ipsum")
-        self.assertRaises(TypeError, GenericTranslator().css_to_xpath, 4)
-        self.assertRaises(TypeError, GenericTranslator().selector_to_xpath, "foo")
+        with pytest.raises(ExpressionError):
+            xpath(":fİrst-child")
+        with pytest.raises(ExpressionError):
+            xpath(":first-of-type")
+        with pytest.raises(ExpressionError):
+            xpath(":only-of-type")
+        with pytest.raises(ExpressionError):
+            xpath(":last-of-type")
+        with pytest.raises(ExpressionError):
+            xpath(":nth-of-type(1)")
+        with pytest.raises(ExpressionError):
+            xpath(":nth-last-of-type(1)")
+        with pytest.raises(ExpressionError):
+            xpath(":nth-child(n-)")
+        with pytest.raises(ExpressionError):
+            xpath(":after")
+        with pytest.raises(ExpressionError):
+            xpath(":lorem-ipsum")
+        with pytest.raises(ExpressionError):
+            xpath(":lorem(ipsum)")
+        with pytest.raises(ExpressionError):
+            xpath("::lorem-ipsum")
+        with pytest.raises(TypeError):
+            GenericTranslator().css_to_xpath(4)  # type: ignore[arg-type]
+        with pytest.raises(TypeError):
+            GenericTranslator().selector_to_xpath("foo")  # type: ignore[arg-type]
 
     def test_unicode(self) -> None:
         css = ".a\xc1b"
@@ -967,7 +977,8 @@ class TestCssselect(unittest.TestCase):
         assert pcss("span:only-child") == ["foobar-span"]
         assert pcss("li div:only-child") == ["li-div"]
         assert pcss("div *:only-child") == ["li-div", "foobar-span"]
-        self.assertRaises(ExpressionError, pcss, "p *:only-of-type")
+        with pytest.raises(ExpressionError):
+            pcss("p *:only-of-type")
         assert pcss("p:only-of-type") == ["paragraph"]
         assert pcss("a:empty", "a:EMpty") == ["name-anchor"]
         assert pcss("li:empty") == ["third-li", "fourth-li", "fifth-li", "sixth-li"]
