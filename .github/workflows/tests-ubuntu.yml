@@ -7,19 +7,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "pypy3.10", "pypy3.11"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14.0-rc.2", "pypy3.11"]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Install system libraries
-      if: contains(matrix.python-version, 'pypy')
+      if: contains(matrix.python-version, 'pypy') || contains(matrix.python-version, '3.14.0-rc')
       run: |
         sudo apt-get update
         sudo apt-get install libxml2-dev libxslt-dev
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
 

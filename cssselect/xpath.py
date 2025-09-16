@@ -825,7 +825,7 @@ class HTMLTranslator(GenericTranslator):
             self.lower_case_element_names = True
             self.lower_case_attribute_names = True
 
-    def xpath_checked_pseudo(self, xpath: XPathExpr) -> XPathExpr:  # type: ignore[override]
+    def xpath_checked_pseudo(self, xpath: XPathExpr) -> XPathExpr:
         # FIXME: is this really all the elements?
         return xpath.add_condition(
             "(@selected and name(.) = 'option') or "
@@ -850,7 +850,7 @@ class HTMLTranslator(GenericTranslator):
             f"'-'), {arg})]"
         )
 
-    def xpath_link_pseudo(self, xpath: XPathExpr) -> XPathExpr:  # type: ignore[override]
+    def xpath_link_pseudo(self, xpath: XPathExpr) -> XPathExpr:
         return xpath.add_condition(
             "@href and (name(.) = 'a' or name(.) = 'link' or name(.) = 'area')"
         )
@@ -858,7 +858,7 @@ class HTMLTranslator(GenericTranslator):
     # Links are never visited, the implementation for :visited is the same
     # as in GenericTranslator
 
-    def xpath_disabled_pseudo(self, xpath: XPathExpr) -> XPathExpr:  # type: ignore[override]
+    def xpath_disabled_pseudo(self, xpath: XPathExpr) -> XPathExpr:
         # http://www.w3.org/TR/html5/section-index.html#attributes-1
         return xpath.add_condition(
             """
@@ -888,7 +888,7 @@ class HTMLTranslator(GenericTranslator):
         # FIXME: in the second half, add "and is not a descendant of that
         # fieldset element's first legend element child, if any."
 
-    def xpath_enabled_pseudo(self, xpath: XPathExpr) -> XPathExpr:  # type: ignore[override]
+    def xpath_enabled_pseudo(self, xpath: XPathExpr) -> XPathExpr:
         # http://www.w3.org/TR/html5/section-index.html#attributes-1
         return xpath.add_condition(
             """
