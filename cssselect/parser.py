@@ -441,9 +441,9 @@ class Hash:
     Represents selector#id
     """
 
-    def __init__(self, selector: Tree, id_: str) -> None:
+    def __init__(self, selector: Tree, id: str) -> None:  # noqa: A002
         self.selector = selector
-        self.id = id_
+        self.id = id
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}[{self.selector!r}#{self.id}]"
