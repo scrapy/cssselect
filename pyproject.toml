@@ -10,12 +10,11 @@ description = "cssselect parses CSS3 Selectors and translates them to XPath 1.0"
 readme = "README.rst"
 authors = [{ name = "Ian Bicking", email = "ianb@colorstudy.com" }]
 maintainers = [{ name = "Paul Tremberth", email = "paul.tremberth@gmail.com" }]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -65,7 +64,6 @@ exclude_also = [
     "def __repr__",
     "if sys.version_info",
     "if __name__ == '__main__':",
-    "if TYPE_CHECKING:",
 ]
 
 [tool.pylint.MASTER]

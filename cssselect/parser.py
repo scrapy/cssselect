@@ -16,7 +16,7 @@ from __future__ import annotations
 import operator
 import re
 import sys
-from typing import TYPE_CHECKING, Literal, Optional, Protocol, Union, cast, overload
+from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, Union, cast, overload
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Sequence
@@ -46,7 +46,7 @@ class SelectorSyntaxError(SelectorError, SyntaxError):
 
 #### Parsed objects
 
-Tree = Union[
+Tree: TypeAlias = Union[
     "Element",
     "Hash",
     "Class",
@@ -59,7 +59,7 @@ Tree = Union[
     "SpecificityAdjustment",
     "CombinedSelector",
 ]
-PseudoElement = Union["FunctionalPseudoElement", str]
+PseudoElement: TypeAlias = Union["FunctionalPseudoElement", str]
 
 
 class Selector:
@@ -831,7 +831,7 @@ def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:
 #### Token objects
 
 
-class Token(tuple[str, Optional[str]]):  # noqa: SLOT001
+class Token(tuple[str, str | None]):  # noqa: SLOT001
     @overload
     def __new__(
         cls,
