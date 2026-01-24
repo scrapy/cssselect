@@ -66,6 +66,9 @@ exclude_also = [
     "if __name__ == '__main__':",
 ]
 
+[tool.mypy]
+strict = true
+
 [tool.pylint.MASTER]
 persistent = "no"
 extension-pkg-allow-list = ["lxml"]

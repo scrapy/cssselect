@@ -10,7 +10,7 @@ jobs:
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "pypy3.11"]
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     - name: Install system libraries
       if: contains(matrix.python-version, 'pypy')
