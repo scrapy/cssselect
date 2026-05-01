@@ -311,6 +311,8 @@ class TestCssselect(unittest.TestCase):
         assert specificity(":is(.foo, #bar)") == (1, 0, 0)
         assert specificity(":is(:hover, :visited)") == (0, 1, 0)
         assert specificity(":where(:hover, :visited)") == (0, 0, 0)
+        assert specificity("foo:is(.bar, #baz)") == (1, 0, 1)
+        assert specificity("foo:where(.bar, #baz)") == (0, 0, 1)
 
         assert specificity("foo:empty") == (0, 1, 1)
         assert specificity("foo:before") == (0, 0, 2)

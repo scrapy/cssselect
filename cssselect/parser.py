@@ -315,7 +315,9 @@ class Matching:
         return f"{self.selector.canonical()}:is({args_str})"
 
     def specificity(self) -> tuple[int, int, int]:
-        return max(x.specificity() for x in self.selector_list)
+        a1, b1, c1 = self.selector.specificity()
+        a2, b2, c2 = max(x.specificity() for x in self.selector_list)
+        return a1 + a2, b1 + b2, c1 + c2
 
 
 class SpecificityAdjustment:
@@ -341,7 +343,7 @@ class SpecificityAdjustment:
         return f"{self.selector.canonical()}:where({args_str})"
 
     def specificity(self) -> tuple[int, int, int]:
-        return 0, 0, 0
+        return self.selector.specificity()
 
 
 class Attrib:
