@@ -213,7 +213,7 @@ class TestCssselect(unittest.TestCase):
         assert parse_one("*") == ("Element[*]", None)
         assert parse_one(":empty") == ("Pseudo[Element[*]:empty]", None)
         assert parse_one(":scope") == ("Pseudo[Element[*]:scope]", None)
-        assert parse_one(":\\DDDD") == ('Pseudo[Element[*]:\ufffd]', None)
+        assert parse_one(":\\DDDD") == ("Pseudo[Element[*]:\ufffd]", None)
 
         # Special cases for CSS 2.1 pseudo-elements
         assert parse_one(":BEfore") == ("Element[*]", "before")
