@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+*   Fixed the specificity computation for ``:is()`` and ``:where()`` when they
+    follow another selector (e.g. ``div:is(.foo)``): the specificity of the
+    leading selector was being dropped (:issue:`136`).
+
 Version 1.4.0
 -------------
 

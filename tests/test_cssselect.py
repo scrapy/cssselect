@@ -312,6 +312,14 @@ class TestCssselect(unittest.TestCase):
         assert specificity(":is(:hover, :visited)") == (0, 1, 0)
         assert specificity(":where(:hover, :visited)") == (0, 0, 0)
 
+        # A selector preceding :is()/:where() contributes its own specificity
+        # (gh-136).
+        assert specificity("div:is(.foo)") == (0, 1, 1)
+        assert specificity(".a:is(#b)") == (1, 1, 0)
+        assert specificity("div.cls:is(#a, .b)") == (1, 1, 1)
+        assert specificity("div:where(.foo)") == (0, 0, 1)
+        assert specificity("#id:where(div, .c)") == (1, 0, 0)
+
         assert specificity("foo:empty") == (0, 1, 1)
         assert specificity("foo:before") == (0, 0, 2)
         assert specificity("foo::before") == (0, 0, 2)

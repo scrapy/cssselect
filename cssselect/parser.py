@@ -315,7 +315,11 @@ class Matching:
         return f"{self.selector.canonical()}:is({args_str})"
 
     def specificity(self) -> tuple[int, int, int]:
-        return max(x.specificity() for x in self.selector_list)
+        # :is() contributes the specificity of its most specific argument, added
+        # to the specificity of the selector it is attached to.
+        a1, b1, c1 = self.selector.specificity()
+        a2, b2, c2 = max(x.specificity() for x in self.selector_list)
+        return a1 + a2, b1 + b2, c1 + c2
 
 
 class SpecificityAdjustment:
@@ -341,7 +345,9 @@ class SpecificityAdjustment:
         return f"{self.selector.canonical()}:where({args_str})"
 
     def specificity(self) -> tuple[int, int, int]:
-        return 0, 0, 0
+        # :where() itself always adds zero specificity, but the selector it is
+        # attached to still contributes its own.
+        return self.selector.specificity()
 
 
 class Attrib:
