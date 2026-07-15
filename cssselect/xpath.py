@@ -115,6 +115,8 @@ class XPathExpr:
                 self.element += "[" + other.condition + "]"
             if closing_combiner:
                 self.element += closing_combiner
+            # Any condition of self is already in `path`.
+            self.condition = ""
         return self
 
 
@@ -467,21 +469,31 @@ class GenericTranslator:
         self, left: XPathExpr, right: XPathExpr
     ) -> XPathExpr:
         """right is an immediate child of left; select left"""
-        return left.join("[./", right, closing_combiner="]")
+        return left.join("[./", right, closing_combiner="]", has_inner_condition=True)
 
     def xpath_relation_direct_adjacent_combinator(
         self, left: XPathExpr, right: XPathExpr
     ) -> XPathExpr:
         """right is a sibling immediately after left; select left"""
-        return left.add_condition(
-            f"following-sibling::*[(name() = '{right.element}') and (position() = 1)]"
+        right.add_name_test()
+        right.add_condition("position() = 1")
+        return left.join(
+            "[following-sibling::",
+            right,
+            closing_combiner="]",
+            has_inner_condition=True,
         )
 
     def xpath_relation_indirect_adjacent_combinator(
         self, left: XPathExpr, right: XPathExpr
     ) -> XPathExpr:
         """right is a sibling after left, immediately or not; select left"""
-        return left.join("[following-sibling::", right, closing_combiner="]")
+        return left.join(
+            "[following-sibling::",
+            right,
+            closing_combiner="]",
+            has_inner_condition=True,
+        )
 
     # Function: dispatch by function/pseudo-class name
 

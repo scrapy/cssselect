@@ -532,6 +532,33 @@ class TestCssselect(unittest.TestCase):
             xpath("e:has(+ f)")
             == "e[following-sibling::*[(name() = 'f') and (position() = 1)]]"
         )
+        assert xpath("e:has(> f.bar)") == (
+            "e[./f[@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
+        )
+        assert xpath("e:has(> .bar)") == (
+            "e[./*[@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
+        )
+        assert xpath("e:has(~ f.bar)") == (
+            "e[following-sibling::f[@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
+        )
+        assert xpath("e:has(+ f.bar)") == (
+            "e[following-sibling::*[((@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' bar ')) "
+            "and (name() = 'f')) and (position() = 1)]]"
+        )
+        assert xpath("e:has(+ .bar)") == (
+            "e[following-sibling::*[(@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' bar ')) "
+            "and (position() = 1)]]"
+        )
+        assert xpath("e:has(+ *)") == "e[following-sibling::*[position() = 1]]"
+        assert xpath("e.foo:has(f)") == (
+            "e[@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' foo ')][descendant::f]"
+        )
         assert xpath('e:contains("foo")') == ("e[contains(., 'foo')]")
         assert xpath("e:ConTains(foo)") == ("e[contains(., 'foo')]")
         assert xpath("e.warning") == (
@@ -1039,6 +1066,19 @@ class TestCssselect(unittest.TestCase):
         ]
         assert pcss("link:has(*)") == []
         assert pcss("ol:has(div)") == ["first-ol"]
+        assert pcss("ol:has(> div)") == []
+        assert pcss("ol:has(> li.c)") == ["first-ol"]
+        assert pcss("li:has(> div)") == ["second-li"]
+        assert pcss("li:has(+ li.c)") == ["second-li", "third-li"]
+        assert pcss("li:has(~ li.c)") == ["first-li", "second-li", "third-li"]
+        assert pcss("li:has(+ *)") == [
+            "first-li",
+            "second-li",
+            "third-li",
+            "fourth-li",
+            "fifth-li",
+            "sixth-li",
+        ]
         assert pcss(":is(#first-li, #second-li)") == ["first-li", "second-li"]
         assert pcss("a:is(#name-anchor, #tag-anchor)") == ["name-anchor", "tag-anchor"]
         assert pcss(":is(.c)") == ["first-ol", "third-li", "fourth-li"]
