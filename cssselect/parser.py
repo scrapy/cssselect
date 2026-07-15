@@ -150,7 +150,7 @@ class Class:
         return f"{self.__class__.__name__}[{self.selector!r}.{self.class_name}]"
 
     def canonical(self) -> str:
-        return f"{self.selector.canonical()}.{self.class_name}"
+        return f"{self.selector.canonical()}.{_serialize_ident(self.class_name)}"
 
     def specificity(self) -> tuple[int, int, int]:
         a, b, c = self.selector.specificity()
@@ -410,7 +410,9 @@ class Attrib:
         return f"{self.__class__.__name__}[{self.selector!r}[{attrib} {self.operator} {self.value.value!r}]]"
 
     def canonical(self) -> str:
-        attrib = f"{self.namespace}|{self.attrib}" if self.namespace else self.attrib
+        attrib = _serialize_ident(self.attrib)
+        if self.namespace:
+            attrib = f"{_serialize_ident(self.namespace)}|{attrib}"
 
         if self.operator == "exists":
             op = attrib
@@ -444,9 +446,9 @@ class Element:
         return f"{self.__class__.__name__}[{self.canonical()}]"
 
     def canonical(self) -> str:
-        element = self.element or "*"
+        element = _serialize_ident(self.element) if self.element else "*"
         if self.namespace:
-            element = f"{self.namespace}|{element}"
+            element = f"{_serialize_ident(self.namespace)}|{element}"
         return element
 
     def specificity(self) -> tuple[int, int, int]:
@@ -468,7 +470,7 @@ class Hash:
         return f"{self.__class__.__name__}[{self.selector!r}#{self.id}]"
 
     def canonical(self) -> str:
-        return f"{self.selector.canonical()}#{self.id}"
+        return f"{self.selector.canonical()}#{_serialize_ident(self.id)}"
 
     def specificity(self) -> tuple[int, int, int]:
         a, b, c = self.selector.specificity()
@@ -891,6 +893,8 @@ class Token(tuple[str, str | None]):  # noqa: SLOT001
             escaped = cast("str", self.value).replace("\\", "\\\\").replace("'", "\\'")
             escaped = _sub_string_control_char(_replace_string_control_char, escaped)
             return f"'{escaped}'"
+        if self.type == "IDENT":
+            return _serialize_ident(cast("str", self.value))
         return cast("str", self.value)
 
 
@@ -958,6 +962,36 @@ def _replace_string_control_char(match: re.Match[str]) -> str:
 def unescape_ident(value: str) -> str:
     value = _sub_unicode_escape(_replace_unicode, value)
     return _sub_simple_escape(_replace_simple, value)
+
+
+def _serialize_ident(value: str) -> str:
+    """Serialize a string as a CSS identifier, escaping special characters.
+
+    Implements the CSSOM "serialize an identifier" algorithm:
+    https://drafts.csswg.org/cssom/#serialize-an-identifier
+    """
+    result = []
+    for i, char in enumerate(value):
+        code = ord(char)
+        serialized = char
+        if code == 0:
+            serialized = "\N{REPLACEMENT CHARACTER}"
+        elif code <= 0x1F or code == 0x7F:
+            serialized = f"\\{code:x} "
+        elif "0" <= char <= "9":
+            if i == 0 or (i == 1 and value[0] == "-"):
+                # An identifier cannot start with a digit
+                # (or a '-' followed by a digit).
+                serialized = f"\\{code:x} "
+        elif char == "-":
+            if len(value) == 1:
+                serialized = "\\-"
+        elif not (
+            code >= 0x80 or char == "_" or "a" <= char <= "z" or "A" <= char <= "Z"
+        ):
+            serialized = f"\\{char}"
+        result.append(serialized)
+    return "".join(result)
 
 
 def tokenize(s: str) -> Iterator[Token]:

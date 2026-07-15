@@ -402,6 +402,17 @@ class TestCssselect(unittest.TestCase):
         css2css(r'[foo="x\a y"]', r"[foo='x\a y']")
         css2css(r'[foo="\\"]', r"[foo='\\']")
         css2css('[foo="\'"]', "[foo='\\'']")
+        # identifiers are escaped as CSS on output
+        css2css(r"di\[v")
+        css2css(r"e.cl\@ss")
+        css2css(r".fo\.o")
+        css2css(r"#a\.b")
+        css2css(r"[h\]ref]")
+        css2css(r"[foo=ba\.r]")
+        css2css(r"n\.s|div")
+        css2css(r"\31 23")  # an identifier cannot start with a bare digit
+        css2css(r"e\1 x")  # control characters use hexadecimal escapes
+        css2css(r"di\5b v", r"di\[v")  # hexadecimal escapes are canonicalized
 
     def test_parse_errors(self) -> None:
         def get_error(css: str) -> str | None:
