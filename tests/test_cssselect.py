@@ -170,6 +170,13 @@ class TestCssselect(unittest.TestCase):
             "SpecificityAdjustment[Element[*]:where(Pseudo[Element[*]:hover],"
             " Pseudo[Element[*]:visited])]"
         ]
+        assert parse_many(":is(.foo, .bar)", ":is(.foo,.bar)", ":is(.foo ,.bar)") == [
+            "Matching[Element[*]:is(Class[Element[*].foo], Class[Element[*].bar])]"
+        ]
+        assert parse_many(":where(.foo, .bar)", ":where(.foo,.bar)") == [
+            "SpecificityAdjustment[Element[*]:where(Class[Element[*].foo],"
+            " Class[Element[*].bar])]"
+        ]
         assert parse_many("td ~ th") == ["CombinedSelector[Element[td] ~ Element[th]]"]
         assert parse_many(":scope > foo") == [
             "CombinedSelector[Pseudo[Element[*]:scope] > Element[foo]]"
@@ -425,6 +432,10 @@ class TestCssselect(unittest.TestCase):
         assert get_error(":where(a b)") == (
             "Expected an argument, got <IDENT 'b' at 9>"
         )
+        assert get_error(":is(a") == ("Expected an argument, got <EOF at 5>")
+        assert get_error(":is(a,") == ("Expected selector, got <EOF at 6>")
+        assert get_error(":is(a,)") == ("Expected selector, got <DELIM ')' at 6>")
+        assert get_error(":where(a") == ("Expected an argument, got <EOF at 8>")
         assert get_error(":scope > div :scope header") == (
             'Got immediate child pseudo-element ":scope" not at the start of a selector'
         )
@@ -557,6 +568,21 @@ class TestCssselect(unittest.TestCase):
         )
         assert xpath("e:where(foo)") == "e[name() = 'foo']"
         assert xpath("e:where(foo, bar)") == "e[(name() = 'foo') or (name() = 'bar')]"
+        assert xpath("e:is(.a,.b)") == xpath("e:is(.a, .b)")
+        assert xpath("e:is(*, .foo)") == "e"
+        assert xpath("e:where(*, foo)") == "e"
+        assert xpath("e.foo:is(.a, .b)") == (
+            "e[(@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' foo ')) and "
+            "((@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' a ')) or "
+            "(@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' b ')))]"
+        )
+        with pytest.raises(ExpressionError):
+            xpath("e:is(:has(f))")
+        with pytest.raises(ExpressionError):
+            xpath("e:where(:has(f))")
 
         # Invalid characters in XPath element names
         assert xpath(r"di\a0 v") == ("*[name() = 'di v']")  # di\xa0v
@@ -1039,9 +1065,23 @@ class TestCssselect(unittest.TestCase):
         ]
         assert pcss("link:has(*)") == []
         assert pcss("ol:has(div)") == ["first-ol"]
-        assert pcss(":is(#first-li, #second-li)") == ["first-li", "second-li"]
+        assert pcss(":is(#first-li, #second-li)", ":is(#first-li,#second-li)") == [
+            "first-li",
+            "second-li",
+        ]
         assert pcss("a:is(#name-anchor, #tag-anchor)") == ["name-anchor", "tag-anchor"]
         assert pcss(":is(.c)") == ["first-ol", "third-li", "fourth-li"]
+        assert pcss("li:is(*, .c)") == [
+            "first-li",
+            "second-li",
+            "third-li",
+            "fourth-li",
+            "fifth-li",
+            "sixth-li",
+            "seventh-li",
+        ]
+        assert pcss("ol.a:is(.nonexistent)") == []
+        assert pcss("ol.a:is(.b, .nonexistent)") == ["first-ol"]
         assert pcss("ol.a.b.c > li.c:nth-child(3)") == ["third-li"]
 
         # Invalid characters in XPath element names, should not crash

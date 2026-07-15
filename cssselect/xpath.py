@@ -37,7 +37,7 @@ from cssselect.parser import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterable
 
     # typing.Self requires Python 3.11
     from typing_extensions import Self
@@ -331,22 +331,37 @@ class GenericTranslator:
         return method(xpath, right)
 
     def xpath_matching(self, matching: Matching) -> XPathExpr:
-        xpath = self.xpath(matching.selector)
-        exprs = [self.xpath(selector) for selector in matching.selector_list]
-        for e in exprs:
-            e.add_name_test()
-            if e.condition:
-                xpath.add_condition(e.condition, "or")
-        return xpath
+        return self._xpath_add_selector_list_condition(
+            self.xpath(matching.selector), matching.selector_list
+        )
 
     def xpath_specificityadjustment(self, matching: SpecificityAdjustment) -> XPathExpr:
-        xpath = self.xpath(matching.selector)
-        exprs = [self.xpath(selector) for selector in matching.selector_list]
-        for e in exprs:
+        return self._xpath_add_selector_list_condition(
+            self.xpath(matching.selector), matching.selector_list
+        )
+
+    def _xpath_add_selector_list_condition(
+        self, xpath: XPathExpr, selector_list: Iterable[Tree]
+    ) -> XPathExpr:
+        """Add a condition matching any selector of the list
+        (for :is() and :where())."""
+        condition = ""
+        for e in (self.xpath(selector) for selector in selector_list):
+            if e.path:
+                # E.g. a :has() argument: it translates to a path, which
+                # cannot be embedded into a predicate of the outer expression.
+                raise ExpressionError(
+                    ":has() is not supported inside :is() and :where()"
+                )
             e.add_name_test()
-            if e.condition:
-                xpath.add_condition(e.condition, "or")
-        return xpath
+            if not e.condition:
+                # This argument matches any element, so the whole selector
+                # list does too: it adds no condition.
+                return xpath
+            condition = (
+                f"({condition}) or ({e.condition})" if condition else e.condition
+            )
+        return xpath.add_condition(condition)
 
     def xpath_function(self, function: Function) -> XPathExpr:
         """Translate a functional pseudo-class."""

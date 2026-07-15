@@ -739,8 +739,7 @@ def parse_simple_selector_arguments(stream: TokenStream) -> list[Tree]:
             )
         stream.skip_whitespace()
         next_ = stream.next()
-        if next_ in (("EOF", None), ("DELIM", ",")):
-            stream.next()
+        if next_ == ("DELIM", ","):
             stream.skip_whitespace()
             arguments.append(result)
         elif next_ == ("DELIM", ")"):
