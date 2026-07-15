@@ -119,8 +119,10 @@ class Selector:
         else:
             pseudo_element = ""
         res = f"{self.parsed_tree.canonical()}{pseudo_element}"
-        if len(res) > 1:
-            res = res.lstrip("*")
+        # Strip a redundant universal selector from e.g. "*.foo" (but not
+        # from e.g. "* > foo").
+        if len(res) > 1 and res[0] == "*" and res[1] in "#.[:":
+            res = res[1:]
         return res
 
     def specificity(self) -> tuple[int, int, int]:
@@ -272,8 +274,17 @@ class Relation:
         self.combinator = combinator
         self.subselector = subselector
 
+    def _combinator_prefix(self) -> str:
+        # The descendant combinator is implicit in :has() arguments.
+        if self.combinator.value == " ":
+            return ""
+        return f"{self.combinator.value} "
+
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}[{self.selector!r}:has({self.subselector!r})]"
+        return (
+            f"{self.__class__.__name__}[{self.selector!r}"
+            f":has({self._combinator_prefix()}{self.subselector!r})]"
+        )
 
     def canonical(self) -> str:
         try:
@@ -282,7 +293,7 @@ class Relation:
             subsel = self.subselector.canonical()
         if len(subsel) > 1:
             subsel = subsel.lstrip("*")
-        return f"{self.selector.canonical()}:has({subsel})"
+        return f"{self.selector.canonical()}:has({self._combinator_prefix()}{subsel})"
 
     def specificity(self) -> tuple[int, int, int]:
         a1, b1, c1 = self.selector.specificity()
@@ -310,12 +321,16 @@ class Matching:
         selector_arguments = []
         for s in self.selector_list:
             selarg = s.canonical()
-            selector_arguments.append(selarg.lstrip("*"))
-        args_str = ", ".join(str(s) for s in selector_arguments)
+            if len(selarg) > 1:
+                selarg = selarg.lstrip("*")
+            selector_arguments.append(selarg)
+        args_str = ", ".join(selector_arguments)
         return f"{self.selector.canonical()}:is({args_str})"
 
     def specificity(self) -> tuple[int, int, int]:
-        return max(x.specificity() for x in self.selector_list)
+        a1, b1, c1 = self.selector.specificity()
+        a2, b2, c2 = max(x.specificity() for x in self.selector_list)
+        return a1 + a2, b1 + b2, c1 + c2
 
 
 class SpecificityAdjustment:
@@ -336,12 +351,16 @@ class SpecificityAdjustment:
         selector_arguments = []
         for s in self.selector_list:
             selarg = s.canonical()
-            selector_arguments.append(selarg.lstrip("*"))
-        args_str = ", ".join(str(s) for s in selector_arguments)
+            if len(selarg) > 1:
+                selarg = selarg.lstrip("*")
+            selector_arguments.append(selarg)
+        args_str = ", ".join(selector_arguments)
         return f"{self.selector.canonical()}:where({args_str})"
 
     def specificity(self) -> tuple[int, int, int]:
-        return 0, 0, 0
+        # :where() itself contributes no specificity, but the compound
+        # selector it applies to does.
+        return self.selector.specificity()
 
 
 class Attrib:
@@ -474,7 +493,8 @@ class CombinedSelector:
         subsel = self.subselector.canonical()
         if len(subsel) > 1:
             subsel = subsel.lstrip("*")
-        return f"{self.selector.canonical()} {self.combinator} {subsel}"
+        combinator = " " if self.combinator == " " else f" {self.combinator} "
+        return f"{self.selector.canonical()}{combinator}{subsel}"
 
     def specificity(self) -> tuple[int, int, int]:
         a1, b1, c1 = self.selector.specificity()
@@ -866,7 +886,11 @@ class Token(tuple[str, str | None]):  # noqa: SLOT001
 
     def css(self) -> str:
         if self.type == "STRING":
-            return repr(self.value)
+            # Escape as CSS (repr() would use Python escapes, which mean
+            # something else in CSS, e.g. '\n' is just the letter 'n').
+            escaped = cast("str", self.value).replace("\\", "\\\\").replace("'", "\\'")
+            escaped = _sub_string_control_char(_replace_string_control_char, escaped)
+            return f"'{escaped}'"
         return cast("str", self.value)
 
 
@@ -912,6 +936,7 @@ _match_string_by_quote = {
 _sub_simple_escape = re.compile(r"\\(.)").sub
 _sub_unicode_escape = re.compile(TokenMacros.unicode_escape, re.IGNORECASE).sub
 _sub_newline_escape = re.compile(r"\\(?:\n|\r\n|\r|\f)").sub
+_sub_string_control_char = re.compile(r"[\x00-\x1f\x7f]").sub
 
 # Same as r'\1', but faster on CPython
 _replace_simple = operator.methodcaller("group", 1)
@@ -922,6 +947,12 @@ def _replace_unicode(match: re.Match[str]) -> str:
     if codepoint > sys.maxunicode:
         codepoint = 0xFFFD
     return chr(codepoint)
+
+
+def _replace_string_control_char(match: re.Match[str]) -> str:
+    # The trailing space ends the escape sequence, in case the next
+    # character is a hexadecimal digit.
+    return f"\\{ord(match.group()):x} "
 
 
 def unescape_ident(value: str) -> str:
