@@ -170,9 +170,12 @@ class TestCssselect(unittest.TestCase):
             "SpecificityAdjustment[Element[*]:where(Pseudo[Element[*]:hover],"
             " Pseudo[Element[*]:visited])]"
         ]
-        assert parse_many(":is(.foo, .bar)", ":is(.foo,.bar)", ":is(.foo ,.bar)") == [
-            "Matching[Element[*]:is(Class[Element[*].foo], Class[Element[*].bar])]"
-        ]
+        assert parse_many(
+            ":is(.foo, .bar)",
+            ":is(.foo,.bar)",
+            ":is(.foo ,.bar)",
+            ":matches(.foo, .bar)",
+        ) == ["Matching[Element[*]:is(Class[Element[*].foo], Class[Element[*].bar])]"]
         assert parse_many(":where(.foo, .bar)", ":where(.foo,.bar)") == [
             "SpecificityAdjustment[Element[*]:where(Class[Element[*].foo],"
             " Class[Element[*].bar])]"
@@ -583,6 +586,15 @@ class TestCssselect(unittest.TestCase):
             xpath("e:is(:has(f))")
         with pytest.raises(ExpressionError):
             xpath("e:where(:has(f))")
+        # :matches() is an alias of :is()
+        assert xpath("e:matches(foo, bar)") == "e[(name() = 'foo') or (name() = 'bar')]"
+        assert xpath("e:matches(.a, .b)") == xpath("e:is(.a, .b)")
+        # A namespace-prefix wildcard is a node test, not a literal name
+        assert xpath("ns|*") == "ns:*"
+        assert xpath("e:is(ns|*)") == "e[self::ns:*]"
+        assert xpath("e:where(ns|*)") == "e[self::ns:*]"
+        assert xpath("*:not(ns|*)") == "*[not(self::ns:*)]"
+        assert xpath("e:is(ns|f)") == "e[name() = 'ns:f']"
 
         # Invalid characters in XPath element names
         assert xpath(r"di\a0 v") == ("*[name() = 'di v']")  # di\xa0v
@@ -1070,7 +1082,7 @@ class TestCssselect(unittest.TestCase):
             "second-li",
         ]
         assert pcss("a:is(#name-anchor, #tag-anchor)") == ["name-anchor", "tag-anchor"]
-        assert pcss(":is(.c)") == ["first-ol", "third-li", "fourth-li"]
+        assert pcss(":is(.c)", ":matches(.c)") == ["first-ol", "third-li", "fourth-li"]
         assert pcss("li:is(*, .c)") == [
             "first-li",
             "second-li",
@@ -1115,6 +1127,21 @@ class TestCssselect(unittest.TestCase):
             "checkbox-checked",
             "checkbox-disabled-checked",
         ]
+
+    def test_select_with_namespace(self) -> None:
+        document = etree.XML('<r xmlns:n="urn:x"><n:a id="ns-el"/><b id="plain"/></r>')
+        css_to_xpath = GenericTranslator().css_to_xpath
+
+        def pcss(css: str) -> list[str]:
+            items = typing.cast(
+                "list[etree._Element]",
+                document.xpath(css_to_xpath(css), namespaces={"ns": "urn:x"}),
+            )
+            return [element.get("id", "nil") for element in items]
+
+        assert pcss("ns|*") == ["ns-el"]
+        assert pcss(":is(ns|*)") == ["ns-el"]
+        assert pcss("*:not(ns|*)") == ["nil", "plain"]
 
     def test_select_shakespeare(self) -> None:
         document = html.document_fromstring(HTML_SHAKESPEARE)

@@ -82,7 +82,15 @@ class XPathExpr:
         if self.element == "*":
             # We weren't doing a test anyway
             return
-        self.add_condition(f"name() = {GenericTranslator.xpath_literal(self.element)}")
+        if self.element.endswith(":*") and is_safe_name(self.element[:-2]):
+            # A namespace-prefix wildcard like "ns:*" (from the CSS "ns|*"):
+            # name() is never the literal string "ns:*", so compare with a
+            # node test instead.
+            self.add_condition(f"self::{self.element}")
+        else:
+            self.add_condition(
+                f"name() = {GenericTranslator.xpath_literal(self.element)}"
+            )
         self.element = "*"
 
     def add_star_prefix(self) -> None:
