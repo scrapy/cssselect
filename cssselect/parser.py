@@ -574,7 +574,9 @@ def parse_selector(stream: TokenStream) -> tuple[Tree, PseudoElement | None]:
 
 
 def parse_simple_selector(
-    stream: TokenStream, inside_negation: bool = False
+    stream: TokenStream,
+    inside_negation: bool = False,
+    inside_selector_list: bool = False,
 ) -> tuple[Tree, PseudoElement | None]:
     stream.skip_whitespace()
     selector_start = len(stream.used)
@@ -643,12 +645,17 @@ def parse_simple_selector(
                 result = Pseudo(result, ident)
                 if result.ident == "scope":
                     # :scope is only supported at the start of a selector,
-                    # i.e. the tokens preceding its compound selector must
-                    # be the start of the input or a comma.
+                    # i.e. never in :is()/:where()/:matches() arguments
+                    # (where a preceding comma separates arguments, not
+                    # selectors), and otherwise only when the tokens
+                    # preceding its compound selector are the start of the
+                    # input or a comma.
                     preceding = stream.used[:selector_start]
                     while preceding and preceding[-1].type == "S":
                         preceding = preceding[:-1]
-                    if preceding and not preceding[-1].is_delim(","):
+                    if inside_selector_list or (
+                        preceding and not preceding[-1].is_delim(",")
+                    ):
                         raise SelectorSyntaxError(
                             'Got immediate child pseudo-element ":scope" '
                             "not at the start of a selector"
@@ -736,7 +743,9 @@ def parse_relative_selector(stream: TokenStream) -> tuple[Token, Selector]:
 def parse_simple_selector_arguments(stream: TokenStream) -> list[Tree]:
     arguments = []
     while 1:
-        result, pseudo_element = parse_simple_selector(stream, True)
+        result, pseudo_element = parse_simple_selector(
+            stream, inside_negation=True, inside_selector_list=True
+        )
         if pseudo_element:
             raise SelectorSyntaxError(
                 f"Got pseudo-element ::{pseudo_element} inside function"

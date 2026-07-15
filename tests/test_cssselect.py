@@ -447,6 +447,23 @@ class TestCssselect(unittest.TestCase):
         assert get_error("*:scope") is None
         assert get_error("div:scope") is None
         assert get_error("foo, *:scope") is None
+        # :scope is rejected in :is()/:where()/:matches() arguments too;
+        # a comma there separates arguments, not selectors.
+        assert get_error(":is(:scope)") == (
+            'Got immediate child pseudo-element ":scope" not at the start of a selector'
+        )
+        assert get_error(":is(a, :scope)") == (
+            'Got immediate child pseudo-element ":scope" not at the start of a selector'
+        )
+        assert get_error(":where(a, :scope)") == (
+            'Got immediate child pseudo-element ":scope" not at the start of a selector'
+        )
+        assert get_error(":matches(a, :scope)") == (
+            'Got immediate child pseudo-element ":scope" not at the start of a selector'
+        )
+        assert get_error("foo, :is(a, :scope)") == (
+            'Got immediate child pseudo-element ":scope" not at the start of a selector'
+        )
         assert get_error("> div p") == ("Expected selector, got <DELIM '>' at 0>")
 
         # Unsupported :has() with several arguments
