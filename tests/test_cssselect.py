@@ -120,10 +120,6 @@ class TestCssselect(unittest.TestCase):
         ]
         assert parse_many("div > p") == ["CombinedSelector[Element[div] > Element[p]]"]
         assert parse_many("td:first") == ["Pseudo[Element[td]:first]"]
-        assert parse_many("td:first") == ["Pseudo[Element[td]:first]"]
-        assert parse_many("td :first") == [
-            "CombinedSelector[Element[td] <followed> Pseudo[Element[*]:first]]"
-        ]
         assert parse_many("td :first") == [
             "CombinedSelector[Element[td] <followed> Pseudo[Element[*]:first]]"
         ]
@@ -892,7 +888,8 @@ class TestCssselect(unittest.TestCase):
         combined = parse("a b")[0].parsed_tree
         matching = Matching(base, [combined])
         with pytest.raises(
-            ExpressionError, match=r"not supported inside :is\(\) and :where\(\)"
+            ExpressionError,
+            match=r"not supported inside :is\(\), :where\(\) and :matches\(\)",
         ):
             GenericTranslator().xpath(matching)
 
@@ -1082,9 +1079,7 @@ class TestCssselect(unittest.TestCase):
     def test_series(self) -> None:
         def series(css: str) -> tuple[int, int] | None:
             (selector,) = parse(f":nth-child({css})")
-            args = typing.cast(
-                "FunctionalPseudoElement", selector.parsed_tree
-            ).arguments
+            args = typing.cast("Function", selector.parsed_tree).arguments
             try:
                 return parse_series(args)
             except ValueError:

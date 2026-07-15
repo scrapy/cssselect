@@ -345,10 +345,14 @@ class GenericTranslator:
         condition = ""
         for e in (self.xpath(selector) for selector in selector_list):
             if e.path:
-                # E.g. a :has() argument: it translates to a path, which
-                # cannot be embedded into a predicate of the outer expression.
+                # Only a combined selector (e.g. "a b") translates to a path,
+                # which cannot be embedded into a predicate of the outer
+                # expression. The parser rejects combinators in these arguments,
+                # so this is only reachable through a hand-built Matching or
+                # SpecificityAdjustment node.
                 raise ExpressionError(
-                    ":has() is not supported inside :is() and :where()"
+                    "Combined selectors are not supported inside "
+                    ":is(), :where() and :matches()"
                 )
             e.add_name_test()
             if not e.condition:
@@ -601,7 +605,7 @@ class GenericTranslator:
                 expressions.append(f"{siblings_count} >= {b_min_1}")
         else:
             # if a<0, and (b-1)<0, no "n" satisfies this,
-            # this is tested above as an early exist condition
+            # this is tested above as an early exit condition
             # otherwise,
             expressions.append(f"{siblings_count} <= {b_min_1}")
 
@@ -614,7 +618,7 @@ class GenericTranslator:
         # - or:
         # count(***-sibling::***) - (b-1) = -n = 0, -1, -2, -3, etc.,
         #   i.e. count(***-sibling::***) <= (b-1)
-        # we we just did above.
+        # we just did above.
         #
         if abs(a) != 1:
             # count(***-sibling::***) - (b-1) ≡ 0 (mod a)

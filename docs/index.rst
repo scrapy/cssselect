@@ -108,15 +108,25 @@ be implemented):
 
 * The ``:scope`` pseudo-class. Limitation: it can only be used at a start of a
   selector.
-* The ``:is()``, ``:where()`` and ``:has()`` pseudo-classes. Limitation:
-  ``:has()`` cannot contain nested ``:has()`` or ``:not()``.
+* The ``:is()`` and ``:where()`` pseudo-classes. Limitation: their arguments
+  are a comma-separated list of *compound selectors*; combinators are not
+  allowed (e.g. ``:is(a b)`` or ``:is(a > b)``). ``:not()`` and ``:scope`` are
+  also rejected inside them, while ``:has()`` is supported (e.g.
+  ``:is(:has(> a))``).
+* The ``:has()`` pseudo-class. Limitation: it takes a single argument, made of
+  an optional leading combinator (``>``, ``+`` or ``~``) followed by one
+  *compound selector* built only from type, class and universal selectors
+  (e.g. ``:has(> a.important)``). Anything else is unsupported, e.g. an ID
+  (``:has(#id)``), or a selector list (``:has(a, b)``).
 
 These are non-standard extensions:
 
 * The ``:contains(text)`` pseudo-class that existed in `an early draft`_
   but was then removed.
 * The ``!=`` attribute operator. ``[foo!=bar]`` is the same as
-  ``:not([foo=bar])``.
+  ``:not([foo=bar])``, except for an empty value: ``[foo!='']`` matches only
+  elements that do have a ``foo`` attribute and whose value is not empty,
+  while ``:not([foo=''])`` also matches elements without a ``foo`` attribute.
 * ``:not()`` accepts a *sequence of simple selectors*, not just single
   *simple selector*. For example, ``:not(a.important[rel])`` is allowed,
   even though the negation contains 3 *simple selectors*.

@@ -835,13 +835,7 @@ def parse_attrib(selector: Tree, stream: TokenStream) -> Attrib:
 
 
 def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:
-    """
-    Parses the arguments for :nth-child() and friends.
-
-    :raises: A list of tokens
-    :returns: :``(a, b)``
-
-    """
+    """Parses the arguments for :nth-child() and friends."""
     for token in tokens:
         if token.type == "STRING":
             raise ValueError("String tokens not allowed in series.")
@@ -1028,19 +1022,14 @@ def tokenize(s: str) -> Iterator[Token]:
 
         match = _match_ident(s, pos=pos)
         if match:
-            value = _sub_simple_escape(
-                _replace_simple, _sub_unicode_escape(_replace_unicode, match.group())
-            )
+            value = unescape_ident(match.group())
             yield Token("IDENT", value, pos)
             pos = match.end()
             continue
 
         match = _match_hash(s, pos=pos)
         if match:
-            value = _sub_simple_escape(
-                _replace_simple,
-                _sub_unicode_escape(_replace_unicode, match.group()[1:]),
-            )
+            value = unescape_ident(match.group()[1:])
             yield Token("HASH", value, pos)
             pos = match.end()
             continue
