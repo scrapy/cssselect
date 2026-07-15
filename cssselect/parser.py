@@ -613,8 +613,12 @@ def parse_simple_selector(
             stream.next()
             result = Class(result, stream.next_ident())
         elif peek == ("DELIM", "|"):
+            # The explicit "no namespace" syntax, e.g. |div: only valid at
+            # the very start of a simple selector.
+            if len(stream.used) != selector_start:
+                raise SelectorSyntaxError(f"Expected selector, got {peek}")
             stream.next()
-            result = Element(None, stream.next_ident())
+            result = Element(None, stream.next_ident_or_star())
         elif peek == ("DELIM", "["):
             stream.next()
             result = parse_attrib(result, stream)
@@ -637,20 +641,18 @@ def parse_simple_selector(
                 continue
             if stream.peek() != ("DELIM", "("):
                 result = Pseudo(result, ident)
-                if repr(result) == "Pseudo[Element[*]:scope]" and not (
-                    len(stream.used) == 2
-                    or (len(stream.used) == 3 and stream.used[0].type == "S")
-                    or (len(stream.used) >= 3 and stream.used[-3].is_delim(","))
-                    or (
-                        len(stream.used) >= 4
-                        and stream.used[-3].type == "S"
-                        and stream.used[-4].is_delim(",")
-                    )
-                ):
-                    raise SelectorSyntaxError(
-                        'Got immediate child pseudo-element ":scope" '
-                        "not at the start of a selector"
-                    )
+                if result.ident == "scope":
+                    # :scope is only supported at the start of a selector,
+                    # i.e. the tokens preceding its compound selector must
+                    # be the start of the input or a comma.
+                    preceding = stream.used[:selector_start]
+                    while preceding and preceding[-1].type == "S":
+                        preceding = preceding[:-1]
+                    if preceding and not preceding[-1].is_delim(","):
+                        raise SelectorSyntaxError(
+                            'Got immediate child pseudo-element ":scope" '
+                            "not at the start of a selector"
+                        )
                 continue
             stream.next()
             stream.skip_whitespace()
@@ -703,12 +705,12 @@ def parse_arguments(stream: TokenStream) -> list[Token]:  # noqa: RET503
             raise SelectorSyntaxError(f"Expected an argument, got {next_}")
 
 
-def parse_relative_selector(stream: TokenStream) -> tuple[Token, Selector]:  # noqa: RET503
+def parse_relative_selector(stream: TokenStream) -> tuple[Token, Selector]:
     stream.skip_whitespace()
-    subselector = ""
+    subselector_tokens: list[Token] = []
     next_ = stream.next()
 
-    if next_ in [("DELIM", "+"), ("DELIM", "-"), ("DELIM", ">"), ("DELIM", "~")]:
+    if next_ in [("DELIM", "+"), ("DELIM", ">"), ("DELIM", "~")]:
         combinator = next_
         stream.skip_whitespace()
         next_ = stream.next()
@@ -716,17 +718,19 @@ def parse_relative_selector(stream: TokenStream) -> tuple[Token, Selector]:  # n
         combinator = Token("DELIM", " ", pos=0)
 
     while 1:
-        if next_.type in ("IDENT", "STRING", "NUMBER") or next_ in [
-            ("DELIM", "."),
-            ("DELIM", "*"),
-        ]:
-            subselector += cast("str", next_.value)
+        if next_.type == "IDENT" or next_ in [("DELIM", "."), ("DELIM", "*")]:
+            subselector_tokens.append(next_)
         elif next_ == ("DELIM", ")"):
-            result = parse(subselector)
-            return combinator, result[0]
+            break
         else:
             raise SelectorSyntaxError(f"Expected an argument, got {next_}")
         next_ = stream.next()
+
+    # Reparse the collected tokens instead of their concatenated source
+    # text, so that escaped identifiers are preserved.
+    subselector_tokens.append(EOFToken(next_.pos))
+    result, _ = parse_simple_selector(TokenStream(subselector_tokens))
+    return combinator, Selector(result)
 
 
 def parse_simple_selector_arguments(stream: TokenStream) -> list[Tree]:

@@ -91,6 +91,7 @@ class TestCssselect(unittest.TestCase):
         assert parse_many("*|*") == ["Element[*]"]
         assert parse_many("*|foo") == ["Element[foo]"]
         assert parse_many("|foo") == ["Element[foo]"]
+        assert parse_many("|*") == ["Element[*]"]
         assert parse_many("foo|*") == ["Element[foo|*]"]
         assert parse_many("foo|bar") == ["Element[foo|bar]"]
         # This will never match, but it is valid:
@@ -185,6 +186,9 @@ class TestCssselect(unittest.TestCase):
             "CombinedSelector[CombinedSelector[Pseudo[Element[*]:scope] > "
             "Hash[Element[*]#foo]] <followed> Hash[Element[*]#bar]]"
         ]
+        assert parse_many("*:scope") == ["Pseudo[Element[*]:scope]"]
+        assert parse_many("div:scope") == ["Pseudo[Element[div]:scope]"]
+        assert parse_many(".foo:scope") == ["Pseudo[Class[Element[*].foo]:scope]"]
 
     def test_pseudo_elements(self) -> None:
         def parse_pseudo(css: str) -> list[tuple[str, str | None]]:
@@ -384,6 +388,9 @@ class TestCssselect(unittest.TestCase):
         assert get_error("div > ") == ("Expected selector, got <EOF at 6>")
         assert get_error("  > div") == ("Expected selector, got <DELIM '>' at 2>")
         assert get_error("foo|#bar") == ("Expected ident or '*', got <HASH 'bar' at 4>")
+        assert get_error(".foo|bar") == ("Expected selector, got <DELIM '|' at 4>")
+        assert get_error("#bar|foo") == ("Expected selector, got <DELIM '|' at 4>")
+        assert get_error("[baz]|foo") == ("Expected selector, got <DELIM '|' at 5>")
         assert get_error("#.foo") == ("Expected selector, got <DELIM '#' at 0>")
         assert get_error(".#foo") == ("Expected ident, got <HASH 'foo' at 1>")
         assert get_error(":#foo") == ("Expected ident, got <HASH 'foo' at 1>")
@@ -431,11 +438,25 @@ class TestCssselect(unittest.TestCase):
         assert get_error("div :scope header") == (
             'Got immediate child pseudo-element ":scope" not at the start of a selector'
         )
+        assert get_error("a div:scope") == (
+            'Got immediate child pseudo-element ":scope" not at the start of a selector'
+        )
+        assert get_error("a > .foo:scope") == (
+            'Got immediate child pseudo-element ":scope" not at the start of a selector'
+        )
+        assert get_error("*:scope") is None
+        assert get_error("div:scope") is None
+        assert get_error("foo, *:scope") is None
         assert get_error("> div p") == ("Expected selector, got <DELIM '>' at 0>")
 
         # Unsupported :has() with several arguments
         assert get_error(":has(a, b)") == ("Expected an argument, got <DELIM ',' at 6>")
-        assert get_error(":has()") == ("Expected selector, got <EOF at 0>")
+        assert get_error(":has()") == ("Expected selector, got <EOF at 5>")
+        # '-' is not a valid relative combinator
+        assert get_error(":has(- p)") == ("Expected an argument, got <DELIM '-' at 5>")
+        # Strings and numbers are not selectors
+        assert get_error(':has("a")') == ("Expected an argument, got <STRING 'a' at 5>")
+        assert get_error(":has(1)") == ("Expected an argument, got <NUMBER '1' at 5>")
 
     def test_translation(self) -> None:
         def xpath(css: str) -> str:
@@ -563,6 +584,18 @@ class TestCssselect(unittest.TestCase):
         assert xpath(r"di\[v") == ("*[name() = 'di[v']")
         assert xpath(r"[h\a0 ref]") == ("*[attribute::*[name() = 'h ref']]")  # h\xa0ref
         assert xpath(r"[h\]ref]") == ("*[attribute::*[name() = 'h]ref']]")
+        # Escaped identifiers survive inside :has() arguments
+        assert xpath(r"e:has(di\[v)") == "e[descendant::*[name() = 'di[v']]"
+
+        # :scope, alone and in a compound selector
+        assert xpath(":scope") == "*[position() = 1]"
+        assert xpath("*:scope") == "*[position() = 1]"
+        assert xpath("div:scope") == "*[(name() = 'div') and (position() = 1)]"
+        assert xpath(".foo:scope") == (
+            "*[(@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' foo ')) "
+            "and (position() = 1)]"
+        )
 
         with pytest.raises(ExpressionError):
             xpath(":fİrst-child")
@@ -572,9 +605,9 @@ class TestCssselect(unittest.TestCase):
             xpath(":only-of-type")
         with pytest.raises(ExpressionError):
             xpath(":last-of-type")
-        with pytest.raises(ExpressionError):
+        with pytest.raises(ExpressionError, match=r"\*:nth-of-type\(\)"):
             xpath(":nth-of-type(1)")
-        with pytest.raises(ExpressionError):
+        with pytest.raises(ExpressionError, match=r"\*:nth-last-of-type\(\)"):
             xpath(":nth-last-of-type(1)")
         with pytest.raises(ExpressionError):
             xpath(":nth-child(n-)")
@@ -616,7 +649,7 @@ class TestCssselect(unittest.TestCase):
             '''descendant-or-self::*[@aval = '"""']'''
         )
         assert css_to_xpath(':scope > div[dataimg="<testmessage>"]') == (
-            "descendant-or-self::*[1]/div[@dataimg = '<testmessage>']"
+            "descendant-or-self::*[position() = 1]/div[@dataimg = '<testmessage>']"
         )
 
     def test_unicode_escapes(self) -> None:
@@ -726,7 +759,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath("p img::attr(src)") == (
             "descendant-or-self::p/descendant-or-self::*/img/@src"
         )
-        assert xpath(":scope") == "descendant-or-self::*[1]"
+        assert xpath(":scope") == "descendant-or-self::*[position() = 1]"
         assert xpath(":first-or-second[href]") == (
             "descendant-or-self::*[(@id = 'first' or @id = 'second') and (@href)]"
         )
@@ -903,6 +936,10 @@ class TestCssselect(unittest.TestCase):
         assert pcss(":scope body > div") == ["outer-div", "foobar-div"]
         assert pcss(":scope head") == ["nil"]
         assert pcss(":scope html") == []
+        # Compound :scope matches the scope root only if the rest of the
+        # compound selector matches it too
+        assert pcss("html:scope") == ["html"]
+        assert pcss("div:scope") == []
 
         # --- nth-* and nth-last-* -------------------------------------
 
