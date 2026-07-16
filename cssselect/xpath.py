@@ -82,10 +82,12 @@ class XPathExpr:
         if self.element == "*":
             # We weren't doing a test anyway
             return
-        if self.element.endswith(":*") and is_safe_name(self.element[:-2]):
-            # A namespace-prefix wildcard like "ns:*" (from the CSS "ns|*"):
-            # name() is never the literal string "ns:*", so compare with a
-            # node test instead.
+        prefix, colon, local = self.element.partition(":")
+        if colon and is_safe_name(prefix) and (local == "*" or is_safe_name(local)):
+            # A prefixed name like "ns:f" or "ns:*" (from the CSS "ns|f" or
+            # "ns|*"): name() would compare against the prefix as literally
+            # written in the document, bypassing the XPath prefix mapping,
+            # so use a node test instead.
             self.add_condition(f"self::{self.element}")
         else:
             self.add_condition(
@@ -449,7 +451,12 @@ class GenericTranslator:
             safe = safe and bool(is_safe_name(selector.namespace))
         xpath = self.xpathexpr_cls(element=element)
         if not safe:
-            xpath.add_name_test()
+            # Not usable as an XPath name test (e.g. an escaped identifier
+            # like di\a0 v): compare the serialized name instead. Done here
+            # rather than through add_name_test(), which would mistake a ":"
+            # inside such a name for a namespace prefix separator.
+            xpath.add_condition(f"name() = {self.xpath_literal(element)}")
+            xpath.element = "*"
         return xpath
 
     # CombinedSelector: dispatch by combinator

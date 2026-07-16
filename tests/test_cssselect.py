@@ -589,12 +589,17 @@ class TestCssselect(unittest.TestCase):
         # :matches() is an alias of :is()
         assert xpath("e:matches(foo, bar)") == "e[(name() = 'foo') or (name() = 'bar')]"
         assert xpath("e:matches(.a, .b)") == xpath("e:is(.a, .b)")
-        # A namespace-prefix wildcard is a node test, not a literal name
+        # A prefixed name is a node test resolved through the namespace
+        # prefix mapping, not a literal name() comparison
         assert xpath("ns|*") == "ns:*"
         assert xpath("e:is(ns|*)") == "e[self::ns:*]"
         assert xpath("e:where(ns|*)") == "e[self::ns:*]"
         assert xpath("*:not(ns|*)") == "*[not(self::ns:*)]"
-        assert xpath("e:is(ns|f)") == "e[name() = 'ns:f']"
+        assert xpath("e:is(ns|f)") == "e[self::ns:f]"
+        assert xpath("*:not(ns|f)") == "*[not(self::ns:f)]"
+        assert xpath("x + ns|f") == (
+            "x/following-sibling::*[(self::ns:f) and (position() = 1)]"
+        )
 
         # Invalid characters in XPath element names
         assert xpath(r"di\a0 v") == ("*[name() = 'di v']")  # di\xa0v
@@ -1129,7 +1134,12 @@ class TestCssselect(unittest.TestCase):
         ]
 
     def test_select_with_namespace(self) -> None:
-        document = etree.XML('<r xmlns:n="urn:x"><n:a id="ns-el"/><b id="plain"/></r>')
+        # The document prefix (n) deliberately differs from the selector
+        # prefix (ns): matching must go through the namespace mapping, not
+        # compare the prefixed name as a string.
+        document = etree.XML(
+            '<r xmlns:n="urn:x"><n:a id="ns-el"/><b id="plain"/><n:c id="ns-el2"/></r>'
+        )
         css_to_xpath = GenericTranslator().css_to_xpath
 
         def pcss(css: str) -> list[str]:
@@ -1139,9 +1149,14 @@ class TestCssselect(unittest.TestCase):
             )
             return [element.get("id", "nil") for element in items]
 
-        assert pcss("ns|*") == ["ns-el"]
-        assert pcss(":is(ns|*)") == ["ns-el"]
+        assert pcss("ns|*") == ["ns-el", "ns-el2"]
+        assert pcss(":is(ns|*)") == ["ns-el", "ns-el2"]
         assert pcss("*:not(ns|*)") == ["nil", "plain"]
+        assert pcss("ns|a") == ["ns-el"]
+        assert pcss(":is(ns|a)") == ["ns-el"]
+        assert pcss(":is(b, ns|a)") == ["ns-el", "plain"]
+        assert pcss("*:not(ns|a)") == ["nil", "plain", "ns-el2"]
+        assert pcss("b + ns|c") == ["ns-el2"]
 
     def test_select_shakespeare(self) -> None:
         document = html.document_fromstring(HTML_SHAKESPEARE)
