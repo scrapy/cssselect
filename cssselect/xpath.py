@@ -688,12 +688,19 @@ class GenericTranslator:
         return xpath.add_condition(f"count(following-sibling::{xpath.element}) = 0")
 
     def xpath_only_child_pseudo(self, xpath: XPathExpr) -> XPathExpr:
-        return xpath.add_condition("count(parent::*/child::*) = 1")
+        # Count siblings, not the parent's children: the root element has
+        # no parent, but it has no siblings either, so it must match.
+        return xpath.add_condition(
+            "count(preceding-sibling::*) = 0 and count(following-sibling::*) = 0"
+        )
 
     def xpath_only_of_type_pseudo(self, xpath: XPathExpr) -> XPathExpr:
         if xpath.element == "*":
             raise ExpressionError("*:only-of-type is not implemented")
-        return xpath.add_condition(f"count(parent::*/child::{xpath.element}) = 1")
+        return xpath.add_condition(
+            f"count(preceding-sibling::{xpath.element}) = 0 "
+            f"and count(following-sibling::{xpath.element}) = 0"
+        )
 
     def xpath_empty_pseudo(self, xpath: XPathExpr) -> XPathExpr:
         return xpath.add_condition("not(*) and not(string-length())")
