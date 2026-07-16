@@ -413,6 +413,8 @@ class TestCssselect(unittest.TestCase):
         css2css(r"\31 23")  # an identifier cannot start with a bare digit
         css2css(r"e\1 x")  # control characters use hexadecimal escapes
         css2css(r"di\5b v", r"di\[v")  # hexadecimal escapes are canonicalized
+        css2css(r".\-")  # an identifier consisting of a single "-"
+        css2css(r"e\0 x", "e\N{REPLACEMENT CHARACTER}x")  # NUL becomes U+FFFD
 
     def test_parse_errors(self) -> None:
         def get_error(css: str) -> str | None:
