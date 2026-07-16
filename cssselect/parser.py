@@ -657,13 +657,16 @@ def parse_simple_selector(
                         preceding and not preceding[-1].is_delim(",")
                     ):
                         raise SelectorSyntaxError(
-                            'Got immediate child pseudo-element ":scope" '
-                            "not at the start of a selector"
+                            'Got pseudo-class ":scope" not at the start of a selector'
                         )
                 continue
             stream.next()
             stream.skip_whitespace()
             if ident.lower() == "not":
+                if inside_selector_list:
+                    raise SelectorSyntaxError(
+                        ":not() is not supported inside :is(), :where() and :matches()"
+                    )
                 if inside_negation:
                     raise SelectorSyntaxError("Got nested :not()")
                 argument, argument_pseudo_element = parse_simple_selector(

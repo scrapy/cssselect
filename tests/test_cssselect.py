@@ -422,6 +422,17 @@ class TestCssselect(unittest.TestCase):
             "Got pseudo-element ::before inside :not() at 12"
         )
         assert get_error(":not(:not(a))") == ("Got nested :not()")
+        # A :not() inside :is()/:where()/:matches() is not a nested :not()
+        # and gets its own message
+        assert get_error(":is(:not(a))") == (
+            ":not() is not supported inside :is(), :where() and :matches()"
+        )
+        assert get_error(":where(:not(a))") == (
+            ":not() is not supported inside :is(), :where() and :matches()"
+        )
+        assert get_error(":matches(:not(a))") == (
+            ":not() is not supported inside :is(), :where() and :matches()"
+        )
         assert get_error(":is(:before)") == (
             "Got pseudo-element ::before inside function"
         )
@@ -433,16 +444,16 @@ class TestCssselect(unittest.TestCase):
             "Expected an argument, got <IDENT 'b' at 9>"
         )
         assert get_error(":scope > div :scope header") == (
-            'Got immediate child pseudo-element ":scope" not at the start of a selector'
+            'Got pseudo-class ":scope" not at the start of a selector'
         )
         assert get_error("div :scope header") == (
-            'Got immediate child pseudo-element ":scope" not at the start of a selector'
+            'Got pseudo-class ":scope" not at the start of a selector'
         )
         assert get_error("a div:scope") == (
-            'Got immediate child pseudo-element ":scope" not at the start of a selector'
+            'Got pseudo-class ":scope" not at the start of a selector'
         )
         assert get_error("a > .foo:scope") == (
-            'Got immediate child pseudo-element ":scope" not at the start of a selector'
+            'Got pseudo-class ":scope" not at the start of a selector'
         )
         assert get_error("*:scope") is None
         assert get_error("div:scope") is None
@@ -450,19 +461,19 @@ class TestCssselect(unittest.TestCase):
         # :scope is rejected in :is()/:where()/:matches() arguments too;
         # a comma there separates arguments, not selectors.
         assert get_error(":is(:scope)") == (
-            'Got immediate child pseudo-element ":scope" not at the start of a selector'
+            'Got pseudo-class ":scope" not at the start of a selector'
         )
         assert get_error(":is(a, :scope)") == (
-            'Got immediate child pseudo-element ":scope" not at the start of a selector'
+            'Got pseudo-class ":scope" not at the start of a selector'
         )
         assert get_error(":where(a, :scope)") == (
-            'Got immediate child pseudo-element ":scope" not at the start of a selector'
+            'Got pseudo-class ":scope" not at the start of a selector'
         )
         assert get_error(":matches(a, :scope)") == (
-            'Got immediate child pseudo-element ":scope" not at the start of a selector'
+            'Got pseudo-class ":scope" not at the start of a selector'
         )
         assert get_error("foo, :is(a, :scope)") == (
-            'Got immediate child pseudo-element ":scope" not at the start of a selector'
+            'Got pseudo-class ":scope" not at the start of a selector'
         )
         assert get_error("> div p") == ("Expected selector, got <DELIM '>' at 0>")
 
