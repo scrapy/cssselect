@@ -416,6 +416,17 @@ class TestCssselect(unittest.TestCase):
         css2css(r".\-")  # an identifier consisting of a single "-" is escaped
         css2css(r".-x")  # an identifier just starting with "-" isn't escaped
         css2css(r"e\0 x", "e\N{REPLACEMENT CHARACTER}x")  # NUL becomes U+FFFD
+        # a leading "--" is escaped: the tokenizer cannot parse it unescaped
+        css2css(r".\--x")
+        css2css(r".\--")
+        css2css(r"e\--x", "e--x")  # but a non-leading "--" needs no escape
+        # pseudo-class, functional pseudo-class and pseudo-element names
+        # are escaped too
+        css2css(r":fo\.o")
+        css2css(r":\31 23")
+        css2css(r":fo\.o(2)")
+        css2css(r"::fo\.o")
+        css2css(r"::fo\.o(2)")
 
     def test_parse_errors(self) -> None:
         def get_error(css: str) -> str | None:

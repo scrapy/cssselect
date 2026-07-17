@@ -115,7 +115,7 @@ class Selector:
         if isinstance(self.pseudo_element, FunctionalPseudoElement):
             pseudo_element = f"::{self.pseudo_element.canonical()}"
         elif self.pseudo_element:
-            pseudo_element = f"::{self.pseudo_element}"
+            pseudo_element = f"::{_serialize_ident(self.pseudo_element)}"
         else:
             pseudo_element = ""
         res = f"{self.parsed_tree.canonical()}{pseudo_element}"
@@ -189,7 +189,7 @@ class FunctionalPseudoElement:
 
     def canonical(self) -> str:
         args = "".join(token.css() for token in self.arguments)
-        return f"{self.name}({args})"
+        return f"{_serialize_ident(self.name)}({args})"
 
 
 class Function:
@@ -211,7 +211,7 @@ class Function:
 
     def canonical(self) -> str:
         args = "".join(token.css() for token in self.arguments)
-        return f"{self.selector.canonical()}:{self.name}({args})"
+        return f"{self.selector.canonical()}:{_serialize_ident(self.name)}({args})"
 
     def specificity(self) -> tuple[int, int, int]:
         a, b, c = self.selector.specificity()
@@ -232,7 +232,7 @@ class Pseudo:
         return f"{self.__class__.__name__}[{self.selector!r}:{self.ident}]"
 
     def canonical(self) -> str:
-        return f"{self.selector.canonical()}:{self.ident}"
+        return f"{self.selector.canonical()}:{_serialize_ident(self.ident)}"
 
     def specificity(self) -> tuple[int, int, int]:
         a, b, c = self.selector.specificity()
@@ -287,20 +287,14 @@ class Relation:
         )
 
     def canonical(self) -> str:
-        try:
-            subsel = self.subselector[0].canonical()  # type: ignore[index]
-        except TypeError:
-            subsel = self.subselector.canonical()
+        subsel = self.subselector.canonical()
         if len(subsel) > 1:
             subsel = subsel.lstrip("*")
         return f"{self.selector.canonical()}:has({self._combinator_prefix()}{subsel})"
 
     def specificity(self) -> tuple[int, int, int]:
         a1, b1, c1 = self.selector.specificity()
-        try:
-            a2, b2, c2 = self.subselector[-1].specificity()  # type: ignore[index]
-        except TypeError:
-            a2, b2, c2 = self.subselector.specificity()
+        a2, b2, c2 = self.subselector.specificity()
         return a1 + a2, b1 + b2, c1 + c2
 
 
@@ -984,7 +978,11 @@ def _serialize_ident(value: str) -> str:
                 # (or a '-' followed by a digit).
                 serialized = f"\\{code:x} "
         elif char == "-":
-            if len(value) == 1:
+            if len(value) == 1 or (i == 0 and value[1] == "-"):
+                # CSSOM leaves a leading "--" unescaped (such identifiers
+                # are valid since CSS Syntax 3), but the tokenizer only
+                # implements the CSS 2.1 identifier grammar and would not
+                # be able to parse the result, so escape the first "-".
                 serialized = "\\-"
         elif not (
             code >= 0x80 or char == "_" or "a" <= char <= "z" or "A" <= char <= "Z"
