@@ -560,7 +560,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e f") == ("e/descendant-or-self::*/f")
         assert xpath("e > f") == ("e/f")
         assert xpath("e + f") == (
-            "e/following-sibling::*[(name() = 'f') and (position() = 1)]"
+            "e/following-sibling::*[(self::f) and (position() = 1)]"
         )
         assert xpath("e ~ f") == ("e/following-sibling::f")
         assert xpath("e ~ f:nth-child(3)") == (
@@ -569,8 +569,8 @@ class TestCssselect(unittest.TestCase):
         assert xpath("div#container p") == (
             "div[@id = 'container']/descendant-or-self::*/p"
         )
-        assert xpath("e:where(foo)") == "e[name() = 'foo']"
-        assert xpath("e:where(foo, bar)") == "e[(name() = 'foo') or (name() = 'bar')]"
+        assert xpath("e:where(foo)") == "e[self::foo]"
+        assert xpath("e:where(foo, bar)") == "e[(self::foo) or (self::bar)]"
         assert xpath("e:is(.a,.b)") == xpath("e:is(.a, .b)")
         assert xpath("e:is(*, .foo)") == "e"
         assert xpath("e:where(*, foo)") == "e"
@@ -587,10 +587,14 @@ class TestCssselect(unittest.TestCase):
         with pytest.raises(ExpressionError):
             xpath("e:where(:has(f))")
         # :matches() is an alias of :is()
-        assert xpath("e:matches(foo, bar)") == "e[(name() = 'foo') or (name() = 'bar')]"
+        assert xpath("e:matches(foo, bar)") == "e[(self::foo) or (self::bar)]"
         assert xpath("e:matches(.a, .b)") == xpath("e:is(.a, .b)")
-        # A prefixed name is a node test resolved through the namespace
-        # prefix mapping, not a literal name() comparison
+        # A type selector in predicate position is a node test, not a
+        # literal name() comparison: a prefixed name must resolve through
+        # the namespace prefix mapping, and an unprefixed name must not
+        # match elements in a default namespace (a bare "f" does not).
+        assert xpath("e:is(f)") == "e[self::f]"
+        assert xpath("*:not(f)") == "*[not(self::f)]"
         assert xpath("ns|*") == "ns:*"
         assert xpath("e:is(ns|*)") == "e[self::ns:*]"
         assert xpath("e:where(ns|*)") == "e[self::ns:*]"
@@ -1157,6 +1161,28 @@ class TestCssselect(unittest.TestCase):
         assert pcss(":is(b, ns|a)") == ["ns-el", "plain"]
         assert pcss("*:not(ns|a)") == ["nil", "plain", "ns-el2"]
         assert pcss("b + ns|c") == ["ns-el2"]
+
+    def test_select_with_default_namespace(self) -> None:
+        # A bare "f" translates to an unprefixed XPath node test, which
+        # only matches elements in *no* namespace, so it cannot see
+        # elements in a default namespace. Predicate positions (:is(),
+        # :not(), "+") must agree with that, not compare name() (which
+        # would match such elements by their unprefixed qualified name).
+        document = etree.XML('<r xmlns="urn:d"><x id="x"/><f id="dns-f"/></r>')
+        css_to_xpath = GenericTranslator().css_to_xpath
+
+        def pcss(css: str) -> list[str]:
+            items = typing.cast(
+                "list[etree._Element]", document.xpath(css_to_xpath(css))
+            )
+            return [element.get("id", "nil") for element in items]
+
+        assert pcss("f") == []
+        assert pcss(":is(f)") == []
+        assert pcss("x + f") == []
+        # ... and since "f" does not match the default-namespaced <f>,
+        # :not(f) must not exclude it.
+        assert pcss("*:not(f)") == ["nil", "x", "dns-f"]
 
     def test_select_shakespeare(self) -> None:
         document = html.document_fromstring(HTML_SHAKESPEARE)

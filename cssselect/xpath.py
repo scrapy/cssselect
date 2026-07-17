@@ -83,11 +83,13 @@ class XPathExpr:
             # We weren't doing a test anyway
             return
         prefix, colon, local = self.element.partition(":")
-        if colon and is_safe_name(prefix) and (local == "*" or is_safe_name(local)):
-            # A prefixed name like "ns:f" or "ns:*" (from the CSS "ns|f" or
-            # "ns|*"): name() would compare against the prefix as literally
-            # written in the document, bypassing the XPath prefix mapping,
-            # so use a node test instead.
+        if is_safe_name(prefix) and (not colon or local == "*" or is_safe_name(local)):
+            # A node test, not a name() comparison: name() returns the
+            # qualified name as written in the document, which would bypass
+            # the XPath prefix mapping for a prefixed name like "ns:f" or
+            # "ns:*" (from the CSS "ns|f" or "ns|*"), and would match
+            # elements in a default namespace for an unprefixed name (which
+            # the node test emitted for a bare "f" selector does not).
             self.add_condition(f"self::{self.element}")
         else:
             self.add_condition(
