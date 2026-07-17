@@ -638,6 +638,29 @@ class TestCssselect(unittest.TestCase):
         with pytest.raises(TypeError):
             GenericTranslator().selector_to_xpath("foo")  # type: ignore[arg-type]
 
+    def test_add_name_test(self) -> None:
+        # Directly exercise XPathExpr.add_name_test(), part of the
+        # customization API: translation never feeds it a name unusable in
+        # a node test (xpath_element() compares those with name() itself),
+        # but a subclass can, and then the name() fallback must be used.
+        def name_test(element: str) -> str:
+            xpath = XPathExpr(element=element)
+            xpath.add_name_test()
+            return str(xpath)
+
+        # Safe names become node tests, resolved through the namespace
+        # prefix mapping when prefixed.
+        assert name_test("f") == "*[self::f]"
+        assert name_test("ns:f") == "*[self::ns:f]"
+        assert name_test("ns:*") == "*[self::ns:*]"
+        # Names not usable in a node test fall back to a name() comparison,
+        # whether the local name or the prefix is at fault.
+        assert name_test("di v") == "*[name() = 'di v']"
+        assert name_test("ns:di v") == "*[name() = 'ns:di v']"
+        assert name_test("di v:f") == "*[name() = 'di v:f']"
+        # The universal selector needs no test at all.
+        assert name_test("*") == "*"
+
     def test_unicode(self) -> None:
         css = ".a\xc1b"
         xpath = GenericTranslator().css_to_xpath(css)
