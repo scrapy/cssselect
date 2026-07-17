@@ -842,6 +842,12 @@ class TestCssselect(unittest.TestCase):
         assert series("5") == (0, 5)
         assert series("foo") is None
         assert series("n+") is None
+        # ASCII-case-insensitive
+        assert series("2N+1") == (2, 1)
+        assert series("EVEN") == (2, 0)
+        assert series("Odd") == (2, 1)
+        assert series("N") == (1, 0)
+        assert series("-N+3") == (-1, 3)
 
     def test_lang(self) -> None:
         document = etree.fromstring(XMLLANG_IDS)

@@ -830,7 +830,8 @@ def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:
     for token in tokens:
         if token.type == "STRING":
             raise ValueError("String tokens not allowed in series.")
-    s = "".join(cast("str", token.value) for token in tokens).strip()
+    # The An+B microsyntax is ASCII-case-insensitive: 2N+1, EVEN, Odd...
+    s = ascii_lower("".join(cast("str", token.value) for token in tokens).strip())
     if s == "odd":
         return 2, 1
     if s == "even":
