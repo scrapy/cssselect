@@ -581,6 +581,16 @@ class TestCssselect(unittest.TestCase):
         with pytest.raises(ExpressionError):
             xpath(":nth-last-of-type(1)")
         with pytest.raises(ExpressionError):
+            xpath("ns|*:first-of-type")
+        with pytest.raises(ExpressionError):
+            xpath("ns|*:only-of-type")
+        with pytest.raises(ExpressionError):
+            xpath("ns|*:last-of-type")
+        with pytest.raises(ExpressionError):
+            xpath("ns|*:nth-of-type(1)")
+        with pytest.raises(ExpressionError):
+            xpath("ns|*:nth-last-of-type(1)")
+        with pytest.raises(ExpressionError):
             xpath(":nth-child(n-)")
         with pytest.raises(ExpressionError):
             xpath(":after")
