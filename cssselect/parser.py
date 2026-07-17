@@ -727,8 +727,16 @@ def parse_relative_selector(stream: TokenStream) -> tuple[Token, Selector]:
     else:
         combinator = Token("DELIM", " ", pos=0)
 
+    seen_whitespace = False
     while 1:
-        if next_.type == "IDENT" or next_ in [("DELIM", "."), ("DELIM", "*")]:
+        if next_.type == "S":
+            # Whitespace is valid before the closing parenthesis; anywhere
+            # else it would be a descendant combinator, which is not
+            # supported in :has() arguments.
+            seen_whitespace = True
+        elif next_.type == "IDENT" or next_ in [("DELIM", "."), ("DELIM", "*")]:
+            if seen_whitespace:
+                raise SelectorSyntaxError(f"Expected an argument, got {next_}")
             subselector_tokens.append(next_)
         elif next_ == ("DELIM", ")"):
             break

@@ -480,11 +480,17 @@ class TestCssselect(unittest.TestCase):
         # Unsupported :has() with several arguments
         assert get_error(":has(a, b)") == ("Expected an argument, got <DELIM ',' at 6>")
         assert get_error(":has()") == ("Expected selector, got <EOF at 5>")
+        assert get_error(":has(a b)") == ("Expected an argument, got <IDENT 'b' at 7>")
+        assert get_error(":has(a .b)") == ("Expected an argument, got <DELIM '.' at 7>")
         # '-' is not a valid relative combinator
         assert get_error(":has(- p)") == ("Expected an argument, got <DELIM '-' at 5>")
         # Strings and numbers are not selectors
         assert get_error(':has("a")') == ("Expected an argument, got <STRING 'a' at 5>")
         assert get_error(":has(1)") == ("Expected an argument, got <NUMBER '1' at 5>")
+        # Whitespace around a :has() argument is not a combinator
+        assert get_error("e:has(f )") is None
+        assert get_error("e:has( > f )") is None
+        assert get_error(":has(.a )") is None
 
     def test_translation(self) -> None:
         def xpath(css: str) -> str:
