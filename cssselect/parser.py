@@ -115,12 +115,14 @@ class Selector:
         if isinstance(self.pseudo_element, FunctionalPseudoElement):
             pseudo_element = f"::{self.pseudo_element.canonical()}"
         elif self.pseudo_element:
-            pseudo_element = f"::{self.pseudo_element}"
+            pseudo_element = f"::{_serialize_ident(self.pseudo_element)}"
         else:
             pseudo_element = ""
         res = f"{self.parsed_tree.canonical()}{pseudo_element}"
-        if len(res) > 1:
-            res = res.lstrip("*")
+        # Strip a redundant universal selector from e.g. "*.foo" (but not
+        # from e.g. "* > foo").
+        if len(res) > 1 and res[0] == "*" and res[1] in "#.[:":
+            res = res[1:]
         return res
 
     def specificity(self) -> tuple[int, int, int]:
@@ -148,7 +150,7 @@ class Class:
         return f"{self.__class__.__name__}[{self.selector!r}.{self.class_name}]"
 
     def canonical(self) -> str:
-        return f"{self.selector.canonical()}.{self.class_name}"
+        return f"{self.selector.canonical()}.{_serialize_ident(self.class_name)}"
 
     def specificity(self) -> tuple[int, int, int]:
         a, b, c = self.selector.specificity()
@@ -187,7 +189,7 @@ class FunctionalPseudoElement:
 
     def canonical(self) -> str:
         args = "".join(token.css() for token in self.arguments)
-        return f"{self.name}({args})"
+        return f"{_serialize_ident(self.name)}({args})"
 
 
 class Function:
@@ -209,7 +211,7 @@ class Function:
 
     def canonical(self) -> str:
         args = "".join(token.css() for token in self.arguments)
-        return f"{self.selector.canonical()}:{self.name}({args})"
+        return f"{self.selector.canonical()}:{_serialize_ident(self.name)}({args})"
 
     def specificity(self) -> tuple[int, int, int]:
         a, b, c = self.selector.specificity()
@@ -230,7 +232,7 @@ class Pseudo:
         return f"{self.__class__.__name__}[{self.selector!r}:{self.ident}]"
 
     def canonical(self) -> str:
-        return f"{self.selector.canonical()}:{self.ident}"
+        return f"{self.selector.canonical()}:{_serialize_ident(self.ident)}"
 
     def specificity(self) -> tuple[int, int, int]:
         a, b, c = self.selector.specificity()
@@ -272,24 +274,27 @@ class Relation:
         self.combinator = combinator
         self.subselector = subselector
 
+    def _combinator_prefix(self) -> str:
+        # The descendant combinator is implicit in :has() arguments.
+        if self.combinator.value == " ":
+            return ""
+        return f"{self.combinator.value} "
+
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}[{self.selector!r}:has({self.subselector!r})]"
+        return (
+            f"{self.__class__.__name__}[{self.selector!r}"
+            f":has({self._combinator_prefix()}{self.subselector!r})]"
+        )
 
     def canonical(self) -> str:
-        try:
-            subsel = self.subselector[0].canonical()  # type: ignore[index]
-        except TypeError:
-            subsel = self.subselector.canonical()
+        subsel = self.subselector.canonical()
         if len(subsel) > 1:
             subsel = subsel.lstrip("*")
-        return f"{self.selector.canonical()}:has({subsel})"
+        return f"{self.selector.canonical()}:has({self._combinator_prefix()}{subsel})"
 
     def specificity(self) -> tuple[int, int, int]:
         a1, b1, c1 = self.selector.specificity()
-        try:
-            a2, b2, c2 = self.subselector[-1].specificity()  # type: ignore[index]
-        except TypeError:
-            a2, b2, c2 = self.subselector.specificity()
+        a2, b2, c2 = self.subselector.specificity()
         return a1 + a2, b1 + b2, c1 + c2
 
 
@@ -310,12 +315,16 @@ class Matching:
         selector_arguments = []
         for s in self.selector_list:
             selarg = s.canonical()
-            selector_arguments.append(selarg.lstrip("*"))
-        args_str = ", ".join(str(s) for s in selector_arguments)
+            if len(selarg) > 1:
+                selarg = selarg.lstrip("*")
+            selector_arguments.append(selarg)
+        args_str = ", ".join(selector_arguments)
         return f"{self.selector.canonical()}:is({args_str})"
 
     def specificity(self) -> tuple[int, int, int]:
-        return max(x.specificity() for x in self.selector_list)
+        a1, b1, c1 = self.selector.specificity()
+        a2, b2, c2 = max(x.specificity() for x in self.selector_list)
+        return a1 + a2, b1 + b2, c1 + c2
 
 
 class SpecificityAdjustment:
@@ -336,12 +345,16 @@ class SpecificityAdjustment:
         selector_arguments = []
         for s in self.selector_list:
             selarg = s.canonical()
-            selector_arguments.append(selarg.lstrip("*"))
-        args_str = ", ".join(str(s) for s in selector_arguments)
+            if len(selarg) > 1:
+                selarg = selarg.lstrip("*")
+            selector_arguments.append(selarg)
+        args_str = ", ".join(selector_arguments)
         return f"{self.selector.canonical()}:where({args_str})"
 
     def specificity(self) -> tuple[int, int, int]:
-        return 0, 0, 0
+        # :where() itself contributes no specificity, but the compound
+        # selector it applies to does.
+        return self.selector.specificity()
 
 
 class Attrib:
@@ -391,7 +404,9 @@ class Attrib:
         return f"{self.__class__.__name__}[{self.selector!r}[{attrib} {self.operator} {self.value.value!r}]]"
 
     def canonical(self) -> str:
-        attrib = f"{self.namespace}|{self.attrib}" if self.namespace else self.attrib
+        attrib = _serialize_ident(self.attrib)
+        if self.namespace:
+            attrib = f"{_serialize_ident(self.namespace)}|{attrib}"
 
         if self.operator == "exists":
             op = attrib
@@ -425,9 +440,9 @@ class Element:
         return f"{self.__class__.__name__}[{self.canonical()}]"
 
     def canonical(self) -> str:
-        element = self.element or "*"
+        element = _serialize_ident(self.element) if self.element else "*"
         if self.namespace:
-            element = f"{self.namespace}|{element}"
+            element = f"{_serialize_ident(self.namespace)}|{element}"
         return element
 
     def specificity(self) -> tuple[int, int, int]:
@@ -449,7 +464,7 @@ class Hash:
         return f"{self.__class__.__name__}[{self.selector!r}#{self.id}]"
 
     def canonical(self) -> str:
-        return f"{self.selector.canonical()}#{self.id}"
+        return f"{self.selector.canonical()}#{_serialize_ident(self.id)}"
 
     def specificity(self) -> tuple[int, int, int]:
         a, b, c = self.selector.specificity()
@@ -474,7 +489,8 @@ class CombinedSelector:
         subsel = self.subselector.canonical()
         if len(subsel) > 1:
             subsel = subsel.lstrip("*")
-        return f"{self.selector.canonical()} {self.combinator} {subsel}"
+        combinator = " " if self.combinator == " " else f" {self.combinator} "
+        return f"{self.selector.canonical()}{combinator}{subsel}"
 
     def specificity(self) -> tuple[int, int, int]:
         a1, b1, c1 = self.selector.specificity()
@@ -574,7 +590,9 @@ def parse_selector(stream: TokenStream) -> tuple[Tree, PseudoElement | None]:
 
 
 def parse_simple_selector(
-    stream: TokenStream, inside_negation: bool = False
+    stream: TokenStream,
+    inside_negation: bool = False,
+    inside_selector_list: bool = False,
 ) -> tuple[Tree, PseudoElement | None]:
     stream.skip_whitespace()
     selector_start = len(stream.used)
@@ -613,8 +631,12 @@ def parse_simple_selector(
             stream.next()
             result = Class(result, stream.next_ident())
         elif peek == ("DELIM", "|"):
+            # The explicit "no namespace" syntax, e.g. |div: only valid at
+            # the very start of a simple selector.
+            if len(stream.used) != selector_start:
+                raise SelectorSyntaxError(f"Expected selector, got {peek}")
             stream.next()
-            result = Element(None, stream.next_ident())
+            result = Element(None, stream.next_ident_or_star())
         elif peek == ("DELIM", "["):
             stream.next()
             result = parse_attrib(result, stream)
@@ -637,24 +659,30 @@ def parse_simple_selector(
                 continue
             if stream.peek() != ("DELIM", "("):
                 result = Pseudo(result, ident)
-                if repr(result) == "Pseudo[Element[*]:scope]" and not (
-                    len(stream.used) == 2
-                    or (len(stream.used) == 3 and stream.used[0].type == "S")
-                    or (len(stream.used) >= 3 and stream.used[-3].is_delim(","))
-                    or (
-                        len(stream.used) >= 4
-                        and stream.used[-3].type == "S"
-                        and stream.used[-4].is_delim(",")
-                    )
-                ):
-                    raise SelectorSyntaxError(
-                        'Got immediate child pseudo-element ":scope" '
-                        "not at the start of a selector"
-                    )
+                if result.ident == "scope":
+                    # :scope is only supported at the start of a selector,
+                    # i.e. never in :is()/:where()/:matches() arguments
+                    # (where a preceding comma separates arguments, not
+                    # selectors), and otherwise only when the tokens
+                    # preceding its compound selector are the start of the
+                    # input or a comma.
+                    preceding = stream.used[:selector_start]
+                    while preceding and preceding[-1].type == "S":
+                        preceding = preceding[:-1]
+                    if inside_selector_list or (
+                        preceding and not preceding[-1].is_delim(",")
+                    ):
+                        raise SelectorSyntaxError(
+                            'Got pseudo-class ":scope" not at the start of a selector'
+                        )
                 continue
             stream.next()
             stream.skip_whitespace()
             if ident.lower() == "not":
+                if inside_selector_list:
+                    raise SelectorSyntaxError(
+                        ":not() is not supported inside :is(), :where() and :matches()"
+                    )
                 if inside_negation:
                     raise SelectorSyntaxError("Got nested :not()")
                 argument, argument_pseudo_element = parse_simple_selector(
@@ -703,36 +731,48 @@ def parse_arguments(stream: TokenStream) -> list[Token]:  # noqa: RET503
             raise SelectorSyntaxError(f"Expected an argument, got {next_}")
 
 
-def parse_relative_selector(stream: TokenStream) -> tuple[Token, Selector]:  # noqa: RET503
+def parse_relative_selector(stream: TokenStream) -> tuple[Token, Selector]:
     stream.skip_whitespace()
-    subselector = ""
+    subselector_tokens: list[Token] = []
     next_ = stream.next()
 
-    if next_ in [("DELIM", "+"), ("DELIM", "-"), ("DELIM", ">"), ("DELIM", "~")]:
+    if next_ in [("DELIM", "+"), ("DELIM", ">"), ("DELIM", "~")]:
         combinator = next_
         stream.skip_whitespace()
         next_ = stream.next()
     else:
         combinator = Token("DELIM", " ", pos=0)
 
+    seen_whitespace = False
     while 1:
-        if next_.type in ("IDENT", "STRING", "NUMBER") or next_ in [
-            ("DELIM", "."),
-            ("DELIM", "*"),
-        ]:
-            subselector += cast("str", next_.value)
+        if next_.type == "S":
+            # Whitespace is valid before the closing parenthesis; anywhere
+            # else it would be a descendant combinator, which is not
+            # supported in :has() arguments.
+            seen_whitespace = True
+        elif next_.type == "IDENT" or next_ in [("DELIM", "."), ("DELIM", "*")]:
+            if seen_whitespace:
+                raise SelectorSyntaxError(f"Expected an argument, got {next_}")
+            subselector_tokens.append(next_)
         elif next_ == ("DELIM", ")"):
-            result = parse(subselector)
-            return combinator, result[0]
+            break
         else:
             raise SelectorSyntaxError(f"Expected an argument, got {next_}")
         next_ = stream.next()
+
+    # Reparse the collected tokens instead of their concatenated source
+    # text, so that escaped identifiers are preserved.
+    subselector_tokens.append(EOFToken(next_.pos))
+    result, _ = parse_simple_selector(TokenStream(subselector_tokens))
+    return combinator, Selector(result)
 
 
 def parse_simple_selector_arguments(stream: TokenStream) -> list[Tree]:
     arguments = []
     while 1:
-        result, pseudo_element = parse_simple_selector(stream, True)
+        result, pseudo_element = parse_simple_selector(
+            stream, inside_negation=True, inside_selector_list=True
+        )
         if pseudo_element:
             raise SelectorSyntaxError(
                 f"Got pseudo-element ::{pseudo_element} inside function"
@@ -805,7 +845,8 @@ def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:
     for token in tokens:
         if token.type == "STRING":
             raise ValueError("String tokens not allowed in series.")
-    s = "".join(cast("str", token.value) for token in tokens).strip()
+    # The An+B microsyntax is ASCII-case-insensitive: 2N+1, EVEN, Odd...
+    s = ascii_lower("".join(cast("str", token.value) for token in tokens).strip())
     if s == "odd":
         return 2, 1
     if s == "even":
@@ -865,7 +906,13 @@ class Token(tuple[str, str | None]):  # noqa: SLOT001
 
     def css(self) -> str:
         if self.type == "STRING":
-            return repr(self.value)
+            # Escape as CSS (repr() would use Python escapes, which mean
+            # something else in CSS, e.g. '\n' is just the letter 'n').
+            escaped = cast("str", self.value).replace("\\", "\\\\").replace("'", "\\'")
+            escaped = _sub_string_control_char(_replace_string_control_char, escaped)
+            return f"'{escaped}'"
+        if self.type == "IDENT":
+            return _serialize_ident(cast("str", self.value))
         return cast("str", self.value)
 
 
@@ -911,6 +958,7 @@ _match_string_by_quote = {
 _sub_simple_escape = re.compile(r"\\(.)").sub
 _sub_unicode_escape = re.compile(TokenMacros.unicode_escape, re.IGNORECASE).sub
 _sub_newline_escape = re.compile(r"\\(?:\n|\r\n|\r|\f)").sub
+_sub_string_control_char = re.compile(r"[\x00-\x1f\x7f]").sub
 
 # Same as r'\1', but faster on CPython
 _replace_simple = operator.methodcaller("group", 1)
@@ -923,9 +971,49 @@ def _replace_unicode(match: re.Match[str]) -> str:
     return chr(codepoint)
 
 
+def _replace_string_control_char(match: re.Match[str]) -> str:
+    # The trailing space ends the escape sequence, in case the next
+    # character is a hexadecimal digit.
+    return f"\\{ord(match.group()):x} "
+
+
 def unescape_ident(value: str) -> str:
     value = _sub_unicode_escape(_replace_unicode, value)
     return _sub_simple_escape(_replace_simple, value)
+
+
+def _serialize_ident(value: str) -> str:
+    """Serialize a string as a CSS identifier, escaping special characters.
+
+    Implements the CSSOM "serialize an identifier" algorithm:
+    https://drafts.csswg.org/cssom/#serialize-an-identifier
+    """
+    result = []
+    for i, char in enumerate(value):
+        code = ord(char)
+        serialized = char
+        if code == 0:
+            serialized = "\N{REPLACEMENT CHARACTER}"
+        elif code <= 0x1F or code == 0x7F:
+            serialized = f"\\{code:x} "
+        elif "0" <= char <= "9":
+            if i == 0 or (i == 1 and value[0] == "-"):
+                # An identifier cannot start with a digit
+                # (or a '-' followed by a digit).
+                serialized = f"\\{code:x} "
+        elif char == "-":
+            if len(value) == 1 or (i == 0 and value[1] == "-"):
+                # CSSOM leaves a leading "--" unescaped (such identifiers
+                # are valid since CSS Syntax 3), but the tokenizer only
+                # implements the CSS 2.1 identifier grammar and would not
+                # be able to parse the result, so escape the first "-".
+                serialized = "\\-"
+        elif not (
+            code >= 0x80 or char == "_" or "a" <= char <= "z" or "A" <= char <= "Z"
+        ):
+            serialized = f"\\{char}"
+        result.append(serialized)
+    return "".join(result)
 
 
 def tokenize(s: str) -> Iterator[Token]:

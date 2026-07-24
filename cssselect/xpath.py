@@ -652,7 +652,7 @@ class GenericTranslator:
         self, xpath: XPathExpr, function: Function
     ) -> XPathExpr:
         if xpath.element == "*":
-            raise ExpressionError("*:nth-of-type() is not implemented")
+            raise ExpressionError("*:nth-last-of-type() is not implemented")
         return self.xpath_nth_child_function(
             xpath, function, last=True, add_name_test=False
         )
@@ -688,7 +688,8 @@ class GenericTranslator:
     # for product in response.css('.product'):
     #     description = product.css(':scope > div::text').get()
     def xpath_scope_pseudo(self, xpath: XPathExpr) -> XPathExpr:
-        return xpath.add_condition("1")
+        xpath.add_name_test()
+        return xpath.add_condition("position() = 1")
 
     def xpath_first_child_pseudo(self, xpath: XPathExpr) -> XPathExpr:
         return xpath.add_condition("count(preceding-sibling::*) = 0")
