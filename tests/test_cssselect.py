@@ -788,7 +788,7 @@ class TestCssselect(unittest.TestCase):
         # :scope, alone and in a compound selector
         assert xpath(":scope") == "*[position() = 1]"
         assert xpath("*:scope") == "*[position() = 1]"
-        assert xpath("div:scope") == "*[(name() = 'div') and (position() = 1)]"
+        assert xpath("div:scope") == "*[(self::div) and (position() = 1)]"
         assert xpath(".foo:scope") == (
             "*[(@class and contains("
             "concat(' ', normalize-space(@class), ' '), ' foo ')) "
