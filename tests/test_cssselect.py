@@ -544,8 +544,61 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:has(~ f)") == "e[following-sibling::f]"
         assert (
             xpath("e:has(+ f)")
-            == "e[following-sibling::*[(name() = 'f') and (position() = 1)]]"
+            == "e[following-sibling::*[(self::f) and (position() = 1)]]"
         )
+        assert xpath("e:has(> f.bar)") == (
+            "e[./f[@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
+        )
+        assert xpath("e:has(> .bar)") == (
+            "e[./*[@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
+        )
+        assert xpath("e:has(~ f.bar)") == (
+            "e[following-sibling::f[@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
+        )
+        assert xpath("e:has(+ f.bar)") == (
+            "e[following-sibling::*[((@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' bar ')) "
+            "and (self::f)) and (position() = 1)]]"
+        )
+        assert xpath("e:has(+ .bar)") == (
+            "e[following-sibling::*[(@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' bar ')) "
+            "and (position() = 1)]]"
+        )
+        assert xpath("e:has(+ *)") == "e[following-sibling::*[position() = 1]]"
+        assert xpath("e.foo:has(f)") == (
+            "e[(@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' foo ')) and (descendant::f)]"
+        )
+        # Negating :has(): the relative selector must be kept as a predicate,
+        # not turned into a literal name test.
+        assert xpath("e:not(:has(a))") == "e[not(descendant::a)]"
+        assert xpath("e:not(:has(> a))") == "e[not(./a)]"
+        assert xpath("e:not(:has(~ a))") == "e[not(following-sibling::a)]"
+        assert xpath("e:not(:has(+ a))") == (
+            "e[not(following-sibling::*[(self::a) and (position() = 1)])]"
+        )
+        # Element-reading pseudo-classes chained after :has()
+        assert xpath("e:has(f):first-of-type") == (
+            "e[(descendant::f) and (count(preceding-sibling::e) = 0)]"
+        )
+        assert xpath("e:has(f):last-of-type") == (
+            "e[(descendant::f) and (count(following-sibling::e) = 0)]"
+        )
+        assert xpath("e:has(f):nth-of-type(2)") == (
+            "e[(descendant::f) and (count(preceding-sibling::e) = 1)]"
+        )
+        assert xpath("e:has(f):nth-last-of-type(2)") == (
+            "e[(descendant::f) and (count(following-sibling::e) = 1)]"
+        )
+        assert xpath("e:has(f):only-of-type") == (
+            "e[(descendant::f) and (count(parent::*/child::e) = 1)]"
+        )
+        with pytest.raises(ExpressionError):
+            xpath("*:has(f):first-of-type")
         assert xpath('e:contains("foo")') == ("e[contains(., 'foo')]")
         assert xpath("e:ConTains(foo)") == ("e[contains(., 'foo')]")
         assert xpath("e.warning") == (
@@ -582,10 +635,8 @@ class TestCssselect(unittest.TestCase):
             "(@class and contains("
             "concat(' ', normalize-space(@class), ' '), ' b ')))]"
         )
-        with pytest.raises(ExpressionError):
-            xpath("e:is(:has(f))")
-        with pytest.raises(ExpressionError):
-            xpath("e:where(:has(f))")
+        assert xpath("e:is(:has(f))") == "e[descendant::f]"
+        assert xpath("e:where(:has(f))") == "e[descendant::f]"
         # :matches() is an alias of :is()
         assert xpath("e:matches(foo, bar)") == "e[(self::foo) or (self::bar)]"
         assert xpath("e:matches(.a, .b)") == xpath("e:is(.a, .b)")
@@ -1109,6 +1160,33 @@ class TestCssselect(unittest.TestCase):
         ]
         assert pcss("link:has(*)") == []
         assert pcss("ol:has(div)") == ["first-ol"]
+        assert pcss("ol:has(> div)") == []
+        assert pcss("ol:has(> li.c)") == ["first-ol"]
+        assert pcss("li:has(> div)") == ["second-li"]
+        assert pcss("li:has(+ li.c)") == ["second-li", "third-li"]
+        assert pcss("li:has(~ li.c)") == ["first-li", "second-li", "third-li"]
+        assert pcss("li:has(+ *)") == [
+            "first-li",
+            "second-li",
+            "third-li",
+            "fourth-li",
+            "fifth-li",
+            "sixth-li",
+        ]
+        assert pcss("ol:not(:has(div))") == ["second-ol"]
+        assert pcss("ol:not(:has(> div))") == ["first-ol", "second-ol"]
+        assert pcss("li:not(:has(div))") == [
+            "first-li",
+            "third-li",
+            "fourth-li",
+            "fifth-li",
+            "sixth-li",
+            "seventh-li",
+        ]
+        assert pcss("li:has(div):nth-of-type(2)") == ["second-li"]
+        assert pcss("li:has(div):first-of-type") == []
+        assert pcss("ol:has(li):first-of-type") == ["first-ol"]
+        assert pcss("p:has(b):only-of-type") == ["paragraph"]
         assert pcss(":is(#first-li, #second-li)", ":is(#first-li,#second-li)") == [
             "first-li",
             "second-li",

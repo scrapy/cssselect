@@ -104,29 +104,14 @@ class XPathExpr:
         """
         self.path += "*/"
 
-    def join(
-        self,
-        combiner: str,
-        other: XPathExpr,
-        closing_combiner: str | None = None,
-        has_inner_condition: bool = False,
-    ) -> Self:
+    def join(self, combiner: str, other: XPathExpr) -> Self:
         path = str(self) + combiner
         # Any "star prefix" is redundant when joining.
         if other.path != "*/":
             path += other.path
         self.path = path
-        if not has_inner_condition:
-            self.element = (
-                other.element + closing_combiner if closing_combiner else other.element
-            )
-            self.condition = other.condition
-        else:
-            self.element = other.element
-            if other.condition:
-                self.element += "[" + other.condition + "]"
-            if closing_combiner:
-                self.element += closing_combiner
+        self.element = other.element
+        self.condition = other.condition
         return self
 
 
@@ -487,33 +472,35 @@ class GenericTranslator:
         """right is a sibling after left, immediately or not"""
         return left.join("/following-sibling::", right)
 
+    # The relative selector is kept in `condition` (instead of being folded
+    # into `path`/`element`) so that `element` stays a plain element name:
+    # later steps such as :first-of-type or :not() read and rewrite it.
+
     def xpath_relation_descendant_combinator(
         self, left: XPathExpr, right: XPathExpr
     ) -> XPathExpr:
         """right is a child, grand-child or further descendant of left; select left"""
-        return left.join(
-            "[descendant::", right, closing_combiner="]", has_inner_condition=True
-        )
+        return left.add_condition(f"descendant::{right}")
 
     def xpath_relation_child_combinator(
         self, left: XPathExpr, right: XPathExpr
     ) -> XPathExpr:
         """right is an immediate child of left; select left"""
-        return left.join("[./", right, closing_combiner="]")
+        return left.add_condition(f"./{right}")
 
     def xpath_relation_direct_adjacent_combinator(
         self, left: XPathExpr, right: XPathExpr
     ) -> XPathExpr:
         """right is a sibling immediately after left; select left"""
-        return left.add_condition(
-            f"following-sibling::*[(name() = '{right.element}') and (position() = 1)]"
-        )
+        right.add_name_test()
+        right.add_condition("position() = 1")
+        return left.add_condition(f"following-sibling::{right}")
 
     def xpath_relation_indirect_adjacent_combinator(
         self, left: XPathExpr, right: XPathExpr
     ) -> XPathExpr:
         """right is a sibling after left, immediately or not; select left"""
-        return left.join("[following-sibling::", right, closing_combiner="]")
+        return left.add_condition(f"following-sibling::{right}")
 
     # Function: dispatch by function/pseudo-class name
 
