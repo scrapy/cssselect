@@ -36,10 +36,12 @@ from cssselect import (
 from cssselect.parser import (
     Function,
     FunctionalPseudoElement,
+    Matching,
     PseudoElement,
     Token,
     parse_series,
     tokenize,
+    unescape_ident,
 )
 from cssselect.xpath import XPathExpr
 
@@ -485,7 +487,11 @@ class TestCssselect(unittest.TestCase):
         assert get_error(":lang(fr)") is None
         assert get_error(":lang(fr") == ("Expected an argument, got <EOF at 8>")
         assert get_error(':contains("foo') == ("Unclosed string at 10")
+        # A raw newline terminates the string match without closing it.
+        assert get_error('[a="b\nc"]') == ("Invalid string at 3")
         assert get_error("foo!") == ("Expected selector, got <DELIM '!' at 3>")
+        # An unclosed comment runs to the end of the input and is ignored.
+        assert get_error("a /* unclosed") is None
 
         # Mis-placed pseudo-elements
         assert get_error("a:before:empty") == (
@@ -498,6 +504,9 @@ class TestCssselect(unittest.TestCase):
             "Got pseudo-element ::before inside :not() at 12"
         )
         assert get_error(":not(:not(a))") == ("Got nested :not()")
+        # :not() only takes a single simple selector as an argument
+        assert get_error(":not(a b)") == ("Expected ')', got <S ' ' at 6>")
+        assert get_error(":not(a, b)") == ("Expected ')', got <DELIM ',' at 6>")
         # A :not() inside :is()/:where()/:matches() is not a nested :not()
         # and gets its own message
         assert get_error(":is(:not(a))") == (
@@ -591,6 +600,9 @@ class TestCssselect(unittest.TestCase):
             "e[@foo and substring(@foo, string-length(@foo)-2) = 'bar']"
         )
         assert xpath('e[foo*="bar"]') == ("e[@foo and contains(@foo, 'bar')]")
+        assert xpath("e[foo!=bar]") == ("e[not(@foo) or @foo != 'bar']")
+        # An empty value for != only requires the attribute to differ.
+        assert xpath("e[foo!='']") == ("e[@foo != '']")
         assert xpath('e[hreflang|="en"]') == (
             "e[@hreflang and (@hreflang = 'en' or starts-with(@hreflang, 'en-'))]"
         )
@@ -817,10 +829,57 @@ class TestCssselect(unittest.TestCase):
             xpath(":lorem(ipsum)")
         with pytest.raises(ExpressionError):
             xpath("::lorem-ipsum")
+        with pytest.raises(ExpressionError, match=r":contains\(\)"):
+            xpath(":contains(1)")
+        with pytest.raises(ExpressionError, match=r":lang\(\)"):
+            xpath(":lang(1)")
         with pytest.raises(TypeError):
             GenericTranslator().css_to_xpath(4)  # type: ignore[arg-type]
         with pytest.raises(TypeError):
             GenericTranslator().selector_to_xpath("foo")  # type: ignore[arg-type]
+
+    def test_translation_customization_api(self) -> None:
+        # XPathExpr.add_star_prefix() constrains the context to a single
+        # parent; it is part of the customization API rather than used by
+        # the built-in translation.
+        expr = XPathExpr("foo")
+        expr.add_star_prefix()
+        assert expr.path == "foo*/"
+
+        # join() drops a redundant "*/" star prefix from the joined path.
+        left = XPathExpr("a")
+        star = XPathExpr()
+        star.add_star_prefix()
+        assert star.path == "*/"
+        left.join(" ", star)
+        # The "*/" of ``star`` is omitted; only ``str(left) + combiner`` remains.
+        assert left.path == "a* "
+
+        # An unknown parsed-tree type has no xpath_<type>() handler.
+        class Bogus:
+            pass
+
+        with pytest.raises(ExpressionError, match="Bogus is not supported"):
+            GenericTranslator().xpath(Bogus())  # type: ignore[arg-type]
+
+        # lower_case_attribute_values is an extension point: when enabled,
+        # attribute values are lower-cased in the generated XPath.
+        class LowerValues(GenericTranslator):
+            lower_case_attribute_values = True
+
+        assert LowerValues().css_to_xpath("[Foo=BAR]", prefix="") == "*[@Foo = 'bar']"
+
+        # A member of an :is()/:where() selector list that translates to a
+        # path (rather than a predicate) cannot be embedded in the outer
+        # predicate and is rejected. The parser does not currently produce
+        # such an argument, so build the Matching node directly.
+        base = parse("x")[0].parsed_tree
+        combined = parse("a b")[0].parsed_tree
+        matching = Matching(base, [combined])
+        with pytest.raises(
+            ExpressionError, match=r"not supported inside :is\(\) and :where\(\)"
+        ):
+            GenericTranslator().xpath(matching)
 
     def test_add_name_test(self) -> None:
         # Directly exercise XPathExpr.add_name_test(), part of the
@@ -888,6 +947,11 @@ class TestCssselect(unittest.TestCase):
         assert css_to_xpath("*[aval=\"'\\20\r\n '\"]") == (
             """descendant-or-self::*[@aval = "'  '"]"""
         )
+        # A code point beyond the Unicode range is replaced with U+FFFD.
+        assert css_to_xpath(r"\110000") == ("descendant-or-self::*[name() = '\ufffd']")
+        # unescape_ident() resolves both unicode and simple escapes.
+        assert unescape_ident(r"\41 B") == "AB"
+        assert unescape_ident(r"\-foo") == "-foo"
 
     def test_xpath_pseudo_elements(self) -> None:
         class CustomTranslator(GenericTranslator):
@@ -1029,6 +1093,8 @@ class TestCssselect(unittest.TestCase):
         assert series("5") == (0, 5)
         assert series("foo") is None
         assert series("n+") is None
+        # String tokens are not allowed in a series.
+        assert series('"foo"') is None
         # ASCII-case-insensitive
         assert series("2N+1") == (2, 1)
         assert series("EVEN") == (2, 0)
@@ -1062,6 +1128,13 @@ class TestCssselect(unittest.TestCase):
             "eighth",
         ]
         assert langid(":lang(es)") == []
+
+        # The HTML translator requires a string or ident argument too.
+        with pytest.raises(ExpressionError, match=r":lang\(\)"):
+            HTMLTranslator().css_to_xpath(":lang(1)")
+        # The XHTML variant keeps element and attribute names case-sensitive.
+        assert HTMLTranslator(xhtml=True).css_to_xpath("A") == ("descendant-or-self::A")
+        assert HTMLTranslator().css_to_xpath("A") == ("descendant-or-self::a")
 
     def test_argument_types(self) -> None:
         class CustomTranslator(GenericTranslator):
