@@ -118,7 +118,11 @@ class TestCssselect(unittest.TestCase):
             "Class[Element[td].foo]",
             "CombinedSelector[Class[Element[div].bar] <followed> Element[span]]",
         ]
-        assert parse_many("div > p") == ["CombinedSelector[Element[div] > Element[p]]"]
+        assert parse_many(
+            "div > p",
+            "div /* comment */ > p",
+            "div > /* comment1 */ /* comment2 */ p",
+        ) == ["CombinedSelector[Element[div] > Element[p]]"]
         assert parse_many("td:first") == ["Pseudo[Element[td]:first]"]
         assert parse_many("td:first") == ["Pseudo[Element[td]:first]"]
         assert parse_many("td :first") == [
@@ -157,9 +161,11 @@ class TestCssselect(unittest.TestCase):
             "Function[Element[div]:contains(['foo'])]"
         ]
         assert parse_many("div#foobar") == ["Hash[Element[div]#foobar]"]
-        assert parse_many("div:not(div.foo)") == [
-            "Negation[Element[div]:not(Class[Element[div].foo])]"
-        ]
+        assert parse_many(
+            "div:not(div.foo)",
+            "div:not( div.foo )",
+            "div:not(div.foo /* comment */)",
+        ) == ["Negation[Element[div]:not(Class[Element[div].foo])]"]
         assert parse_many("div:has(div.foo)") == [
             "Relation[Element[div]:has(Selector[Class[Element[div].foo]])]"
         ]
@@ -492,6 +498,16 @@ class TestCssselect(unittest.TestCase):
         assert get_error("foo!") == ("Expected selector, got <DELIM '!' at 3>")
         # An unclosed comment runs to the end of the input and is ignored.
         assert get_error("a /* unclosed") is None
+        # A comment between two whitespace runs yields two consecutive
+        # whitespace tokens, which must parse like a single one.
+        assert get_error("a /* x */ /* y */ b") is None
+        assert get_error("[a /* c */ = b]") is None
+        assert get_error("[a = /* c */ b]") is None
+        assert get_error("[a /* c */ ]") is None
+        assert get_error(":is(a /* c */ , b)") is None
+        assert get_error(":nth-child(2n /* c */ + 1)") is None
+        assert get_error("a:lang( en /* c */ )") is None
+        assert get_error(":not( a /* c */ )") is None
 
         # Mis-placed pseudo-elements
         assert get_error("a:before:empty") == (
@@ -505,8 +521,13 @@ class TestCssselect(unittest.TestCase):
         )
         assert get_error(":not(:not(a))") == ("Got nested :not()")
         # :not() only takes a single simple selector as an argument
-        assert get_error(":not(a b)") == ("Expected ')', got <S ' ' at 6>")
+        assert get_error(":not(a b)") == ("Expected ')', got <IDENT 'b' at 7>")
         assert get_error(":not(a, b)") == ("Expected ')', got <DELIM ',' at 6>")
+        # Whitespace around a :not() argument is not a combinator
+        assert get_error(":not(a )") is None
+        assert get_error(":not( a )") is None
+        assert get_error("e:not(.a )") is None
+        assert get_error(":not([a] )") is None
         # A :not() inside :is()/:where()/:matches() is not a nested :not()
         # and gets its own message
         assert get_error(":is(:not(a))") == (

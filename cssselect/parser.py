@@ -688,6 +688,9 @@ def parse_simple_selector(
                 argument, argument_pseudo_element = parse_simple_selector(
                     stream, inside_negation=True
                 )
+                # Whitespace before the closing parenthesis is not a
+                # descendant combinator.
+                stream.skip_whitespace()
                 next_ = stream.next()
                 if argument_pseudo_element:
                     raise SelectorSyntaxError(
@@ -1128,6 +1131,7 @@ class TokenStream:
         raise SelectorSyntaxError(f"Expected ident or '*', got {next_}")
 
     def skip_whitespace(self) -> None:
-        peek = self.peek()
-        if peek.type == "S":
+        # A comment between two whitespace runs yields two consecutive
+        # whitespace tokens, so a single check is not enough.
+        while self.peek().type == "S":
             self.next()
