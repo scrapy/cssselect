@@ -113,11 +113,8 @@ be implemented):
   allowed (e.g. ``:is(a b)`` or ``:is(a > b)``). ``:not()`` and ``:scope`` are
   also rejected inside them, while ``:has()`` is supported (e.g.
   ``:is(:has(> a))``).
-* The ``:has()`` pseudo-class. Limitation: it takes a single argument, made of
-  an optional leading combinator (``>``, ``+`` or ``~``) followed by one
-  *compound selector* built only from type, class and universal selectors
-  (e.g. ``:has(> a.important)``). Anything else is unsupported, e.g. an ID
-  (``:has(#id)``), or a selector list (``:has(a, b)``).
+* The ``:has()`` pseudo-class, e.g. ``:has(> a.important, + p b)``. Limitation:
+  ``:scope`` is rejected inside it.
 * The ``:not()`` pseudo-class with a *complex selector* argument, e.g.
   ``:not(a.important[rel] > b)``. Limitation: it takes a single argument, so a
   selector list is unsupported (e.g. ``:not(a, b)``).

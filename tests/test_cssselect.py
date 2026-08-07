@@ -187,6 +187,16 @@ class TestCssselect(unittest.TestCase):
         assert parse_many("div:has(~ div.foo)") == [
             "Relation[Element[div]:has(~ Selector[Class[Element[div].foo]])]"
         ]
+        assert parse_many("div:has(a b)") == [
+            "Relation[Element[div]:has("
+            "Selector[CombinedSelector[Element[a] <followed> Element[b]]])]"
+        ]
+        assert parse_many("div:has(a, > b, + c d)") == [
+            "Relation[Element[div]:has("
+            "Selector[Element[a]], "
+            "> Selector[Element[b]], "
+            "+ Selector[CombinedSelector[Element[c] <followed> Element[d]]])]"
+        ]
         assert parse_many("div:is(.foo, #bar)") == [
             "Matching[Element[div]:is(Class[Element[*].foo], Hash[Element[*]#bar])]"
         ]
@@ -350,6 +360,10 @@ class TestCssselect(unittest.TestCase):
         assert specificity(":has(foo)") == (0, 0, 1)
         assert specificity(":has(.foo)") == (0, 1, 0)
         assert specificity(":has(> foo)") == (0, 0, 1)
+        assert specificity(":has(foo bar)") == (0, 0, 2)
+        # The most specific argument of the list wins
+        assert specificity(":has(.foo, #bar)") == (1, 0, 0)
+        assert specificity(":has(> .foo, bar)") == (0, 1, 0)
 
         assert specificity(":is(.foo, #bar)") == (1, 0, 0)
         assert specificity(":is(:hover, :visited)") == (0, 1, 0)
@@ -415,6 +429,10 @@ class TestCssselect(unittest.TestCase):
         css2css(":has(~ foo)")
         css2css(":has(+ foo)")
         css2css("div:has(> div.foo)")
+        css2css(":has(foo bar)")
+        # a "*" that is a whole compound selector is kept
+        css2css(":has(* > bar)")
+        css2css("div:has(> div.foo, + p, bar baz)")
         css2css(":is(#bar, .foo)")
         css2css(":is(:focused, :visited)")
         css2css(":where(:focused, :visited)")
@@ -607,20 +625,26 @@ class TestCssselect(unittest.TestCase):
         )
         assert get_error("> div p") == ("Expected selector, got <DELIM '>' at 0>")
 
-        # Unsupported :has() with several arguments
-        assert get_error(":has(a, b)") == ("Expected an argument, got <DELIM ',' at 6>")
-        assert get_error(":has()") == ("Expected selector, got <EOF at 5>")
-        assert get_error(":has(a b)") == ("Expected an argument, got <IDENT 'b' at 7>")
-        assert get_error(":has(a .b)") == ("Expected an argument, got <DELIM '.' at 7>")
+        assert get_error(":has()") == ("Expected selector, got <DELIM ')' at 5>")
+        assert get_error(":has(a,)") == ("Expected selector, got <DELIM ')' at 7>")
+        assert get_error(":has(,a)") == ("Expected selector, got <DELIM ',' at 5>")
+        assert get_error(":has(> )") == ("Expected selector, got <DELIM ')' at 7>")
+        assert get_error(":has(a") == ("Expected ')', got <EOF at 6>")
+        assert get_error(":has(a, b") == ("Expected ')', got <EOF at 9>")
         # '-' is not a valid relative combinator
-        assert get_error(":has(- p)") == ("Expected an argument, got <DELIM '-' at 5>")
+        assert get_error(":has(- p)") == ("Expected selector, got <DELIM '-' at 5>")
         # Strings and numbers are not selectors
-        assert get_error(':has("a")') == ("Expected an argument, got <STRING 'a' at 5>")
-        assert get_error(":has(1)") == ("Expected an argument, got <NUMBER '1' at 5>")
+        assert get_error(':has("a")') == ("Expected selector, got <STRING 'a' at 5>")
+        assert get_error(":has(1)") == ("Expected selector, got <NUMBER '1' at 5>")
+        assert get_error(":has(a::before)") == (
+            "Got pseudo-element ::before inside function"
+        )
         # Whitespace around a :has() argument is not a combinator
         assert get_error("e:has(f )") is None
         assert get_error("e:has( > f )") is None
         assert get_error(":has(.a )") is None
+        assert get_error(":has(a b)") is None
+        assert get_error(":has(a, b)") is None
 
     def test_translation(self) -> None:
         def xpath(css: str) -> str:
@@ -720,10 +744,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:has(> f)") == "e[./f]"
         assert xpath("e:has(f)") == "e[descendant::f]"
         assert xpath("e:has(~ f)") == "e[following-sibling::f]"
-        assert (
-            xpath("e:has(+ f)")
-            == "e[following-sibling::*[(self::f) and (position() = 1)]]"
-        )
+        assert xpath("e:has(+ f)") == "e[following-sibling::*[1]/self::f]"
         assert xpath("e:has(> f.bar)") == (
             "e[./f[@class and contains("
             "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
@@ -737,28 +758,51 @@ class TestCssselect(unittest.TestCase):
             "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
         )
         assert xpath("e:has(+ f.bar)") == (
-            "e[following-sibling::*[((@class and contains("
-            "concat(' ', normalize-space(@class), ' '), ' bar ')) "
-            "and (self::f)) and (position() = 1)]]"
+            "e[following-sibling::*[1]/self::f[@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
         )
         assert xpath("e:has(+ .bar)") == (
-            "e[following-sibling::*[(@class and contains("
-            "concat(' ', normalize-space(@class), ' '), ' bar ')) "
-            "and (position() = 1)]]"
+            "e[following-sibling::*[1]/self::*[@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
         )
-        assert xpath("e:has(+ *)") == "e[following-sibling::*[position() = 1]]"
+        assert xpath("e:has(+ *)") == "e[following-sibling::*[1]/self::*]"
         assert xpath("e.foo:has(f)") == (
             "e[(@class and contains("
             "concat(' ', normalize-space(@class), ' '), ' foo ')) and (descendant::f)]"
+        )
+        # Combinators inside a :has() argument
+        assert xpath("e:has(f g)") == "e[descendant::f/descendant-or-self::*/g]"
+        assert xpath("e:has(> f > g)") == "e[./f/g]"
+        assert xpath("e:has(~ f + g)") == (
+            "e[following-sibling::f/following-sibling::*"
+            "[(self::g) and (position() = 1)]]"
+        )
+        # A leading "+" applies to the first step of the argument, so that any
+        # further step is walked from the adjacent sibling.
+        assert xpath("e:has(+ f g)") == (
+            "e[following-sibling::*[1]/self::f/descendant-or-self::*/g]"
+        )
+        # A relative selector list matches if any of its arguments does
+        assert xpath("e:has(f, > g)") == "e[(descendant::f) or (./g)]"
+        assert xpath("e.foo:has(f, g)") == (
+            "e[(@class and contains("
+            "concat(' ', normalize-space(@class), ' '), ' foo ')) "
+            "and ((descendant::f) or (descendant::g))]"
+        )
+        # Compound and functional selectors inside :has()
+        assert xpath("e:has(#f)") == "e[descendant::*[@id = 'f']]"
+        assert xpath("e:has([bar])") == "e[descendant::*[@bar]]"
+        assert xpath("e:has(:not(f))") == "e[descendant::*[not(self::f)]]"
+        assert xpath("e:has(f:nth-child(2))") == (
+            "e[descendant::f[count(preceding-sibling::*) = 1]]"
         )
         # Negating :has(): the relative selector must be kept as a predicate,
         # not turned into a literal name test.
         assert xpath("e:not(:has(a))") == "e[not(descendant::a)]"
         assert xpath("e:not(:has(> a))") == "e[not(./a)]"
         assert xpath("e:not(:has(~ a))") == "e[not(following-sibling::a)]"
-        assert xpath("e:not(:has(+ a))") == (
-            "e[not(following-sibling::*[(self::a) and (position() = 1)])]"
-        )
+        assert xpath("e:not(:has(+ a))") == "e[not(following-sibling::*[1]/self::a)]"
+        assert xpath("e:not(:has(a, > b))") == "e[not((descendant::a) or (./b))]"
         # A complex selector in :not() is matched against the element itself,
         # walking combinators through reverse axes.
         assert xpath("e:not(a b)") == "e[not(self::b and ancestor::*[self::a])]"
@@ -1473,6 +1517,19 @@ class TestCssselect(unittest.TestCase):
             "fifth-li",
             "sixth-li",
         ]
+        # A relative selector list matches if any of its arguments does
+        assert pcss("ol:has(#li-div, #missing)") == ["first-ol"]
+        assert pcss("li:has(> div, + li.c)") == ["second-li", "third-li"]
+        assert pcss("ol:has(> li.c, > li[lang])") == ["first-ol"]
+        assert pcss("ol:has(#missing, > #missing)") == []
+        # Combinators inside a :has() argument
+        assert pcss("div:has(ol li.c)") == ["outer-div"]
+        assert pcss("div:has(> ol > li.c)") == ["outer-div"]
+        assert pcss("li:has(+ li.c ~ li)") == ["second-li", "third-li"]
+        # Compound and functional selectors inside :has()
+        assert pcss("ol:has(li[lang])") == ["first-ol"]
+        assert pcss("ol:has(> #third-li)") == ["first-ol"]
+        assert pcss("p:has(:not(b))") == ["paragraph"]
         assert pcss("ol:not(:has(div))") == ["second-ol"]
         assert pcss("ol:not(:has(> div))") == ["first-ol", "second-ol"]
         assert pcss("li:not(:has(div))") == [
