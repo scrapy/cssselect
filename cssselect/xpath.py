@@ -370,24 +370,16 @@ class GenericTranslator:
         """Add a condition matching any selector of the list
         (for :is() and :where())."""
         condition = ""
-        for e in (self.xpath(selector) for selector in selector_list):
-            if e.path:
-                # Only a combined selector (e.g. "a b") translates to a path,
-                # which cannot be embedded into a predicate of the outer
-                # expression. The parser rejects combinators in these arguments,
-                # so this is only reachable through a hand-built Matching or
-                # SpecificityAdjustment node.
-                raise ExpressionError(
-                    "Combined selectors are not supported inside "
-                    ":is(), :where() and :matches()"
-                )
-            e.add_name_test()
-            if not e.condition:
+        for selector in selector_list:
+            argument_condition = self._xpath_match_condition(selector)
+            if argument_condition is None:
                 # This argument matches any element, so the whole selector
                 # list does too: it adds no condition.
                 return xpath
             condition = (
-                f"({condition}) or ({e.condition})" if condition else e.condition
+                f"({condition}) or ({argument_condition})"
+                if condition
+                else argument_condition
             )
         return xpath.add_condition(condition)
 
