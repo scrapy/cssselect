@@ -174,6 +174,14 @@ class TestCssselect(unittest.TestCase):
         assert parse_many("div:not(a ~ b)") == [
             "Negation[Element[div]:not(CombinedSelector[Element[a] ~ Element[b]])]"
         ]
+        assert parse_many("div:not(a b, a > .foo)") == [
+            "Negation[Element[div]:not("
+            "CombinedSelector[Element[a] <followed> Element[b]],"
+            " CombinedSelector[Element[a] > Class[Element[*].foo]])]"
+        ]
+        assert parse_many("div:not(:not(a))") == [
+            "Negation[Element[div]:not(Negation[Element[*]:not(Element[a])])]"
+        ]
         assert parse_many("div:has(div.foo)") == [
             "Relation[Element[div]:has(Selector[Class[Element[div].foo]])]"
         ]
@@ -353,6 +361,9 @@ class TestCssselect(unittest.TestCase):
         assert specificity(":not(#foo)") == (1, 0, 0)
         assert specificity(":not(foo bar)") == (0, 0, 2)
         assert specificity(":not(* > .foo)") == (0, 1, 0)
+        # The specificity of a selector list is that of its most specific
+        # selector
+        assert specificity(":not(foo, #bar)") == (1, 0, 0)
 
         assert specificity(":has(*)") == (0, 0, 0)
         assert specificity(":has(foo)") == (0, 0, 1)
@@ -417,6 +428,8 @@ class TestCssselect(unittest.TestCase):
         css2css(":not(*.foo bar)", ":not(.foo bar)")
         # a "*" that is a whole compound selector is kept
         css2css(":not(* > bar)")
+        css2css(":not(*.foo, * > foo)", ":not(.foo, * > foo)")
+        css2css(":not(:not(foo))")
         css2css(":has(*)")
         css2css(":has(foo)")
         css2css(":has(*.foo)", ":has(.foo)")
@@ -548,16 +561,15 @@ class TestCssselect(unittest.TestCase):
             "Got pseudo-element ::before not at the end of a selector"
         )
         assert get_error(":not(:before)") == (
-            "Got pseudo-element ::before inside :not() at 12"
+            "Got pseudo-element ::before inside function"
         )
-        assert get_error(":not(:not(a))") == ("Got nested :not()")
         assert get_error(":not(a > :before)") == (
-            "Got pseudo-element ::before inside :not() at 16"
+            "Got pseudo-element ::before inside function"
         )
-        # :not() only takes a single complex selector as an argument
-        assert get_error(":not(a, b)") == ("Expected ')', got <DELIM ',' at 6>")
         assert get_error(":not(a") == ("Expected ')', got <EOF at 6>")
         assert get_error(":not(a >") == ("Expected selector, got <EOF at 8>")
+        assert get_error(":not(a,") == ("Expected selector, got <EOF at 7>")
+        assert get_error(":not(a,)") == ("Expected selector, got <DELIM ')' at 7>")
         # Whitespace around a :not() argument is not a combinator
         assert get_error(":not(a )") is None
         assert get_error(":not( a )") is None
@@ -791,6 +803,15 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:not(a:has(> b) c)") == (
             "e[not(self::c and ancestor::*[(./b) and (self::a)])]"
         )
+        # A selector list argument matches if any of its selectors does
+        assert xpath("e:not(foo, bar)") == "e[not((self::foo) or (self::bar))]"
+        assert xpath("e:not(a > b, c ~ d)") == (
+            "e[not((self::b and parent::*[self::a]) or "
+            "(self::d and preceding-sibling::*[self::c]))]"
+        )
+        # A selector matching every element makes :not() match none
+        assert xpath("e:not(*, .foo)") == "e[0]"
+        assert xpath("e:not(:not(a))") == "e[not(not(self::a))]"
         # Element-reading pseudo-classes chained after :has()
         assert xpath("e:has(f):first-of-type") == (
             "e[(descendant::f) and (count(preceding-sibling::e) = 0)]"
@@ -1504,6 +1525,8 @@ class TestCssselect(unittest.TestCase):
             "seventh-li",
         ]
         assert pcss("li:not(#second-li ~ li)") == ["first-li", "second-li"]
+        assert pcss("li:not(#second-li ~ li, #first-li)") == ["second-li"]
+        assert pcss("li:not(:not(.c))") == ["third-li", "fourth-li"]
         assert pcss("li:has(div):nth-of-type(2)") == ["second-li"]
         assert pcss("li:has(div):first-of-type") == []
         assert pcss("ol:has(li):first-of-type") == ["first-ol"]

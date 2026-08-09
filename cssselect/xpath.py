@@ -315,9 +315,9 @@ class GenericTranslator:
 
     def xpath_negation(self, negation: Negation) -> XPathExpr:
         xpath = self.xpath(negation.selector)
-        condition = self._xpath_match_condition(negation.subselector)
+        condition = self._xpath_selector_list_condition(negation.selector_list)
         if condition is None:
-            # The argument matches every element, so :not() matches none.
+            # An argument matches every element, so :not() matches none.
             return xpath.add_condition("0")
         return xpath.add_condition(f"not({condition})")
 
@@ -369,19 +369,29 @@ class GenericTranslator:
     ) -> XPathExpr:
         """Add a condition matching any selector of the list
         (for :is() and :where())."""
+        condition = self._xpath_selector_list_condition(selector_list)
+        if condition is None:
+            # A selector of the list matches any element, so the whole
+            # selector list does too: it adds no condition.
+            return xpath
+        return xpath.add_condition(condition)
+
+    def _xpath_selector_list_condition(
+        self, selector_list: Iterable[Tree]
+    ) -> str | None:
+        """Return a condition that holds for the elements matching any
+        selector of the list, or None if that is every element."""
         condition = ""
         for selector in selector_list:
             argument_condition = self._xpath_match_condition(selector)
             if argument_condition is None:
-                # This argument matches any element, so the whole selector
-                # list does too: it adds no condition.
-                return xpath
+                return None
             condition = (
                 f"({condition}) or ({argument_condition})"
                 if condition
                 else argument_condition
             )
-        return xpath.add_condition(condition)
+        return condition
 
     def xpath_function(self, function: Function) -> XPathExpr:
         """Translate a functional pseudo-class."""
