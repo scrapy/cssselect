@@ -694,8 +694,8 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:nth-of-type(1)") == ("e[count(preceding-sibling::e) = 0]")
         assert xpath("e:nth-last-of-type(1)") == ("e[count(following-sibling::e) = 0]")
         assert xpath("div e:nth-last-of-type(1) .aclass") == (
-            "div/descendant-or-self::*/e[count(following-sibling::e) = 0]"
-            "/descendant-or-self::*/*[@class and contains("
+            "div/descendant::e[count(following-sibling::e) = 0]"
+            "/descendant::*[@class and contains("
             "concat(' ', normalize-space(@class), ' '), ' aclass ')]"
         )
 
@@ -813,7 +813,8 @@ class TestCssselect(unittest.TestCase):
             "e[not(count(preceding-sibling::*) mod 2 = 0)]"
         )
         assert xpath("e:nOT(*)") == ("e[0]")  # never matches
-        assert xpath("e f") == ("e/descendant-or-self::*/f")
+        assert xpath("e f") == ("e/descendant::f")
+        assert xpath("e *") == ("e/descendant-or-self::*/*")
         assert xpath("e > f") == ("e/f")
         assert xpath("e + f") == (
             "e/following-sibling::*[(self::f) and (position() = 1)]"
@@ -822,9 +823,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e ~ f:nth-child(3)") == (
             "e/following-sibling::f[count(preceding-sibling::*) = 2]"
         )
-        assert xpath("div#container p") == (
-            "div[@id = 'container']/descendant-or-self::*/p"
-        )
+        assert xpath("div#container p") == ("div[@id = 'container']/descendant::p")
         assert xpath("e:where(foo)") == "e[self::foo]"
         assert xpath("e:where(foo, bar)") == "e[(self::foo) or (self::bar)]"
         assert xpath("e:is(.a,.b)") == xpath("e:is(.a, .b)")
@@ -1124,7 +1123,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath("::text-node") == "descendant-or-self::*/text()"
         assert xpath("::attr-href") == "descendant-or-self::*/@href"
         assert xpath("p img::attr(src)") == (
-            "descendant-or-self::p/descendant-or-self::*/img/@src"
+            "descendant-or-self::p/descendant::img/@src"
         )
         assert xpath(":scope") == "descendant-or-self::*[position() = 1]"
         assert xpath(":first-or-second[href]") == (

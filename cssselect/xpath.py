@@ -483,7 +483,12 @@ class GenericTranslator:
         self, left: XPathExpr, right: XPathExpr
     ) -> XPathExpr:
         """right is a child, grand-child or further descendant of left"""
-        return left.join("/descendant-or-self::*/", right)
+        if right.element == "*" and not right.condition and not right.path:
+            # A subclass that maps a pseudo-element to a different node test
+            # rewrites the trailing "descendant-or-self::*/*" of the
+            # expression, so an unconstrained right-hand side keeps that shape.
+            return left.join("/descendant-or-self::*/", right)
+        return left.join("/descendant::", right)
 
     def xpath_child_combinator(self, left: XPathExpr, right: XPathExpr) -> XPathExpr:
         """right is an immediate child of left"""
