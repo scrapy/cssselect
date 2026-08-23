@@ -757,7 +757,7 @@ def parse_relative_selector(stream: TokenStream) -> tuple[Token, Selector]:
     subselector_tokens: list[Token] = []
     next_ = stream.next()
 
-    if next_ in [("DELIM", "+"), ("DELIM", ">"), ("DELIM", "~")]:
+    if next_.is_delim("+", ">", "~"):
         combinator = next_
         stream.skip_whitespace()
         next_ = stream.next()
@@ -771,11 +771,11 @@ def parse_relative_selector(stream: TokenStream) -> tuple[Token, Selector]:
             # else it would be a descendant combinator, which is not
             # supported in :has() arguments.
             seen_whitespace = True
-        elif next_.type == "IDENT" or next_ in [("DELIM", "."), ("DELIM", "*")]:
+        elif next_.type == "IDENT" or next_.is_delim(".", "*"):
             if seen_whitespace:
                 raise SelectorSyntaxError(f"Expected an argument, got {next_}")
             subselector_tokens.append(next_)
-        elif next_ == ("DELIM", ")"):
+        elif next_.is_delim(")"):
             break
         else:
             raise SelectorSyntaxError(f"Expected an argument, got {next_}")
