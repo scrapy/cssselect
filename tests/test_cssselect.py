@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Tests for cssselect
 ===================
@@ -147,9 +146,11 @@ class TestCssselect(unittest.TestCase):
             "Function[Element[div]:nth-of-type(['10'])]"
         ]
         assert parse_many("div div:nth-of-type(10) .aclass") == [
-            "CombinedSelector[CombinedSelector[Element[div] <followed> "
-            "Function[Element[div]:nth-of-type(['10'])]] "
-            "<followed> Class[Element[*].aclass]]"
+            (
+                "CombinedSelector[CombinedSelector[Element[div] <followed> "
+                "Function[Element[div]:nth-of-type(['10'])]] "
+                "<followed> Class[Element[*].aclass]]"
+            )
         ]
         assert parse_many("label:only") == ["Pseudo[Element[label]:only]"]
         assert parse_many("a:lang(fr)") == ["Function[Element[a]:lang(['fr'])]"]
@@ -163,8 +164,10 @@ class TestCssselect(unittest.TestCase):
             "div:not(div.foo /* comment */)",
         ) == ["Negation[Element[div]:not(Class[Element[div].foo])]"]
         assert parse_many("div:not(a b)") == [
-            "Negation[Element[div]:not(CombinedSelector[Element[a] "
-            "<followed> Element[b]])]"
+            (
+                "Negation[Element[div]:not(CombinedSelector[Element[a] "
+                "<followed> Element[b]])]"
+            )
         ]
         assert parse_many("div:not(a > b)") == [
             "Negation[Element[div]:not(CombinedSelector[Element[a] > Element[b]])]"
@@ -188,14 +191,18 @@ class TestCssselect(unittest.TestCase):
             "Relation[Element[div]:has(~ Selector[Class[Element[div].foo]])]"
         ]
         assert parse_many("div:has(a b)") == [
-            "Relation[Element[div]:has("
-            "Selector[CombinedSelector[Element[a] <followed> Element[b]]])]"
+            (
+                "Relation[Element[div]:has("
+                "Selector[CombinedSelector[Element[a] <followed> Element[b]]])]"
+            )
         ]
         assert parse_many("div:has(a, > b, + c d)") == [
-            "Relation[Element[div]:has("
-            "Selector[Element[a]], "
-            "> Selector[Element[b]], "
-            "+ Selector[CombinedSelector[Element[c] <followed> Element[d]]])]"
+            (
+                "Relation[Element[div]:has("
+                "Selector[Element[a]], "
+                "> Selector[Element[b]], "
+                "+ Selector[CombinedSelector[Element[c] <followed> Element[d]]])]"
+            )
         ]
         assert parse_many("div:is(.foo, #bar)") == [
             "Matching[Element[div]:is(Class[Element[*].foo], Hash[Element[*]#bar])]"
@@ -204,8 +211,10 @@ class TestCssselect(unittest.TestCase):
             "Matching[Element[*]:is(Pseudo[Element[*]:hover], Pseudo[Element[*]:visited])]"
         ]
         assert parse_many(":where(:hover, :visited)") == [
-            "SpecificityAdjustment[Element[*]:where(Pseudo[Element[*]:hover],"
-            " Pseudo[Element[*]:visited])]"
+            (
+                "SpecificityAdjustment[Element[*]:where(Pseudo[Element[*]:hover],"
+                " Pseudo[Element[*]:visited])]"
+            )
         ]
         assert parse_many(
             ":is(.foo, .bar)",
@@ -214,8 +223,10 @@ class TestCssselect(unittest.TestCase):
             ":matches(.foo, .bar)",
         ) == ["Matching[Element[*]:is(Class[Element[*].foo], Class[Element[*].bar])]"]
         assert parse_many(":where(.foo, .bar)", ":where(.foo,.bar)") == [
-            "SpecificityAdjustment[Element[*]:where(Class[Element[*].foo],"
-            " Class[Element[*].bar])]"
+            (
+                "SpecificityAdjustment[Element[*]:where(Class[Element[*].foo],"
+                " Class[Element[*].bar])]"
+            )
         ]
         assert parse_many("td ~ th") == ["CombinedSelector[Element[td] ~ Element[th]]"]
         assert parse_many(":scope > foo") == [
@@ -225,12 +236,16 @@ class TestCssselect(unittest.TestCase):
             "CombinedSelector[Pseudo[Element[*]:scope] > Element[foo]]"
         ]
         assert parse_many(":scope > foo bar > div") == [
-            "CombinedSelector[CombinedSelector[CombinedSelector[Pseudo[Element[*]:scope] > "
-            "Element[foo]] <followed> Element[bar]] > Element[div]]"
+            (
+                "CombinedSelector[CombinedSelector[CombinedSelector[Pseudo[Element[*]:scope] > "
+                "Element[foo]] <followed> Element[bar]] > Element[div]]"
+            )
         ]
         assert parse_many(":scope > #foo #bar") == [
-            "CombinedSelector[CombinedSelector[Pseudo[Element[*]:scope] > "
-            "Hash[Element[*]#foo]] <followed> Hash[Element[*]#bar]]"
+            (
+                "CombinedSelector[CombinedSelector[Pseudo[Element[*]:scope] > "
+                "Hash[Element[*]#foo]] <followed> Hash[Element[*]#bar]]"
+            )
         ]
         assert parse_many("*:scope") == ["Pseudo[Element[*]:scope]"]
         assert parse_many("div:scope") == ["Pseudo[Element[div]:scope]"]
@@ -286,8 +301,10 @@ class TestCssselect(unittest.TestCase):
         assert parse_one("foo:after") == ("Element[foo]", "after")
         assert parse_one("foo::selection") == ("Element[foo]", "selection")
         assert parse_one("lorem#ipsum ~ a#b.c[href]:empty::selection") == (
-            "CombinedSelector[Hash[Element[lorem]#ipsum] ~ "
-            "Pseudo[Attrib[Class[Hash[Element[a]#b].c][href]]:empty]]",
+            (
+                "CombinedSelector[Hash[Element[lorem]#ipsum] ~ "
+                "Pseudo[Attrib[Class[Hash[Element[a]#b].c][href]]:empty]]"
+            ),
             "selection",
         )
         assert parse_pseudo(":scope > div, foo bar") == [

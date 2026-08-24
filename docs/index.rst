@@ -121,6 +121,9 @@ be implemented):
 
 These are non-standard extensions:
 
+* ID selectors whose value is not a valid CSS identifier, e.g. ``#37signals``.
+  The specification only allows an identifier after ``#``, so such IDs, which
+  are valid in HTML, would otherwise require ``[id="37signals"]``.
 * The ``:contains(text)`` pseudo-class that existed in `an early draft`_
   but was then removed.
 * The ``!=`` attribute operator. ``[foo!=bar]`` is the same as
