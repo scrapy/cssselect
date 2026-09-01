@@ -190,6 +190,12 @@ class TestCssselect(unittest.TestCase):
         assert parse_many("div:has(~ div.foo)") == [
             "Relation[Element[div]:has(~ Selector[Class[Element[div].foo]])]"
         ]
+        assert parse_many("div:has(#foo)") == [
+            "Relation[Element[div]:has(Selector[Hash[Element[*]#foo]])]"
+        ]
+        assert parse_many("div:has(> a#foo.bar)") == [
+            "Relation[Element[div]:has(> Selector[Class[Hash[Element[a]#foo].bar]])]"
+        ]
         assert parse_many("div:is(.foo, #bar)") == [
             "Matching[Element[div]:is(Class[Element[*].foo], Hash[Element[*]#bar])]"
         ]
@@ -363,6 +369,7 @@ class TestCssselect(unittest.TestCase):
         assert specificity(":has(foo)") == (0, 0, 1)
         assert specificity(":has(.foo)") == (0, 1, 0)
         assert specificity(":has(> foo)") == (0, 0, 1)
+        assert specificity(":has(#foo)") == (1, 0, 0)
 
         assert specificity(":is(.foo, #bar)") == (1, 0, 0)
         assert specificity(":is(:hover, :visited)") == (0, 1, 0)
@@ -428,6 +435,7 @@ class TestCssselect(unittest.TestCase):
         css2css(":has(~ foo)")
         css2css(":has(+ foo)")
         css2css("div:has(> div.foo)")
+        css2css("div:has(> #foo)")
         css2css(":is(#bar, .foo)")
         css2css(":is(:focused, :visited)")
         css2css(":where(:focused, :visited)")
@@ -625,6 +633,7 @@ class TestCssselect(unittest.TestCase):
         assert get_error(":has()") == ("Expected selector, got <EOF at 5>")
         assert get_error(":has(a b)") == ("Expected an argument, got <IDENT 'b' at 7>")
         assert get_error(":has(a .b)") == ("Expected an argument, got <DELIM '.' at 7>")
+        assert get_error(":has(a #b)") == ("Expected an argument, got <HASH 'b' at 7>")
         # '-' is not a valid relative combinator
         assert get_error(":has(- p)") == ("Expected an argument, got <DELIM '-' at 5>")
         # Strings and numbers are not selectors
@@ -745,6 +754,8 @@ class TestCssselect(unittest.TestCase):
             "e[./*[@class and contains("
             "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
         )
+        assert xpath("e:has(> #bar)") == "e[./*[@id = 'bar']]"
+        assert xpath("e:has(#bar)") == "e[descendant::*[@id = 'bar']]"
         assert xpath("e:has(~ f.bar)") == (
             "e[following-sibling::f[@class and contains("
             "concat(' ', normalize-space(@class), ' '), ' bar ')]]"

@@ -771,7 +771,7 @@ def parse_relative_selector(stream: TokenStream) -> tuple[Token, Selector]:
             # else it would be a descendant combinator, which is not
             # supported in :has() arguments.
             seen_whitespace = True
-        elif next_.type == "IDENT" or next_.is_delim(".", "*"):
+        elif next_.type in ("IDENT", "HASH") or next_.is_delim(".", "*"):
             if seen_whitespace:
                 raise SelectorSyntaxError(f"Expected an argument, got {next_}")
             subselector_tokens.append(next_)
