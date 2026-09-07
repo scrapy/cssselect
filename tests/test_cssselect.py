@@ -35,7 +35,6 @@ from cssselect import (
 from cssselect.parser import (
     Function,
     FunctionalPseudoElement,
-    Matching,
     PseudoElement,
     Token,
     parse_series,
@@ -184,6 +183,16 @@ class TestCssselect(unittest.TestCase):
         assert parse_many("div:not(a ~ b)") == [
             "Negation[Element[div]:not(CombinedSelector[Element[a] ~ Element[b]])]"
         ]
+        assert parse_many("div:not(a b, a > .foo)") == [
+            (
+                "Negation[Element[div]:not("
+                "CombinedSelector[Element[a] <followed> Element[b]],"
+                " CombinedSelector[Element[a] > Class[Element[*].foo]])]"
+            )
+        ]
+        assert parse_many("div:not(:not(a))") == [
+            "Negation[Element[div]:not(Negation[Element[*]:not(Element[a])])]"
+        ]
         assert parse_many("div:has(div.foo)") == [
             "Relation[Element[div]:has(Selector[Class[Element[div].foo]])]"
         ]
@@ -218,6 +227,19 @@ class TestCssselect(unittest.TestCase):
             (
                 "SpecificityAdjustment[Element[*]:where(Class[Element[*].foo],"
                 " Class[Element[*].bar])]"
+            )
+        ]
+        assert parse_many("div:is(a b, a > .foo)") == [
+            (
+                "Matching[Element[div]:is("
+                "CombinedSelector[Element[a] <followed> Element[b]],"
+                " CombinedSelector[Element[a] > Class[Element[*].foo]])]"
+            )
+        ]
+        assert parse_many("div:is(:not(a b))") == [
+            (
+                "Matching[Element[div]:is(Negation[Element[*]:not("
+                "CombinedSelector[Element[a] <followed> Element[b]])])]"
             )
         ]
         assert parse_many("td ~ th") == ["CombinedSelector[Element[td] ~ Element[th]]"]
@@ -364,6 +386,9 @@ class TestCssselect(unittest.TestCase):
         assert specificity(":not(#foo)") == (1, 0, 0)
         assert specificity(":not(foo bar)") == (0, 0, 2)
         assert specificity(":not(* > .foo)") == (0, 1, 0)
+        # The specificity of a selector list is that of its most specific
+        # selector
+        assert specificity(":not(foo, #bar)") == (1, 0, 0)
 
         assert specificity(":has(*)") == (0, 0, 0)
         assert specificity(":has(foo)") == (0, 0, 1)
@@ -377,6 +402,8 @@ class TestCssselect(unittest.TestCase):
         assert specificity("div:is(#a)") == (1, 0, 1)
         assert specificity("div:is(.f, .g)") == (0, 1, 1)
         assert specificity("div.e:is(.f)") == (0, 2, 1)
+        assert specificity(":is(a b, #x)") == (1, 0, 0)
+        assert specificity(":where(a b, #x)") == (0, 0, 0)
         assert specificity("div:where(.x)") == (0, 0, 1)
         assert specificity("div.e:where(.x)") == (0, 1, 1)
 
@@ -429,6 +456,8 @@ class TestCssselect(unittest.TestCase):
         css2css(":not(*.foo bar)", ":not(.foo bar)")
         # a "*" that is a whole compound selector is kept
         css2css(":not(* > bar)")
+        css2css(":not(*.foo, * > foo)", ":not(.foo, * > foo)")
+        css2css(":not(:not(foo))")
         css2css(":has(*)")
         css2css(":has(foo)")
         css2css(":has(*.foo)", ":has(.foo)")
@@ -445,6 +474,11 @@ class TestCssselect(unittest.TestCase):
         css2css("div:is(*)")
         css2css(":is(*, .foo)")
         css2css(":where(*)")
+        # combinators inside :is() are kept, and a leading universal selector
+        # is only redundant in a compound selector
+        css2css(":is(a b, a > *.foo)", ":is(a b, a > .foo)")
+        css2css(":is(*.foo, * > foo)", ":is(.foo, * > foo)")
+        css2css(":where(a \t\n b)", ":where(a b)")
         css2css("foo:empty")
         css2css("foo::before")
         css2css("foo:empty::before")
@@ -561,46 +595,38 @@ class TestCssselect(unittest.TestCase):
             "Got pseudo-element ::before not at the end of a selector"
         )
         assert get_error(":not(:before)") == (
-            "Got pseudo-element ::before inside :not() at 12"
+            "Got pseudo-element ::before inside function"
         )
-        assert get_error(":not(:not(a))") == ("Got nested :not()")
         assert get_error(":not(a > :before)") == (
-            "Got pseudo-element ::before inside :not() at 16"
+            "Got pseudo-element ::before inside function"
         )
-        # :not() only takes a single complex selector as an argument
-        assert get_error(":not(a, b)") == ("Expected ')', got <DELIM ',' at 6>")
         assert get_error(":not(a") == ("Expected ')', got <EOF at 6>")
         assert get_error(":not(a >") == ("Expected selector, got <EOF at 8>")
+        assert get_error(":not(a,") == ("Expected selector, got <EOF at 7>")
+        assert get_error(":not(a,)") == ("Expected selector, got <DELIM ')' at 7>")
         # Whitespace around a :not() argument is not a combinator
         assert get_error(":not(a )") is None
         assert get_error(":not( a )") is None
         assert get_error("e:not(.a )") is None
         assert get_error(":not([a] )") is None
-        # A :not() inside :is()/:where()/:matches() is not a nested :not()
-        # and gets its own message
-        assert get_error(":is(:not(a))") == (
-            ":not() is not supported inside :is(), :where() and :matches()"
-        )
-        assert get_error(":where(:not(a))") == (
-            ":not() is not supported inside :is(), :where() and :matches()"
-        )
-        assert get_error(":matches(:not(a))") == (
-            ":not() is not supported inside :is(), :where() and :matches()"
-        )
         assert get_error(":is(:before)") == (
             "Got pseudo-element ::before inside function"
         )
-        assert get_error(":is(a b)") == ("Expected an argument, got <IDENT 'b' at 6>")
+        assert get_error(":is(a::before)") == (
+            "Got pseudo-element ::before inside function"
+        )
         assert get_error(":where(:before)") == (
             "Got pseudo-element ::before inside function"
         )
-        assert get_error(":where(a b)") == (
-            "Expected an argument, got <IDENT 'b' at 9>"
-        )
-        assert get_error(":is(a") == ("Expected an argument, got <EOF at 5>")
+        assert get_error(":is(a") == ("Expected ')', got <EOF at 5>")
+        assert get_error(":is(a b") == ("Expected ')', got <EOF at 7>")
+        assert get_error(":is(a >") == ("Expected selector, got <EOF at 7>")
         assert get_error(":is(a,") == ("Expected selector, got <EOF at 6>")
         assert get_error(":is(a,)") == ("Expected selector, got <DELIM ')' at 6>")
-        assert get_error(":where(a") == ("Expected an argument, got <EOF at 8>")
+        assert get_error(":where(a") == ("Expected ')', got <EOF at 8>")
+        # Whitespace around an :is() argument is not a combinator
+        assert get_error(":is( a )") is None
+        assert get_error(":is( a , b )") is None
         assert get_error(":scope > div :scope header") == (
             'Got pseudo-class ":scope" not at the start of a selector'
         )
@@ -828,6 +854,15 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:not(a:has(> b) c)") == (
             "e[not(self::c and ancestor::*[(./b) and (self::a)])]"
         )
+        # A selector list argument matches if any of its selectors does
+        assert xpath("e:not(foo, bar)") == "e[not((self::foo) or (self::bar))]"
+        assert xpath("e:not(a > b, c ~ d)") == (
+            "e[not((self::b and parent::*[self::a]) or "
+            "(self::d and preceding-sibling::*[self::c]))]"
+        )
+        # A selector matching every element makes :not() match none
+        assert xpath("e:not(*, .foo)") == "e[0]"
+        assert xpath("e:not(:not(a))") == "e[not(not(self::a))]"
         # Element-reading pseudo-classes chained after :has()
         assert xpath("e:has(f):first-of-type") == (
             "e[(descendant::f) and (count(preceding-sibling::e) = 0)]"
@@ -885,6 +920,15 @@ class TestCssselect(unittest.TestCase):
         )
         assert xpath("e:is(:has(f))") == "e[descendant::f]"
         assert xpath("e:where(:has(f))") == "e[descendant::f]"
+        # A complex selector argument is matched against the element itself,
+        # walking combinators through reverse axes.
+        assert xpath("e:is(a b)") == "e[self::b and ancestor::*[self::a]]"
+        assert xpath("e:is(a > b, c ~ d)") == (
+            "e[(self::b and parent::*[self::a]) or "
+            "(self::d and preceding-sibling::*[self::c])]"
+        )
+        assert xpath("e:is(* > b)") == "e[self::b and parent::*]"
+        assert xpath("e:is(:not(a b))") == "e[not(self::b and ancestor::*[self::a])]"
         # :matches() is an alias of :is()
         assert xpath("e:matches(foo, bar)") == "e[(self::foo) or (self::bar)]"
         assert xpath("e:matches(.a, .b)") == xpath("e:is(.a, .b)")
@@ -994,19 +1038,6 @@ class TestCssselect(unittest.TestCase):
             lower_case_attribute_values = True
 
         assert LowerValues().css_to_xpath("[Foo=BAR]", prefix="") == "*[@Foo = 'bar']"
-
-        # A member of an :is()/:where() selector list that translates to a
-        # path (rather than a predicate) cannot be embedded in the outer
-        # predicate and is rejected. The parser does not currently produce
-        # such an argument, so build the Matching node directly.
-        base = parse("x")[0].parsed_tree
-        combined = parse("a b")[0].parsed_tree
-        matching = Matching(base, [combined])
-        with pytest.raises(
-            ExpressionError,
-            match=r"not supported inside :is\(\), :where\(\) and :matches\(\)",
-        ):
-            GenericTranslator().xpath(matching)
 
     def test_add_name_test(self) -> None:
         # Directly exercise XPathExpr.add_name_test(), part of the
@@ -1548,6 +1579,8 @@ class TestCssselect(unittest.TestCase):
             "seventh-li",
         ]
         assert pcss("li:not(#second-li ~ li)") == ["first-li", "second-li"]
+        assert pcss("li:not(#second-li ~ li, #first-li)") == ["second-li"]
+        assert pcss("li:not(:not(.c))") == ["third-li", "fourth-li"]
         assert pcss("li:has(div):nth-of-type(2)") == ["second-li"]
         assert pcss("li:has(div):first-of-type") == []
         assert pcss("ol:has(li):first-of-type") == ["first-ol"]
@@ -1569,6 +1602,12 @@ class TestCssselect(unittest.TestCase):
         ]
         assert pcss("ol.a:is(.nonexistent)") == []
         assert pcss("ol.a:is(.b, .nonexistent)") == ["first-ol"]
+        assert pcss("li:is(ol.a > li.c, #second-li + li)") == [
+            "third-li",
+            "fourth-li",
+        ]
+        assert pcss("div:is(#outer-div div)") == ["li-div"]
+        assert pcss("li:is(:not(#second-li ~ li))") == ["first-li", "second-li"]
         assert pcss("ol.a.b.c > li.c:nth-child(3)") == ["third-li"]
 
         # Invalid characters in XPath element names, should not crash
