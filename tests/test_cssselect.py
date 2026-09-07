@@ -184,9 +184,11 @@ class TestCssselect(unittest.TestCase):
             "Negation[Element[div]:not(CombinedSelector[Element[a] ~ Element[b]])]"
         ]
         assert parse_many("div:not(a b, a > .foo)") == [
-            "Negation[Element[div]:not("
-            "CombinedSelector[Element[a] <followed> Element[b]],"
-            " CombinedSelector[Element[a] > Class[Element[*].foo]])]"
+            (
+                "Negation[Element[div]:not("
+                "CombinedSelector[Element[a] <followed> Element[b]],"
+                " CombinedSelector[Element[a] > Class[Element[*].foo]])]"
+            )
         ]
         assert parse_many("div:not(:not(a))") == [
             "Negation[Element[div]:not(Negation[Element[*]:not(Element[a])])]"
@@ -228,13 +230,17 @@ class TestCssselect(unittest.TestCase):
             )
         ]
         assert parse_many("div:is(a b, a > .foo)") == [
-            "Matching[Element[div]:is("
-            "CombinedSelector[Element[a] <followed> Element[b]],"
-            " CombinedSelector[Element[a] > Class[Element[*].foo]])]"
+            (
+                "Matching[Element[div]:is("
+                "CombinedSelector[Element[a] <followed> Element[b]],"
+                " CombinedSelector[Element[a] > Class[Element[*].foo]])]"
+            )
         ]
         assert parse_many("div:is(:not(a b))") == [
-            "Matching[Element[div]:is(Negation[Element[*]:not("
-            "CombinedSelector[Element[a] <followed> Element[b]])])]"
+            (
+                "Matching[Element[div]:is(Negation[Element[*]:not("
+                "CombinedSelector[Element[a] <followed> Element[b]])])]"
+            )
         ]
         assert parse_many("td ~ th") == ["CombinedSelector[Element[td] ~ Element[th]]"]
         assert parse_many(":scope > foo") == [
