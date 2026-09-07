@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Tests for cssselect
 ===================
@@ -137,6 +136,12 @@ class TestCssselect(unittest.TestCase):
         assert parse_many("a[hreflang |= 'en']", "a[hreflang|=en]") == [
             "Attrib[Element[a][hreflang |= 'en']]"
         ]
+        assert parse_many(
+            'a[rel="include" i]', "a[rel=include I]", "a[rel=include\ti]"
+        ) == ["Attrib[Element[a][rel = 'include' i]]"]
+        assert parse_many('a[rel="include" s]') == [
+            "Attrib[Element[a][rel = 'include' s]]"
+        ]
         assert parse_many("div:nth-child(10)") == [
             "Function[Element[div]:nth-child(['10'])]"
         ]
@@ -147,9 +152,11 @@ class TestCssselect(unittest.TestCase):
             "Function[Element[div]:nth-of-type(['10'])]"
         ]
         assert parse_many("div div:nth-of-type(10) .aclass") == [
-            "CombinedSelector[CombinedSelector[Element[div] <followed> "
-            "Function[Element[div]:nth-of-type(['10'])]] "
-            "<followed> Class[Element[*].aclass]]"
+            (
+                "CombinedSelector[CombinedSelector[Element[div] <followed> "
+                "Function[Element[div]:nth-of-type(['10'])]] "
+                "<followed> Class[Element[*].aclass]]"
+            )
         ]
         assert parse_many("label:only") == ["Pseudo[Element[label]:only]"]
         assert parse_many("a:lang(fr)") == ["Function[Element[a]:lang(['fr'])]"]
@@ -163,8 +170,10 @@ class TestCssselect(unittest.TestCase):
             "div:not(div.foo /* comment */)",
         ) == ["Negation[Element[div]:not(Class[Element[div].foo])]"]
         assert parse_many("div:not(a b)") == [
-            "Negation[Element[div]:not(CombinedSelector[Element[a] "
-            "<followed> Element[b]])]"
+            (
+                "Negation[Element[div]:not(CombinedSelector[Element[a] "
+                "<followed> Element[b]])]"
+            )
         ]
         assert parse_many("div:not(a > b)") == [
             "Negation[Element[div]:not(CombinedSelector[Element[a] > Element[b]])]"
@@ -194,8 +203,10 @@ class TestCssselect(unittest.TestCase):
             "Matching[Element[*]:is(Pseudo[Element[*]:hover], Pseudo[Element[*]:visited])]"
         ]
         assert parse_many(":where(:hover, :visited)") == [
-            "SpecificityAdjustment[Element[*]:where(Pseudo[Element[*]:hover],"
-            " Pseudo[Element[*]:visited])]"
+            (
+                "SpecificityAdjustment[Element[*]:where(Pseudo[Element[*]:hover],"
+                " Pseudo[Element[*]:visited])]"
+            )
         ]
         assert parse_many(
             ":is(.foo, .bar)",
@@ -204,8 +215,10 @@ class TestCssselect(unittest.TestCase):
             ":matches(.foo, .bar)",
         ) == ["Matching[Element[*]:is(Class[Element[*].foo], Class[Element[*].bar])]"]
         assert parse_many(":where(.foo, .bar)", ":where(.foo,.bar)") == [
-            "SpecificityAdjustment[Element[*]:where(Class[Element[*].foo],"
-            " Class[Element[*].bar])]"
+            (
+                "SpecificityAdjustment[Element[*]:where(Class[Element[*].foo],"
+                " Class[Element[*].bar])]"
+            )
         ]
         assert parse_many("td ~ th") == ["CombinedSelector[Element[td] ~ Element[th]]"]
         assert parse_many(":scope > foo") == [
@@ -215,12 +228,16 @@ class TestCssselect(unittest.TestCase):
             "CombinedSelector[Pseudo[Element[*]:scope] > Element[foo]]"
         ]
         assert parse_many(":scope > foo bar > div") == [
-            "CombinedSelector[CombinedSelector[CombinedSelector[Pseudo[Element[*]:scope] > "
-            "Element[foo]] <followed> Element[bar]] > Element[div]]"
+            (
+                "CombinedSelector[CombinedSelector[CombinedSelector[Pseudo[Element[*]:scope] > "
+                "Element[foo]] <followed> Element[bar]] > Element[div]]"
+            )
         ]
         assert parse_many(":scope > #foo #bar") == [
-            "CombinedSelector[CombinedSelector[Pseudo[Element[*]:scope] > "
-            "Hash[Element[*]#foo]] <followed> Hash[Element[*]#bar]]"
+            (
+                "CombinedSelector[CombinedSelector[Pseudo[Element[*]:scope] > "
+                "Hash[Element[*]#foo]] <followed> Hash[Element[*]#bar]]"
+            )
         ]
         assert parse_many("*:scope") == ["Pseudo[Element[*]:scope]"]
         assert parse_many("div:scope") == ["Pseudo[Element[div]:scope]"]
@@ -276,8 +293,10 @@ class TestCssselect(unittest.TestCase):
         assert parse_one("foo:after") == ("Element[foo]", "after")
         assert parse_one("foo::selection") == ("Element[foo]", "selection")
         assert parse_one("lorem#ipsum ~ a#b.c[href]:empty::selection") == (
-            "CombinedSelector[Hash[Element[lorem]#ipsum] ~ "
-            "Pseudo[Attrib[Class[Hash[Element[a]#b].c][href]]:empty]]",
+            (
+                "CombinedSelector[Hash[Element[lorem]#ipsum] ~ "
+                "Pseudo[Attrib[Class[Hash[Element[a]#b].c][href]]:empty]]"
+            ),
             "selection",
         )
         assert parse_pseudo(":scope > div, foo bar") == [
@@ -395,6 +414,9 @@ class TestCssselect(unittest.TestCase):
         css2css("[baz]")
         css2css('[baz="4"]', "[baz='4']")
         css2css('[baz^="4"]', "[baz^='4']")
+        css2css('[baz="4" i]', "[baz='4' i]")
+        css2css('[baz="4" I]', "[baz='4' i]")
+        css2css('[baz="4" s]', "[baz='4' s]")
         css2css("[ns|attr='4']")
         css2css("#lipsum")
         css2css(":not(*)")
@@ -506,6 +528,12 @@ class TestCssselect(unittest.TestCase):
             "Operator expected, got <DELIM ':' at 4>"
         )
         assert get_error("[rel=stylesheet") == ("Expected ']', got <EOF at 15>")
+        assert get_error("[rel=stylesheet x]") == (
+            "Expected ']', got <IDENT 'x' at 16>"
+        )
+        assert get_error("[rel=stylesheet i s]") == (
+            "Expected ']', got <IDENT 's' at 18>"
+        )
         assert get_error(":lang(fr)") is None
         assert get_error(":lang(fr") == ("Expected an argument, got <EOF at 8>")
         assert get_error(':contains("foo') == ("Unclosed string at 10")
@@ -647,6 +675,23 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e[hreflang|="en"]') == (
             "e[@hreflang and (@hreflang = 'en' or starts-with(@hreflang, 'en-'))]"
         )
+
+        # --- attribute case-sensitivity flags -------------------------
+        lowered = (
+            "translate(@foo, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "
+            "'abcdefghijklmnopqrstuvwxyz')"
+        )
+        assert xpath('e[foo="BAR" i]') == f"e[{lowered} = 'bar']"
+        assert xpath('e[foo*="BAR" i]') == (
+            f"e[{lowered} and contains({lowered}, 'bar')]"
+        )
+        assert xpath('e[foo$="BAR" i]') == (
+            f"e[{lowered} and substring({lowered}, string-length({lowered})-2) = 'bar']"
+        )
+        # An empty value has no case, so it is matched as-is.
+        assert xpath("e[foo!='' i]") == ("e[@foo != '']")
+        # 's' is the default.
+        assert xpath('e[foo="BAR" s]') == "e[@foo = 'BAR']"
 
         # --- nth-* and nth-last-* -------------------------------------
         assert xpath("e:nth-child(1)") == ("e[count(preceding-sibling::*) = 0]")
@@ -1292,6 +1337,9 @@ class TestCssselect(unittest.TestCase):
         assert pcss("a[rel]") == ["tag-anchor", "nofollow-anchor"]
         assert pcss('a[rel="tag"]') == ["tag-anchor"]
         assert pcss('a[href*="localhost"]') == ["tag-anchor"]
+        assert pcss('a[rel="TAG"]') == []
+        assert pcss('a[rel="TAG" i]') == ["tag-anchor"]
+        assert pcss('a[href*="LOCALHOST" i]') == ["tag-anchor"]
         assert pcss('a[href*=""]') == []
         assert pcss('a[href^="http"]') == ["tag-anchor", "nofollow-anchor"]
         assert pcss('a[href^="http:"]') == ["tag-anchor"]

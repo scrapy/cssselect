@@ -14,6 +14,7 @@ See AUTHORS for more details.
 from __future__ import annotations
 
 import re
+from string import ascii_lowercase, ascii_uppercase
 from typing import TYPE_CHECKING, cast
 
 from cssselect.parser import (
@@ -32,6 +33,7 @@ from cssselect.parser import (
     SelectorError,
     SpecificityAdjustment,
     Tree,
+    ascii_lower,
     parse,
     parse_series,
 )
@@ -443,6 +445,11 @@ class GenericTranslator:
             value = cast("str", selector.value.value).lower()
         else:
             value = selector.value.value
+        if selector.flag == "i" and value:
+            # ASCII-lowering both sides is what the specification defines a
+            # case-insensitive match as, and all XPath 1.0 can express.
+            attrib = f"translate({attrib}, {self.xpath_literal(ascii_uppercase)}, {self.xpath_literal(ascii_lowercase)})"
+            value = ascii_lower(value)
         return method(self.xpath(selector.selector), attrib, value)
 
     def xpath_class(self, class_selector: Class) -> XPathExpr:
