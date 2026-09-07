@@ -119,9 +119,16 @@ be implemented):
   *compound selector* built only from type, class and universal selectors
   (e.g. ``:has(> a.important)``). Anything else is unsupported, e.g. an ID
   (``:has(#id)``), or a selector list (``:has(a, b)``).
+* The ``i`` and ``s`` attribute selector flags, e.g. ``[href^="HTTP" i]``.
+  ``i`` makes the value comparison ASCII case-insensitive. ``s`` is accepted
+  but has no effect, since attribute values are already compared
+  case-sensitively.
 
 These are non-standard extensions:
 
+* ID selectors whose value is not a valid CSS identifier, e.g. ``#37signals``.
+  The specification only allows an identifier after ``#``, so such IDs, which
+  are valid in HTML, would otherwise require ``[id="37signals"]``.
 * The ``:contains(text)`` pseudo-class that existed in `an early draft`_
   but was then removed.
 * The ``!=`` attribute operator. ``[foo!=bar]`` is the same as
