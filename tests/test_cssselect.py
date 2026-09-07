@@ -1441,7 +1441,11 @@ class TestCssselect(unittest.TestCase):
 
         assert pcss("span:only-child") == ["foobar-span"]
         assert pcss("li div:only-child") == ["li-div"]
-        assert pcss("div *:only-child") == ["li-div", "foobar-span"]
+        assert pcss("div *:only-child") == [
+            "li-div",
+            "checkbox-legend-enabled",
+            "foobar-span",
+        ]
         # The root element has no siblings, so it matches :only-child
         # (just like :first-child and :last-child)
         assert pcss("html:only-child") == ["html"]
@@ -1492,7 +1496,8 @@ class TestCssselect(unittest.TestCase):
             "first-li",
             "li-div",
             "p-b",
-            "checkbox-fieldset-disabled",
+            "legend",
+            "checkbox-legend-enabled",
             "area-href",
         ]
         assert pcss("a[href]") == ["tag-anchor", "nofollow-anchor"]
@@ -1584,19 +1589,19 @@ class TestCssselect(unittest.TestCase):
         ]
         assert pcss(":visited", html_only=True) == []
         assert pcss(":enabled", html_only=True) == [
-            "link-href",
-            "tag-anchor",
-            "nofollow-anchor",
             "checkbox-unchecked",
             "text-checked",
+            "hidden-unchecked",
             "checkbox-checked",
-            "area-href",
+            "checkbox-legend-enabled",
         ]
         assert pcss(":disabled", html_only=True) == [
             "checkbox-disabled",
+            "hidden-disabled",
             "checkbox-disabled-checked",
             "fieldset",
             "checkbox-fieldset-disabled",
+            "hidden-fieldset-disabled",
         ]
         assert pcss(":checked", html_only=True) == [
             "checkbox-checked",
@@ -1775,14 +1780,15 @@ c"></li>
    <input type="checkbox" id="checkbox-unchecked" />
    <input type="checkbox" id="checkbox-disabled" disabled="" />
    <input type="text" id="text-checked" checked="checked" />
-   <input type="hidden" />
-   <input type="hidden" disabled="disabled" />
+   <input type="hidden" id="hidden-unchecked" />
+   <input type="hidden" id="hidden-disabled" disabled="disabled" />
    <input type="checkbox" id="checkbox-checked" checked="checked" />
    <input type="checkbox" id="checkbox-disabled-checked"
           disabled="disabled" checked="checked" />
    <fieldset id="fieldset" disabled="disabled">
+     <legend id="legend"><input type="checkbox" id="checkbox-legend-enabled" /></legend>
      <input type="checkbox" id="checkbox-fieldset-disabled" />
-     <input type="hidden" />
+     <input type="hidden" id="hidden-fieldset-disabled" />
    </fieldset>
  </p>
  <ol id="second-ol">
