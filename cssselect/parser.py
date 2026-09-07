@@ -370,7 +370,10 @@ class SpecificityAdjustment:
 
 class Attrib:
     """
-    Represents selector[namespace|attrib operator value]
+    Represents selector[namespace|attrib operator value flag]
+
+    *flag* is ``'i'`` for a case-insensitive value match, ``'s'`` for a
+    case-sensitive one, and `None` when the selector sets neither.
     """
 
     @overload
@@ -381,6 +384,7 @@ class Attrib:
         attrib: str,
         operator: Literal["exists"],
         value: None,
+        flag: None = None,
     ) -> None: ...
 
     @overload
@@ -391,6 +395,7 @@ class Attrib:
         attrib: str,
         operator: str,
         value: Token,
+        flag: str | None = None,
     ) -> None: ...
 
     def __init__(
@@ -400,19 +405,22 @@ class Attrib:
         attrib: str,
         operator: str,
         value: Token | None,
+        flag: str | None = None,
     ) -> None:
         self.selector = selector
         self.namespace = namespace
         self.attrib = attrib
         self.operator = operator
         self.value = value
+        self.flag = flag
 
     def __repr__(self) -> str:
         attrib = f"{self.namespace}|{self.attrib}" if self.namespace else self.attrib
         if self.operator == "exists":
             return f"{self.__class__.__name__}[{self.selector!r}[{attrib}]]"
         assert self.value is not None
-        return f"{self.__class__.__name__}[{self.selector!r}[{attrib} {self.operator} {self.value.value!r}]]"
+        flag = f" {self.flag}" if self.flag else ""
+        return f"{self.__class__.__name__}[{self.selector!r}[{attrib} {self.operator} {self.value.value!r}{flag}]]"
 
     def canonical(self) -> str:
         attrib = _serialize_ident(self.attrib)
@@ -423,7 +431,8 @@ class Attrib:
             op = attrib
         else:
             assert self.value is not None
-            op = f"{attrib}{self.operator}{self.value.css()}"
+            flag = f" {self.flag}" if self.flag else ""
+            op = f"{attrib}{self.operator}{self.value.css()}{flag}"
 
         return f"{self.selector.canonical()}[{op}]"
 
@@ -857,9 +866,16 @@ def parse_attrib(selector: Tree, stream: TokenStream) -> Attrib:
         raise SelectorSyntaxError(f"Expected string or ident, got {value}")
     stream.skip_whitespace()
     next_ = stream.next()
+    flag = None
+    if next_.type == "IDENT":
+        flag = ascii_lower(cast("str", next_.value))
+        if flag not in ("i", "s"):
+            raise SelectorSyntaxError(f"Expected ']', got {next_}")
+        stream.skip_whitespace()
+        next_ = stream.next()
     if next_ != ("DELIM", "]"):
         raise SelectorSyntaxError(f"Expected ']', got {next_}")
-    return Attrib(selector, namespace, cast("str", attrib), op, value)
+    return Attrib(selector, namespace, cast("str", attrib), op, value, flag)
 
 
 def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:

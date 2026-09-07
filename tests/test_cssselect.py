@@ -136,6 +136,12 @@ class TestCssselect(unittest.TestCase):
         assert parse_many("a[hreflang |= 'en']", "a[hreflang|=en]") == [
             "Attrib[Element[a][hreflang |= 'en']]"
         ]
+        assert parse_many(
+            'a[rel="include" i]', "a[rel=include I]", "a[rel=include\ti]"
+        ) == ["Attrib[Element[a][rel = 'include' i]]"]
+        assert parse_many('a[rel="include" s]') == [
+            "Attrib[Element[a][rel = 'include' s]]"
+        ]
         assert parse_many("div:nth-child(10)") == [
             "Function[Element[div]:nth-child(['10'])]"
         ]
@@ -426,6 +432,9 @@ class TestCssselect(unittest.TestCase):
         css2css("[baz]")
         css2css('[baz="4"]', "[baz='4']")
         css2css('[baz^="4"]', "[baz^='4']")
+        css2css('[baz="4" i]', "[baz='4' i]")
+        css2css('[baz="4" I]', "[baz='4' i]")
+        css2css('[baz="4" s]', "[baz='4' s]")
         css2css("[ns|attr='4']")
         css2css("#lipsum")
         css2css(":not(*)")
@@ -541,6 +550,12 @@ class TestCssselect(unittest.TestCase):
             "Operator expected, got <DELIM ':' at 4>"
         )
         assert get_error("[rel=stylesheet") == ("Expected ']', got <EOF at 15>")
+        assert get_error("[rel=stylesheet x]") == (
+            "Expected ']', got <IDENT 'x' at 16>"
+        )
+        assert get_error("[rel=stylesheet i s]") == (
+            "Expected ']', got <IDENT 's' at 18>"
+        )
         assert get_error(":lang(fr)") is None
         assert get_error(":lang(fr") == ("Expected an argument, got <EOF at 8>")
         assert get_error(':contains("foo') == ("Unclosed string at 10")
@@ -688,6 +703,23 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e[hreflang|="en"]') == (
             "e[@hreflang and (@hreflang = 'en' or starts-with(@hreflang, 'en-'))]"
         )
+
+        # --- attribute case-sensitivity flags -------------------------
+        lowered = (
+            "translate(@foo, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "
+            "'abcdefghijklmnopqrstuvwxyz')"
+        )
+        assert xpath('e[foo="BAR" i]') == f"e[{lowered} = 'bar']"
+        assert xpath('e[foo*="BAR" i]') == (
+            f"e[{lowered} and contains({lowered}, 'bar')]"
+        )
+        assert xpath('e[foo$="BAR" i]') == (
+            f"e[{lowered} and substring({lowered}, string-length({lowered})-2) = 'bar']"
+        )
+        # An empty value has no case, so it is matched as-is.
+        assert xpath("e[foo!='' i]") == ("e[@foo != '']")
+        # 's' is the default.
+        assert xpath('e[foo="BAR" s]') == "e[@foo = 'BAR']"
 
         # --- nth-* and nth-last-* -------------------------------------
         assert xpath("e:nth-child(1)") == ("e[count(preceding-sibling::*) = 0]")
@@ -1353,6 +1385,9 @@ class TestCssselect(unittest.TestCase):
         assert pcss("a[rel]") == ["tag-anchor", "nofollow-anchor"]
         assert pcss('a[rel="tag"]') == ["tag-anchor"]
         assert pcss('a[href*="localhost"]') == ["tag-anchor"]
+        assert pcss('a[rel="TAG"]') == []
+        assert pcss('a[rel="TAG" i]') == ["tag-anchor"]
+        assert pcss('a[href*="LOCALHOST" i]') == ["tag-anchor"]
         assert pcss('a[href*=""]') == []
         assert pcss('a[href^="http"]') == ["tag-anchor", "nofollow-anchor"]
         assert pcss('a[href^="http:"]') == ["tag-anchor"]
