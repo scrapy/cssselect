@@ -1076,6 +1076,11 @@ class TestCssselect(unittest.TestCase):
         )
         # A code point beyond the Unicode range is replaced with U+FFFD.
         assert css_to_xpath(r"\110000") == ("descendant-or-self::*[name() = '\ufffd']")
+        # A null code point is likewise replaced with U+FFFD, so no NUL
+        # character can leak into the generated XPath string.
+        assert css_to_xpath(r"*[aval='\0 ']") == (
+            "descendant-or-self::*[@aval = '\ufffd']"
+        )
         # unescape_ident() resolves both unicode and simple escapes.
         assert unescape_ident(r"\41 B") == "AB"
         assert unescape_ident(r"\-foo") == "-foo"
