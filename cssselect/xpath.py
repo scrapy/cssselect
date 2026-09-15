@@ -879,10 +879,10 @@ class HTMLTranslator(GenericTranslator):
 
     Has a more useful implementation of some pseudo-classes based on
     HTML-specific element names and attribute names, as described in
-    the `HTML5 specification`_. It assumes no-quirks mode.
+    the `HTML specification`_. It assumes no-quirks mode.
     The API is the same as :class:`GenericTranslator`.
 
-    .. _HTML5 specification: http://www.w3.org/TR/html5/links.html#selectors
+    .. _HTML specification: https://html.spec.whatwg.org/multipage/semantics-other.html#pseudo-classes
 
     :param xhtml:
         If false (the default), element names and attribute names
@@ -932,62 +932,67 @@ class HTMLTranslator(GenericTranslator):
     # Links are never visited, the implementation for :visited is the same
     # as in GenericTranslator
 
+    # An element is a descendant of a disabled fieldset ancestor unless it is
+    # a descendant of that fieldset's own first legend element child. lxml's
+    # XPath evaluator has no generate-id() or current(), so the exemption is
+    # tested by checking whether any ancestor legend is also the first legend
+    # child of a disabled ancestor fieldset; with several nested disabled
+    # fieldsets this can exempt an element that a fully spec-accurate
+    # algorithm would still treat as disabled.
+    _disabled_by_fieldset = (
+        "ancestor::fieldset[@disabled] and not("
+        "count(ancestor::legend | ancestor::fieldset[@disabled]/legend[1]) < "
+        "count(ancestor::legend) + count(ancestor::fieldset[@disabled]/legend[1])"
+        ")"
+    )
+
     def xpath_disabled_pseudo(self, xpath: XPathExpr) -> XPathExpr:
-        # http://www.w3.org/TR/html5/section-index.html#attributes-1
+        # https://html.spec.whatwg.org/multipage/semantics-other.html#concept-element-disabled
         return xpath.add_condition(
-            """
+            f"""
         (
             @disabled and
             (
-                (name(.) = 'input' and @type != 'hidden') or
+                name(.) = 'input' or
                 name(.) = 'button' or
                 name(.) = 'select' or
                 name(.) = 'textarea' or
-                name(.) = 'command' or
                 name(.) = 'fieldset' or
                 name(.) = 'optgroup' or
                 name(.) = 'option'
             )
         ) or (
             (
-                (name(.) = 'input' and @type != 'hidden') or
+                name(.) = 'input' or
                 name(.) = 'button' or
                 name(.) = 'select' or
                 name(.) = 'textarea'
             )
-            and ancestor::fieldset[@disabled]
+            and {self._disabled_by_fieldset}
+        ) or (
+            name(.) = 'option' and ancestor::optgroup[@disabled]
         )
         """
         )
-        # FIXME: in the second half, add "and is not a descendant of that
-        # fieldset element's first legend element child, if any."
 
     def xpath_enabled_pseudo(self, xpath: XPathExpr) -> XPathExpr:
-        # http://www.w3.org/TR/html5/section-index.html#attributes-1
+        # https://html.spec.whatwg.org/multipage/semantics-other.html#concept-element-disabled
         return xpath.add_condition(
-            """
+            f"""
         (
-            @href and (
-                name(.) = 'a' or
-                name(.) = 'link' or
-                name(.) = 'area'
-            )
-        ) or (
             (
-                name(.) = 'command' or
                 name(.) = 'fieldset' or
                 name(.) = 'optgroup'
             )
             and not(@disabled)
         ) or (
             (
-                (name(.) = 'input' and @type != 'hidden') or
+                name(.) = 'input' or
                 name(.) = 'button' or
                 name(.) = 'select' or
-                name(.) = 'textarea' or
-                name(.) = 'keygen'
+                name(.) = 'textarea'
             )
-            and not (@disabled or ancestor::fieldset[@disabled])
+            and not(@disabled) and not({self._disabled_by_fieldset})
         ) or (
             name(.) = 'option' and not(
                 @disabled or ancestor::optgroup[@disabled]
@@ -995,9 +1000,3 @@ class HTMLTranslator(GenericTranslator):
         )
         """
         )
-        # FIXME: ... or "li elements that are children of menu elements,
-        # and that have a child element that defines a command, if the first
-        # such element's Disabled State facet is false (not disabled)".
-        # FIXME: after ancestor::fieldset[@disabled], add "and is not a
-        # descendant of that fieldset element's first legend element child,
-        # if any."
