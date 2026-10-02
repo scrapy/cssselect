@@ -818,7 +818,8 @@ class GenericTranslator:
         if value and is_non_whitespace(value):
             arg = self.xpath_literal(" " + value + " ")
             xpath.add_condition(
-                f"{name} and contains(concat(' ', normalize-space({name}), ' '), {arg})"
+                f"{name} and contains({name}, {self.xpath_literal(value)}) "
+                f"and contains(concat(' ', normalize-space({name}), ' '), {arg})"
             )
         else:
             xpath.add_condition("0")
