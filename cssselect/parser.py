@@ -62,6 +62,14 @@ Tree: TypeAlias = Union[
 PseudoElement: TypeAlias = Union["FunctionalPseudoElement", str]
 
 
+def _strip_universal(css: str) -> str:
+    """Strip a redundant universal selector from e.g. "*.foo" (but not from
+    e.g. "* > foo")."""
+    if len(css) > 1 and css[0] == "*" and css[1] in "#.[:":
+        return css[1:]
+    return css
+
+
 class Selector:
     """
     Represents a parsed selector.
@@ -118,12 +126,7 @@ class Selector:
             pseudo_element = f"::{_serialize_ident(self.pseudo_element)}"
         else:
             pseudo_element = ""
-        res = f"{self.parsed_tree.canonical()}{pseudo_element}"
-        # Strip a redundant universal selector from e.g. "*.foo" (but not
-        # from e.g. "* > foo").
-        if len(res) > 1 and res[0] == "*" and res[1] in "#.[:":
-            res = res[1:]
-        return res
+        return _strip_universal(f"{self.parsed_tree.canonical()}{pseudo_element}")
 
     def specificity(self) -> tuple[int, int, int]:
         """Return the specificity_ of this selector as a tuple of 3 integers.
@@ -242,27 +245,26 @@ class Pseudo:
 
 class Negation:
     """
-    Represents selector:not(subselector)
+    Represents selector:not(selector_list)
     """
 
-    def __init__(self, selector: Tree, subselector: Tree) -> None:
+    def __init__(self, selector: Tree, selector_list: Iterable[Tree]) -> None:
         self.selector = selector
-        self.subselector = subselector
+        self.selector_list = selector_list
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}[{self.selector!r}:not({self.subselector!r})]"
+        args_str = ", ".join(repr(s) for s in self.selector_list)
+        return f"{self.__class__.__name__}[{self.selector!r}:not({args_str})]"
 
     def canonical(self) -> str:
-        subsel = self.subselector.canonical()
-        # Strip a redundant universal selector from e.g. "*.foo" (but not
-        # from e.g. "* > foo").
-        if len(subsel) > 1 and subsel[0] == "*" and subsel[1] in "#.[:":
-            subsel = subsel[1:]
-        return f"{self.selector.canonical()}:not({subsel})"
+        args_str = ", ".join(
+            _strip_universal(s.canonical()) for s in self.selector_list
+        )
+        return f"{self.selector.canonical()}:not({args_str})"
 
     def specificity(self) -> tuple[int, int, int]:
         a1, b1, c1 = self.selector.specificity()
-        a2, b2, c2 = self.subselector.specificity()
+        a2, b2, c2 = max(x.specificity() for x in self.selector_list)
         return a1 + a2, b1 + b2, c1 + c2
 
 
@@ -314,13 +316,9 @@ class Matching:
         return f"{self.__class__.__name__}[{self.selector!r}:is({args_str})]"
 
     def canonical(self) -> str:
-        selector_arguments = []
-        for s in self.selector_list:
-            selarg = s.canonical()
-            if len(selarg) > 1:
-                selarg = selarg.lstrip("*")
-            selector_arguments.append(selarg)
-        args_str = ", ".join(selector_arguments)
+        args_str = ", ".join(
+            _strip_universal(s.canonical()) for s in self.selector_list
+        )
         return f"{self.selector.canonical()}:is({args_str})"
 
     def specificity(self) -> tuple[int, int, int]:
@@ -344,13 +342,9 @@ class SpecificityAdjustment:
         return f"{self.__class__.__name__}[{self.selector!r}:where({args_str})]"
 
     def canonical(self) -> str:
-        selector_arguments = []
-        for s in self.selector_list:
-            selarg = s.canonical()
-            if len(selarg) > 1:
-                selarg = selarg.lstrip("*")
-            selector_arguments.append(selarg)
-        args_str = ", ".join(selector_arguments)
+        args_str = ", ".join(
+            _strip_universal(s.canonical()) for s in self.selector_list
+        )
         return f"{self.selector.canonical()}:where({args_str})"
 
     def specificity(self) -> tuple[int, int, int]:
@@ -577,7 +571,7 @@ def parse_selector_group(stream: TokenStream) -> Iterator[Selector]:
 
 
 def parse_selector(stream: TokenStream) -> tuple[Tree, PseudoElement | None]:
-    result, pseudo_element = parse_simple_selector(stream)
+    result, pseudo_element = parse_compound_selector(stream)
     while 1:
         stream.skip_whitespace()
         peek = stream.peek()
@@ -592,17 +586,16 @@ def parse_selector(stream: TokenStream) -> tuple[Tree, PseudoElement | None]:
             combinator = cast("str", stream.next().value)
             stream.skip_whitespace()
         else:
-            # By exclusion, the last parse_simple_selector() ended
+            # By exclusion, the last parse_compound_selector() ended
             # at peek == ' '
             combinator = " "
-        next_selector, pseudo_element = parse_simple_selector(stream)
+        next_selector, pseudo_element = parse_compound_selector(stream)
         result = CombinedSelector(result, combinator, next_selector)
     return result, pseudo_element
 
 
-def parse_simple_selector(
+def parse_compound_selector(
     stream: TokenStream,
-    inside_negation: bool = False,
     inside_selector_list: bool = False,
 ) -> tuple[Tree, PseudoElement | None]:
     stream.skip_whitespace()
@@ -626,11 +619,7 @@ def parse_simple_selector(
     pseudo_element: PseudoElement | None = None
     while 1:
         peek = stream.peek()
-        if (
-            peek.type in ("S", "EOF")
-            or peek.is_delim(",", "+", ">", "~")
-            or (inside_negation and peek == ("DELIM", ")"))
-        ):
+        if peek.type in ("S", "EOF") or peek.is_delim(",", "+", ">", "~", ")"):
             break
         if pseudo_element:
             raise SelectorSyntaxError(
@@ -643,7 +632,7 @@ def parse_simple_selector(
             result = Class(result, stream.next_ident())
         elif peek == ("DELIM", "|"):
             # The explicit "no namespace" syntax, e.g. |div: only valid at
-            # the very start of a simple selector.
+            # the very start of a compound selector.
             if len(stream.used) != selector_start:
                 raise SelectorSyntaxError(f"Expected selector, got {peek}")
             stream.next()
@@ -672,11 +661,11 @@ def parse_simple_selector(
                 result = Pseudo(result, ident)
                 if result.ident == "scope":
                     # :scope is only supported at the start of a selector,
-                    # i.e. never in :is()/:where()/:matches() arguments
-                    # (where a preceding comma separates arguments, not
-                    # selectors), and otherwise only when the tokens
-                    # preceding its compound selector are the start of the
-                    # input or a comma.
+                    # i.e. never in :not()/:is()/:where()/:matches()
+                    # arguments (where a preceding comma separates
+                    # arguments, not selectors), and otherwise only when the
+                    # tokens preceding its compound selector are the start
+                    # of the input or a comma.
                     preceding = stream.used[:selector_start]
                     while preceding and preceding[-1].type == "S":
                         preceding = preceding[:-1]
@@ -690,51 +679,16 @@ def parse_simple_selector(
             stream.next()
             stream.skip_whitespace()
             if ident.lower() == "not":
-                if inside_selector_list:
-                    raise SelectorSyntaxError(
-                        ":not() is not supported inside :is(), :where() and :matches()"
-                    )
-                if inside_negation:
-                    raise SelectorSyntaxError("Got nested :not()")
-                argument, argument_pseudo_element = parse_simple_selector(
-                    stream, inside_negation=True
-                )
-                while 1:
-                    # Whitespace before the closing parenthesis is not a
-                    # descendant combinator.
-                    stream.skip_whitespace()
-                    peek = stream.peek()
-                    if argument_pseudo_element:
-                        raise SelectorSyntaxError(
-                            f"Got pseudo-element ::{argument_pseudo_element} inside :not() at {peek.pos}"
-                        )
-                    if peek == ("DELIM", ")"):
-                        stream.next()
-                        break
-                    if peek.is_delim("+", ">", "~"):
-                        argument_combinator = cast("str", stream.next().value)
-                        stream.skip_whitespace()
-                    elif peek.type == "EOF" or peek.is_delim(","):
-                        # A selector list is not supported in :not().
-                        raise SelectorSyntaxError(f"Expected ')', got {peek}")
-                    else:
-                        argument_combinator = " "
-                    next_selector, argument_pseudo_element = parse_simple_selector(
-                        stream, inside_negation=True
-                    )
-                    argument = CombinedSelector(
-                        argument, argument_combinator, next_selector
-                    )
-                result = Negation(result, argument)
+                result = Negation(result, parse_selector_list_arguments(stream))
             elif ident.lower() == "has":
                 combinator, arguments = parse_relative_selector(stream)
                 result = Relation(result, combinator, arguments)
 
             elif ident.lower() in ("matches", "is"):
-                selectors = parse_simple_selector_arguments(stream)
+                selectors = parse_selector_list_arguments(stream)
                 result = Matching(result, selectors)
             elif ident.lower() == "where":
-                selectors = parse_simple_selector_arguments(stream)
+                selectors = parse_selector_list_arguments(stream)
                 result = SpecificityAdjustment(result, selectors)
             else:
                 result = Function(result, ident, parse_arguments(stream))
@@ -793,30 +747,43 @@ def parse_relative_selector(stream: TokenStream) -> tuple[Token, Selector]:
     # Reparse the collected tokens instead of their concatenated source
     # text, so that escaped identifiers are preserved.
     subselector_tokens.append(EOFToken(next_.pos))
-    result, _ = parse_simple_selector(TokenStream(subselector_tokens))
+    result, _ = parse_compound_selector(TokenStream(subselector_tokens))
     return combinator, Selector(result)
 
 
-def parse_simple_selector_arguments(stream: TokenStream) -> list[Tree]:
+def parse_selector_list_arguments(stream: TokenStream) -> list[Tree]:
+    """Parse the selector list of a :not(), :is(), :where() or :matches()
+    argument, i.e. a comma-separated list of complex selectors."""
     arguments = []
     while 1:
-        result, pseudo_element = parse_simple_selector(
-            stream, inside_negation=True, inside_selector_list=True
+        result, pseudo_element = parse_compound_selector(
+            stream, inside_selector_list=True
         )
-        if pseudo_element:
-            raise SelectorSyntaxError(
-                f"Got pseudo-element ::{pseudo_element} inside function"
-            )
-        stream.skip_whitespace()
-        next_ = stream.next()
-        if next_ == ("DELIM", ","):
+        while 1:
+            if pseudo_element:
+                raise SelectorSyntaxError(
+                    f"Got pseudo-element ::{pseudo_element} inside function"
+                )
+            # Whitespace before a comma or the closing parenthesis is not a
+            # descendant combinator.
             stream.skip_whitespace()
-            arguments.append(result)
-        elif next_ == ("DELIM", ")"):
-            arguments.append(result)
+            peek = stream.peek()
+            if peek.is_delim(",", ")"):
+                break
+            if peek.type == "EOF":
+                raise SelectorSyntaxError(f"Expected ')', got {peek}")
+            if peek.is_delim("+", ">", "~"):
+                combinator = cast("str", stream.next().value)
+                stream.skip_whitespace()
+            else:
+                combinator = " "
+            next_selector, pseudo_element = parse_compound_selector(
+                stream, inside_selector_list=True
+            )
+            result = CombinedSelector(result, combinator, next_selector)
+        arguments.append(result)
+        if stream.next().is_delim(")"):
             break
-        else:
-            raise SelectorSyntaxError(f"Expected an argument, got {next_}")
     return arguments
 
 
