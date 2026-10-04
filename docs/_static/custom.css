@@ -1,0 +1,7 @@
+/* sphinx_rtd_theme forces nowrap on table cells and relies on horizontal
+   scrolling instead; wrap long cell content, e.g. in the selector support
+   table, so it stays fully visible without scrolling. */
+.wy-table-responsive table td,
+.wy-table-responsive table th {
+    white-space: normal;
+}
