@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # cssselect documentation build configuration file, created by
 # sphinx-quickstart on Tue Mar 27 14:20:34 2012.

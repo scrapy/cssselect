@@ -14,6 +14,7 @@ See AUTHORS for more details.
 from __future__ import annotations
 
 import re
+from string import ascii_lowercase, ascii_uppercase
 from typing import TYPE_CHECKING, cast
 
 from cssselect.parser import (
@@ -32,6 +33,7 @@ from cssselect.parser import (
     SelectorError,
     SpecificityAdjustment,
     Tree,
+    ascii_lower,
     parse,
     parse_series,
 )
@@ -173,7 +175,7 @@ class GenericTranslator:
         "^=": "prefixmatch",
         "$=": "suffixmatch",
         "*=": "substringmatch",
-        "!=": "different",  # XXX Not in Level 3 but meh
+        "!=": "different",  # not part of Selectors Level 3, but widely supported
     }
 
     #: The attribute used for ID selectors depends on the document language:
@@ -410,7 +412,6 @@ class GenericTranslator:
             getattr(self, method_name, None),
         )
         if not method:
-            # TODO: better error message for pseudo-elements?
             raise ExpressionError(f"The pseudo-class :{pseudo.ident} is unknown")
         return method(self.xpath(pseudo.selector))
 
@@ -439,6 +440,11 @@ class GenericTranslator:
             value = cast("str", selector.value.value).lower()
         else:
             value = selector.value.value
+        if selector.flag == "i" and value:
+            # ASCII-lowering both sides is what the specification defines a
+            # case-insensitive match as, and all XPath 1.0 can express.
+            attrib = f"translate({attrib}, {self.xpath_literal(ascii_uppercase)}, {self.xpath_literal(ascii_lowercase)})"
+            value = ascii_lower(value)
         return method(self.xpath(selector.selector), attrib, value)
 
     def xpath_class(self, class_selector: Class) -> XPathExpr:
@@ -817,7 +823,8 @@ class GenericTranslator:
         if value and is_non_whitespace(value):
             arg = self.xpath_literal(" " + value + " ")
             xpath.add_condition(
-                f"{name} and contains(concat(' ', normalize-space({name}), ' '), {arg})"
+                f"{name} and contains({name}, {self.xpath_literal(value)}) "
+                f"and contains(concat(' ', normalize-space({name}), ' '), {arg})"
             )
         else:
             xpath.add_condition("0")

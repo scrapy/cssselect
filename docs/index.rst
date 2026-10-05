@@ -24,7 +24,7 @@ for some selectors, based on HTML-specific element types or attributes.)
     ...     print('Invalid selector.')
     ...
     >>> print(expression)
-    descendant-or-self::div[@class and contains(concat(' ', normalize-space(@class), ' '), ' content ')]
+    descendant-or-self::div[@class and contains(@class, 'content') and contains(concat(' ', normalize-space(@class), ' '), ' content ')]
 
 The resulting expression can be used with lxml's `XPath engine`_:
 
@@ -118,6 +118,10 @@ be implemented):
   *compound selector* built only from type, class and universal selectors
   (e.g. ``:has(> a.important)``). Anything else is unsupported, e.g. an ID
   (``:has(#id)``), or a selector list (``:has(a, b)``).
+* The ``i`` and ``s`` attribute selector flags, e.g. ``[href^="HTTP" i]``.
+  ``i`` makes the value comparison ASCII case-insensitive. ``s`` is accepted
+  but has no effect, since attribute values are already compared
+  case-sensitively.
 * The ``:not()`` pseudo-class with a *complex selector* argument, e.g.
   ``:not(a.important[rel] > b)``. Limitation: it takes a single argument, so a
   selector list is unsupported (e.g. ``:not(a, b)``).
