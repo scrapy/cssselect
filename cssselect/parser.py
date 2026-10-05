@@ -998,13 +998,16 @@ _sub_unicode_escape = re.compile(TokenMacros.unicode_escape, re.IGNORECASE).sub
 _sub_newline_escape = re.compile(r"\\(?:\n|\r\n|\r|\f)").sub
 _sub_string_control_char = re.compile(r"[\x00-\x1f\x7f]").sub
 
+# CSS Syntax Level 3, §3.3: fold a raw U+0000 or surrogate code point to U+FFFD.
+_sub_invalid_input_char = re.compile("[\x00\ud800-\udfff]").sub
+
 # Same as r'\1', but faster on CPython
 _replace_simple = operator.methodcaller("group", 1)
 
 
 def _replace_unicode(match: re.Match[str]) -> str:
     codepoint = int(match.group(1), 16)
-    if codepoint > sys.maxunicode or 0xD800 <= codepoint <= 0xDFFF:
+    if codepoint == 0 or codepoint > sys.maxunicode or 0xD800 <= codepoint <= 0xDFFF:
         codepoint = 0xFFFD
     return chr(codepoint)
 
@@ -1055,6 +1058,8 @@ def _serialize_ident(value: str) -> str:
 
 
 def tokenize(s: str) -> Iterator[Token]:
+    # Preprocess the input stream (§3.3); the substitution is length-preserving.
+    s = _sub_invalid_input_char("\N{REPLACEMENT CHARACTER}", s)
     pos = 0
     len_s = len(s)
     while pos < len_s:

@@ -690,7 +690,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e[foo|bar]") == "e[@foo:bar]"
         assert xpath('e[foo="bar"]') == "e[@foo = 'bar']"
         assert xpath('e[foo~="bar"]') == (
-            "e[@foo and contains(concat(' ', normalize-space(@foo), ' '), ' bar ')]"
+            "e[@foo and contains(@foo, 'bar') and contains(concat(' ', normalize-space(@foo), ' '), ' bar ')]"
         )
         assert xpath('e[foo^="bar"]') == ("e[@foo and starts-with(@foo, 'bar')]")
         assert xpath('e[foo$="bar"]') == (
@@ -768,7 +768,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:nth-last-of-type(1)") == ("e[count(following-sibling::e) = 0]")
         assert xpath("div e:nth-last-of-type(1) .aclass") == (
             "div/descendant-or-self::*/e[count(following-sibling::e) = 0]"
-            "/descendant-or-self::*/*[@class and contains("
+            "/descendant-or-self::*/*[@class and contains(@class, 'aclass') and contains("
             "concat(' ', normalize-space(@class), ' '), ' aclass ')]"
         )
 
@@ -788,35 +788,35 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:hover") == ("e[0]")  # never matches
         assert (
             xpath("div:has(bar.foo)") == "div[descendant::bar"
-            "[@class and contains(concat(' ', normalize-space(@class), ' '), ' foo ')]]"
+            "[@class and contains(@class, 'foo') and contains(concat(' ', normalize-space(@class), ' '), ' foo ')]]"
         )
         assert xpath("e:has(> f)") == "e[./f]"
         assert xpath("e:has(f)") == "e[descendant::f]"
         assert xpath("e:has(~ f)") == "e[following-sibling::f]"
         assert xpath("e:has(+ f)") == "e[following-sibling::*[1]/self::f]"
         assert xpath("e:has(> f.bar)") == (
-            "e[./f[@class and contains("
+            "e[./f[@class and contains(@class, 'bar') and contains("
             "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
         )
         assert xpath("e:has(> .bar)") == (
-            "e[./*[@class and contains("
+            "e[./*[@class and contains(@class, 'bar') and contains("
             "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
         )
         assert xpath("e:has(~ f.bar)") == (
-            "e[following-sibling::f[@class and contains("
+            "e[following-sibling::f[@class and contains(@class, 'bar') and contains("
             "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
         )
         assert xpath("e:has(+ f.bar)") == (
-            "e[following-sibling::*[1]/self::f[@class and contains("
+            "e[following-sibling::*[1]/self::f[@class and contains(@class, 'bar') and contains("
             "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
         )
         assert xpath("e:has(+ .bar)") == (
-            "e[following-sibling::*[1]/self::*[@class and contains("
+            "e[following-sibling::*[1]/self::*[@class and contains(@class, 'bar') and contains("
             "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
         )
         assert xpath("e:has(+ *)") == "e[following-sibling::*[1]/self::*]"
         assert xpath("e.foo:has(f)") == (
-            "e[(@class and contains("
+            "e[(@class and contains(@class, 'foo') and contains("
             "concat(' ', normalize-space(@class), ' '), ' foo ')) and (descendant::f)]"
         )
         # Combinators inside a :has() argument
@@ -834,7 +834,7 @@ class TestCssselect(unittest.TestCase):
         # A relative selector list matches if any of its arguments does
         assert xpath("e:has(f, > g)") == "e[(descendant::f) or (./g)]"
         assert xpath("e.foo:has(f, g)") == (
-            "e[(@class and contains("
+            "e[(@class and contains(@class, 'foo') and contains("
             "concat(' ', normalize-space(@class), ' '), ' foo ')) "
             "and ((descendant::f) or (descendant::g))]"
         )
@@ -866,7 +866,7 @@ class TestCssselect(unittest.TestCase):
             "e[not(self::c and parent::*[self::b and parent::*[self::a]])]"
         )
         assert xpath("e:not(.a > #b)") == (
-            "e[not(@id = 'b' and parent::*[@class and contains("
+            "e[not(@id = 'b' and parent::*[@class and contains(@class, 'a') and contains("
             "concat(' ', normalize-space(@class), ' '), ' a ')])]"
         )
         # A "*" compound selector only constrains the axis
@@ -898,7 +898,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e:contains("foo")') == ("e[contains(., 'foo')]")
         assert xpath("e:ConTains(foo)") == ("e[contains(., 'foo')]")
         assert xpath("e.warning") == (
-            "e[@class and contains("
+            "e[@class and contains(@class, 'warning') and contains("
             "concat(' ', normalize-space(@class), ' '), ' warning ')]"
         )
         assert xpath("e#myid") == ("e[@id = 'myid']")
@@ -924,11 +924,11 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:is(*, .foo)") == "e"
         assert xpath("e:where(*, foo)") == "e"
         assert xpath("e.foo:is(.a, .b)") == (
-            "e[(@class and contains("
+            "e[(@class and contains(@class, 'foo') and contains("
             "concat(' ', normalize-space(@class), ' '), ' foo ')) and "
-            "((@class and contains("
+            "((@class and contains(@class, 'a') and contains("
             "concat(' ', normalize-space(@class), ' '), ' a ')) or "
-            "(@class and contains("
+            "(@class and contains(@class, 'b') and contains("
             "concat(' ', normalize-space(@class), ' '), ' b ')))]"
         )
         assert xpath("e:is(:has(f))") == "e[descendant::f]"
@@ -966,7 +966,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath("*:scope") == "*[position() = 1]"
         assert xpath("div:scope") == "*[(self::div) and (position() = 1)]"
         assert xpath(".foo:scope") == (
-            "*[(@class and contains("
+            "*[(@class and contains(@class, 'foo') and contains("
             "concat(' ', normalize-space(@class), ' '), ' foo ')) "
             "and (position() = 1)]"
         )
@@ -1085,7 +1085,7 @@ class TestCssselect(unittest.TestCase):
         assert css[1:] in xpath
         xpath = xpath.encode("ascii", "xmlcharrefreplace").decode("ASCII")
         assert xpath == (
-            "descendant-or-self::*[@class and contains("
+            "descendant-or-self::*[@class and contains(@class, 'a&#193;b') and contains("
             "concat(' ', normalize-space(@class), ' '), ' a&#193;b ')]"
         )
 
@@ -1124,9 +1124,30 @@ class TestCssselect(unittest.TestCase):
         )
         # A code point beyond the Unicode range is replaced with U+FFFD.
         assert css_to_xpath(r"\110000") == ("descendant-or-self::*[name() = '\ufffd']")
+        # A null code point is likewise replaced with U+FFFD, so no NUL
+        # character can leak into the generated XPath string.
+        assert css_to_xpath(r"*[aval='\0 ']") == (
+            "descendant-or-self::*[@aval = '\ufffd']"
+        )
         # unescape_ident() resolves both unicode and simple escapes.
         assert unescape_ident(r"\41 B") == "AB"
         assert unescape_ident(r"\-foo") == "-foo"
+
+    def test_input_preprocessing(self) -> None:
+        # CSS Syntax §3.3: a raw U+0000 or surrogate code point (not an
+        # escape) is folded to U+FFFD before tokenizing.
+        css_to_xpath = GenericTranslator().css_to_xpath
+        assert css_to_xpath('*[aval="x\x00y"]') == (
+            "descendant-or-self::*[@aval = 'x�y']"
+        )
+        assert css_to_xpath('*[aval="x\ud800y"]') == (
+            "descendant-or-self::*[@aval = 'x�y']"
+        )
+        assert css_to_xpath(':contains("x\udfffy")') == (
+            "descendant-or-self::*[contains(., 'x�y')]"
+        )
+        # A raw NUL in an identifier becomes a valid U+FFFD name character.
+        assert str(next(tokenize("foo\x00bar"))) == "<IDENT 'foo�bar' at 0>"
 
     def test_xpath_pseudo_elements(self) -> None:
         class CustomTranslator(GenericTranslator):

@@ -24,7 +24,7 @@ for some selectors, based on HTML-specific element types or attributes.)
     ...     print('Invalid selector.')
     ...
     >>> print(expression)
-    descendant-or-self::div[@class and contains(concat(' ', normalize-space(@class), ' '), ' content ')]
+    descendant-or-self::div[@class and contains(@class, 'content') and contains(concat(' ', normalize-space(@class), ' '), ' content ')]
 
 The resulting expression can be used with lxml's `XPath engine`_:
 
