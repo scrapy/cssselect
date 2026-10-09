@@ -1,6 +1,75 @@
 Changelog
 =========
 
+Version 1.6.0
+-------------
+
+Unreleased.
+
+*   **Backward-incompatible change**: ``Relation``, which represents
+    ``:has()``, now takes and exposes a list of ``(combinator, selector)``
+    pairs as ``arguments``, replacing its ``combinator`` and ``subselector``
+    arguments and attributes.
+
+*   **Backward-incompatible change**: the
+    ``GenericTranslator.xpath_relation_*_combinator()`` methods now take only
+    the XPath expression of the ``:has()`` argument and return an XPath
+    condition string. Translator subclasses that override them need to be
+    updated.
+
+*   ``:has()`` now supports any relative selector list, e.g.
+    ``:has(> a.important, + p b)``, where it used to support a single
+    argument made only of type, class and universal selectors.
+
+*   ``:not()`` now supports a complex selector argument, e.g.
+    ``:not(a.important[rel] > b)``.
+
+*   Added support for the ``i`` and ``s`` attribute selector flags, e.g.
+    ``[href^="HTTP" i]``, for ASCII case-insensitive and case-sensitive value
+    matching.
+
+*   ``*|element`` and ``[*|attrib]`` now match elements and attributes in any
+    namespace, including none. They used to match only those with no
+    namespace, like ``|element`` still does and the newly supported
+    ``[|attrib]`` does.
+
+    ``Element.namespace`` and ``Attrib.namespace`` are now ``"*"`` for the
+    namespace wildcard.
+
+*   Aligned the ``:enabled`` and ``:disabled`` pseudo-classes of
+    ``HTMLTranslator`` with the HTML Living Standard:
+
+    * ``input`` elements with no ``type`` attribute or with
+      ``type="hidden"`` can now be ``:enabled`` and ``:disabled``.
+
+    * Links (``a``, ``area`` and ``link`` with ``href``) are no longer
+      ``:enabled``.
+
+    * Form controls inside the first ``legend`` of a disabled ``fieldset`` are
+      no longer ``:disabled``.
+
+    * ``option`` elements inside a disabled ``optgroup`` are now
+      ``:disabled``.
+
+    * ``command`` elements are no longer ``:enabled`` or ``:disabled``, and
+      ``keygen`` elements are no longer ``:enabled``.
+
+*   Null and surrogate code points, both raw and escaped (e.g. ``\0``), are
+    now replaced with U+FFFD, as the CSS specification requires. Raw null
+    code points used to cause a ``SelectorSyntaxError``, and the others used
+    to end up in the generated XPath.
+
+*   The descendant combinator now translates into a ``descendant::`` step, e.g.
+    ``e f`` into ``e/descendant::f`` instead of ``e/descendant-or-self::*/f``,
+    which lxml evaluates faster.
+
+*   Class selectors and the ``~=`` attribute operator now translate into an
+    XPath expression that starts with a plain ``contains()`` check, which lxml
+    evaluates faster on most documents.
+
+*   Documented the support for ID selectors whose value is not a valid CSS
+    identifier, e.g. ``#37signals``, as a non-standard extension.
+
 Version 1.5.0
 -------------
 
