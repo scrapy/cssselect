@@ -89,9 +89,9 @@ class TestCssselect(unittest.TestCase):
             return result
 
         assert parse_many("*") == ["Element[*]"]
-        assert parse_many("*|*") == ["Element[*]"]
-        assert parse_many("*|foo") == ["Element[foo]"]
-        assert parse_many("|foo") == ["Element[foo]"]
+        assert parse_many("*|*") == ["Element[*|*]"]
+        assert parse_many("*|foo") == ["Element[*|foo]"]
+        assert parse_many("foo", "|foo") == ["Element[foo]"]
         assert parse_many("|*") == ["Element[*]"]
         assert parse_many("foo|*") == ["Element[foo|*]"]
         assert parse_many("foo|bar") == ["Element[foo|bar]"]
@@ -684,9 +684,13 @@ class TestCssselect(unittest.TestCase):
 
         assert xpath("*") == "*"
         assert xpath("e") == "e"
-        assert xpath("*|e") == "e"
+        assert xpath("|e") == "e"
+        assert xpath("*|e") == "*[local-name() = 'e']"
+        assert xpath("*|*") == "*"
         assert xpath("e|f") == "e:f"
         assert xpath("e[foo]") == "e[@foo]"
+        assert xpath("e[|foo]") == "e[@foo]"
+        assert xpath("e[*|foo]") == "e[attribute::*[local-name() = 'foo']]"
         assert xpath("e[foo|bar]") == "e[@foo:bar]"
         assert xpath('e[foo="bar"]') == "e[@foo = 'bar']"
         assert xpath('e[foo~="bar"]') == (

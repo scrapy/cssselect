@@ -426,14 +426,20 @@ class GenericTranslator:
             name = selector.attrib.lower()
         else:
             name = selector.attrib
-        safe = is_safe_name(name)
-        if selector.namespace:
-            name = f"{selector.namespace}:{name}"
-            safe = safe and is_safe_name(selector.namespace)
-        if safe:
-            attrib = "@" + name
+        if selector.namespace == "*":
+            # Namespace wildcard, e.g. "[*|href]": any namespace, including
+            # none. XPath 1.0 has no "*:name" name test for this, so match
+            # by local name instead.
+            attrib = f"attribute::*[local-name() = {self.xpath_literal(name)}]"
         else:
-            attrib = f"attribute::*[name() = {self.xpath_literal(name)}]"
+            safe = is_safe_name(name)
+            if selector.namespace:
+                name = f"{selector.namespace}:{name}"
+                safe = safe and is_safe_name(selector.namespace)
+            if safe:
+                attrib = "@" + name
+            else:
+                attrib = f"attribute::*[name() = {self.xpath_literal(name)}]"
         if selector.value is None:
             value = None
         elif self.lower_case_attribute_values:
@@ -468,7 +474,14 @@ class GenericTranslator:
             safe = bool(is_safe_name(element))
             if self.lower_case_element_names:
                 element = element.lower()
-        if selector.namespace:
+            if selector.namespace == "*":
+                # Namespace wildcard, e.g. "*|div": any namespace,
+                # including none. XPath 1.0 has no "*:name" name test
+                # for this, so match by local name instead.
+                xpath = self.xpathexpr_cls(element="*")
+                xpath.add_condition(f"local-name() = {self.xpath_literal(element)}")
+                return xpath
+        if selector.namespace and selector.namespace != "*":
             # Namespace prefixes are case-sensitive.
             # http://www.w3.org/TR/css3-namespace/#prefixes
             element = f"{selector.namespace}:{element}"

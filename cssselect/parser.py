@@ -425,7 +425,10 @@ class Attrib:
     def canonical(self) -> str:
         attrib = _serialize_ident(self.attrib)
         if self.namespace:
-            attrib = f"{_serialize_ident(self.namespace)}|{attrib}"
+            namespace = (
+                "*" if self.namespace == "*" else _serialize_ident(self.namespace)
+            )
+            attrib = f"{namespace}|{attrib}"
 
         if self.operator == "exists":
             op = attrib
@@ -446,7 +449,10 @@ class Element:
     """
     Represents namespace|element
 
-    `None` is for the universal selector '*'
+    `None` is for the universal selector '*'. `namespace` is ``"*"``
+    for the explicit namespace wildcard, e.g. ``*|div``, and `None`
+    both for an unprefixed element and for the explicit ``|div``
+    no-namespace syntax.
 
     """
 
@@ -462,7 +468,10 @@ class Element:
     def canonical(self) -> str:
         element = _serialize_ident(self.element) if self.element else "*"
         if self.namespace:
-            element = f"{_serialize_ident(self.namespace)}|{element}"
+            namespace = (
+                "*" if self.namespace == "*" else _serialize_ident(self.namespace)
+            )
+            element = f"{namespace}|{element}"
         return element
 
     def specificity(self) -> tuple[int, int, int]:
@@ -622,12 +631,12 @@ def parse_simple_selector(
             namespace = stream.next().value
         else:
             stream.next()
-            namespace = None
+            namespace = "*"
         if stream.peek() == ("DELIM", "|"):
             stream.next()
             element = stream.next_ident_or_star()
         else:
-            element = namespace
+            element = None if namespace == "*" else namespace
             namespace = None
     else:
         element = namespace = None
@@ -829,23 +838,31 @@ def parse_simple_selector_arguments(stream: TokenStream) -> list[Tree]:
 
 def parse_attrib(selector: Tree, stream: TokenStream) -> Attrib:
     stream.skip_whitespace()
-    attrib = stream.next_ident_or_star()
-    if attrib is None and stream.peek() != ("DELIM", "|"):
-        raise SelectorSyntaxError(f"Expected '|', got {stream.peek()}")
+    attrib: str | None
     namespace: str | None
     op: str | None
     if stream.peek() == ("DELIM", "|"):
+        # The explicit "no namespace" syntax, e.g. [|attr].
         stream.next()
-        if stream.peek() == ("DELIM", "="):
-            namespace = None
-            stream.next()
-            op = "|="
-        else:
-            namespace = attrib
-            attrib = stream.next_ident()
-            op = None
+        namespace = None
+        attrib = stream.next_ident()
+        op = None
     else:
-        namespace = op = None
+        attrib = stream.next_ident_or_star()
+        if attrib is None and stream.peek() != ("DELIM", "|"):
+            raise SelectorSyntaxError(f"Expected '|', got {stream.peek()}")
+        if stream.peek() == ("DELIM", "|"):
+            stream.next()
+            if stream.peek() == ("DELIM", "="):
+                namespace = None
+                stream.next()
+                op = "|="
+            else:
+                namespace = "*" if attrib is None else attrib
+                attrib = stream.next_ident()
+                op = None
+        else:
+            namespace = op = None
     if op is None:
         stream.skip_whitespace()
         next_ = stream.next()

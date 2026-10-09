@@ -176,4 +176,9 @@ In CSS you can use ``namespace-prefix|element``, similar to
 one-to-one. How prefixes are mapped to namespace URIs depends on the
 XPath implementation.
 
+``*|element`` matches an element in any namespace, including none.
+``|element`` and a bare ``element`` both match only elements with no
+namespace. The same rules apply to attribute names, e.g.
+``[*|attrib]`` and ``[|attrib]``.
+
 .. include:: ../CHANGES
