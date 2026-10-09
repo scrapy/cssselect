@@ -16,13 +16,19 @@ from __future__ import annotations
 import operator
 import re
 import sys
-from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, Union, cast, overload
+from typing import (
+    TYPE_CHECKING,
+    Literal,
+    Protocol,
+    Self,
+    TypeAlias,
+    Union,
+    cast,
+    overload,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Sequence
-
-    # typing.Self requires Python 3.11
-    from typing_extensions import Self
 
 
 def ascii_lower(string: str) -> str:

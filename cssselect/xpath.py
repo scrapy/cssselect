@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import re
 from string import ascii_lowercase, ascii_uppercase
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Self, cast
 
 from cssselect.parser import (
     Attrib,
@@ -40,9 +40,6 @@ from cssselect.parser import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
-
-    # typing.Self requires Python 3.11
-    from typing_extensions import Self
 
 
 class ExpressionError(SelectorError, RuntimeError):
