@@ -824,7 +824,7 @@ class TestCssselect(unittest.TestCase):
             "concat(' ', normalize-space(@class), ' '), ' foo ')) and (descendant::f)]"
         )
         # Combinators inside a :has() argument
-        assert xpath("e:has(f g)") == "e[descendant::f/descendant-or-self::*/g]"
+        assert xpath("e:has(f g)") == "e[descendant::f/descendant::g]"
         assert xpath("e:has(> f > g)") == "e[./f/g]"
         assert xpath("e:has(~ f + g)") == (
             "e[following-sibling::f/following-sibling::*"
@@ -833,7 +833,7 @@ class TestCssselect(unittest.TestCase):
         # A leading "+" applies to the first step of the argument, so that any
         # further step is walked from the adjacent sibling.
         assert xpath("e:has(+ f g)") == (
-            "e[following-sibling::*[1]/self::f/descendant-or-self::*/g]"
+            "e[following-sibling::*[1]/self::f/descendant::g]"
         )
         # A relative selector list matches if any of its arguments does
         assert xpath("e:has(f, > g)") == "e[(descendant::f) or (./g)]"
