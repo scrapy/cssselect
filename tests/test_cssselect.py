@@ -1361,6 +1361,32 @@ class TestCssselect(unittest.TestCase):
             css = f"::pseudo_element({argument_string})"
             assert argument_types(css) == argument_list
 
+    def test_html_non_ascii_element_names(self) -> None:
+        document = html.fromstring(
+            '<div><x-Ä id="upper"></x-Ä><x-ä id="lower"></x-ä></div>'
+        )
+        translator = HTMLTranslator()
+        for selector in ("x-Ä", "X-Ä", "*|X-Ä"):
+            elements = typing.cast(
+                "list[etree._Element]",
+                document.xpath(translator.css_to_xpath(selector)),
+            )
+            assert [element.get("id") for element in elements] == ["upper"]
+        assert len(document.xpath(translator.css_to_xpath("X-ä"))) == 1
+
+    def test_html_non_ascii_attribute_names(self) -> None:
+        document = html.fromstring(
+            '<div><p id="upper" DATA-Ä="yes"></p><p id="lower" data-ä="yes"></p></div>'
+        )
+        translator = HTMLTranslator()
+        for selector in ("[DATA-Ä]", '[DATA-Ä="yes"]', "[*|DATA-Ä]"):
+            elements = typing.cast(
+                "list[etree._Element]",
+                document.xpath(translator.css_to_xpath(selector)),
+            )
+            assert [element.get("id") for element in elements] == ["upper"]
+        assert len(document.xpath(translator.css_to_xpath('[DATA-ä="yes"]'))) == 1
+
     def test_select(self) -> None:
         document = etree.fromstring(HTML_IDS)
         sort_key = {el: count for count, el in enumerate(document.iter())}.__getitem__
