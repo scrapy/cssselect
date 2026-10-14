@@ -1361,6 +1361,31 @@ class TestCssselect(unittest.TestCase):
             css = f"::pseudo_element({argument_string})"
             assert argument_types(css) == argument_list
 
+    def test_html_non_ascii_element_names(self) -> None:
+        xpath = HTMLTranslator().css_to_xpath
+        assert xpath("x-Ä") == "descendant-or-self::*[name() = 'x-Ä']"
+        assert xpath("X-Ä") == "descendant-or-self::*[name() = 'x-Ä']"
+        assert xpath("*|X-Ä") == "descendant-or-self::*[local-name() = 'x-Ä']"
+        assert xpath("X-ä") == "descendant-or-self::*[name() = 'x-ä']"
+
+    def test_html_non_ascii_attribute_names(self) -> None:
+        xpath = HTMLTranslator().css_to_xpath
+        assert (
+            xpath("[DATA-Ä]")
+            == "descendant-or-self::*[attribute::*[name() = 'data-Ä']]"
+        )
+        assert (
+            xpath('[DATA-Ä="yes"]')
+            == "descendant-or-self::*[attribute::*[name() = 'data-Ä'] = 'yes']"
+        )
+        assert xpath("[*|DATA-Ä]") == (
+            "descendant-or-self::*[attribute::*[local-name() = 'data-Ä']]"
+        )
+        assert (
+            xpath('[DATA-ä="yes"]')
+            == "descendant-or-self::*[attribute::*[name() = 'data-ä'] = 'yes']"
+        )
+
     def test_select(self) -> None:
         document = etree.fromstring(HTML_IDS)
         sort_key = {el: count for count, el in enumerate(document.iter())}.__getitem__

@@ -420,7 +420,7 @@ class GenericTranslator:
             getattr(self, f"xpath_attrib_{operator}"),
         )
         if self.lower_case_attribute_names:
-            name = selector.attrib.lower()
+            name = ascii_lower(selector.attrib)
         else:
             name = selector.attrib
         if selector.namespace == "*":
@@ -470,7 +470,7 @@ class GenericTranslator:
         else:
             safe = bool(is_safe_name(element))
             if self.lower_case_element_names:
-                element = element.lower()
+                element = ascii_lower(element)
             if selector.namespace == "*":
                 # Namespace wildcard, e.g. "*|div": any namespace,
                 # including none. XPath 1.0 has no "*:name" name test
