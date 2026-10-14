@@ -440,7 +440,7 @@ class GenericTranslator:
         if selector.value is None:
             value = None
         elif self.lower_case_attribute_values:
-            value = cast("str", selector.value.value).lower()
+            value = ascii_lower(cast("str", selector.value.value))
         else:
             value = selector.value.value
         if selector.flag == "i" and value:
@@ -927,7 +927,9 @@ class HTMLTranslator(GenericTranslator):
             )
         value = function.arguments[0].value
         assert value
-        arg = self.xpath_literal(value.lower() + "-")
+        # Language-range matching is ASCII case-insensitive (RFC 4647),
+        # like the translate() on the document side of the comparison.
+        arg = self.xpath_literal(ascii_lower(value) + "-")
         return xpath.add_condition(
             "ancestor-or-self::*[@lang][1][starts-with(concat("
             # XPath 1.0 has no lower-case function...
