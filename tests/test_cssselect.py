@@ -1045,6 +1045,9 @@ class TestCssselect(unittest.TestCase):
             lower_case_attribute_values = True
 
         assert LowerValues().css_to_xpath("[Foo=BAR]", prefix="") == "*[@Foo = 'bar']"
+        # The folding is ASCII-only: str.lower() would turn U+212A
+        # (KELVIN SIGN) into ASCII "k".
+        assert LowerValues().css_to_xpath('[foo="K"]', prefix="") == "*[@foo = 'K']"
 
         # A member of an :is()/:where() selector list that translates to a
         # path (rather than a predicate) cannot be embedded in the outer
@@ -1384,6 +1387,17 @@ class TestCssselect(unittest.TestCase):
         assert (
             xpath('[DATA-ä="yes"]')
             == "descendant-or-self::*[attribute::*[name() = 'data-ä'] = 'yes']"
+        )
+
+    def test_html_non_ascii_lang(self) -> None:
+        # Language-range matching is ASCII case-insensitive (RFC 4647);
+        # str.lower() folds U+212A (KELVIN SIGN) into ASCII "k".
+        xpath = HTMLTranslator().css_to_xpath
+        assert xpath(":lang(K)") == (
+            "descendant-or-self::*[ancestor-or-self::*[@lang][1]"
+            "[starts-with(concat(translate(@lang, "
+            "'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), "
+            "'-'), 'K-')]]"
         )
 
     def test_select(self) -> None:
