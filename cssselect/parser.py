@@ -13,7 +13,6 @@ See AUTHORS for more details.
 
 from __future__ import annotations
 
-import operator
 import re
 import sys
 from typing import (
@@ -1016,16 +1015,16 @@ _match_string_by_quote = {
     '"': _compile(r'([^\n\r\f\\"]|%(string_escape)s)*'),
 }
 
-_sub_simple_escape = re.compile(r"\\(.)").sub
-_sub_unicode_escape = re.compile(TokenMacros.unicode_escape, re.IGNORECASE).sub
-_sub_newline_escape = re.compile(r"\\(?:\n|\r\n|\r|\f)").sub
+# Each escape is decoded in a single left-to-right pass, so that the output
+# of one escape is never read as (part of) another.
+_sub_escape = re.compile(TokenMacros.unicode_escape + r"|\\(.)", re.IGNORECASE).sub
+_sub_string_escape = re.compile(
+    TokenMacros.unicode_escape + r"|\\(?:\n|\r\n|\r|\f)|\\(.)", re.IGNORECASE
+).sub
 _sub_string_control_char = re.compile(r"[\x00-\x1f\x7f]").sub
 
 # CSS Syntax Level 3, §3.3: fold a raw U+0000 or surrogate code point to U+FFFD.
 _sub_invalid_input_char = re.compile("[\x00\ud800-\udfff]").sub
-
-# Same as r'\1', but faster on CPython
-_replace_simple = operator.methodcaller("group", 1)
 
 
 def _replace_unicode(match: re.Match[str]) -> str:
@@ -1035,6 +1034,13 @@ def _replace_unicode(match: re.Match[str]) -> str:
     return chr(codepoint)
 
 
+def _replace_escape(match: re.Match[str]) -> str:
+    if match.group(1) is not None:
+        return _replace_unicode(match)
+    # A simple escape, or an escaped newline (only in strings).
+    return match.group(2) or ""
+
+
 def _replace_string_control_char(match: re.Match[str]) -> str:
     # The trailing space ends the escape sequence, in case the next
     # character is a hexadecimal digit.
@@ -1042,8 +1048,7 @@ def _replace_string_control_char(match: re.Match[str]) -> str:
 
 
 def unescape_ident(value: str) -> str:
-    value = _sub_unicode_escape(_replace_unicode, value)
-    return _sub_simple_escape(_replace_simple, value)
+    return _sub_escape(_replace_escape, value)
 
 
 def _serialize_ident(value: str) -> str:
@@ -1115,12 +1120,7 @@ def tokenize(s: str) -> Iterator[Token]:
                 raise SelectorSyntaxError(f"Unclosed string at {pos}")
             if s[end_pos] != quote:
                 raise SelectorSyntaxError(f"Invalid string at {pos}")
-            value = _sub_simple_escape(
-                _replace_simple,
-                _sub_unicode_escape(
-                    _replace_unicode, _sub_newline_escape("", match.group())
-                ),
-            )
+            value = _sub_string_escape(_replace_escape, match.group())
             yield Token("STRING", value, pos)
             pos = end_pos + 1
             continue
