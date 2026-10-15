@@ -24,7 +24,7 @@ for some selectors, based on HTML-specific element types or attributes.)
     ...     print('Invalid selector.')
     ...
     >>> print(expression)
-    descendant-or-self::div[@class and contains(concat(' ', normalize-space(@class), ' '), ' content ')]
+    descendant-or-self::div[@class and contains(@class, 'content') and contains(concat(' ', normalize-space(@class), ' '), ' content ')]
 
 The resulting expression can be used with lxml's `XPath engine`_:
 
@@ -91,7 +91,7 @@ raise :class:`ExpressionError`.
       - Yes
     * - ``[attr]``, ``[attr=val]``, ``[attr~=val]``, ``[attr|=val]``,
         ``[attr^=val]``, ``[attr$=val]``, ``[attr*=val]``,
-        ``[namespace|attr...]``
+        ``[namespace|attr...]``, ``[*|attr...]``, ``[|attr...]``
       - Yes
     * - ``e f``, ``e > f``, ``e + f``, ``e ~ f``
       - Yes
@@ -133,14 +133,13 @@ raise :class:`ExpressionError`.
         combinator (``:is(a b)``), ``:not()`` or ``:scope`` inside the
         arguments is not supported, but ``:has()`` is (Level 4)
     * - ``:has()``
-      - Yes, for a single argument made of an optional leading combinator
-        (``>``, ``+`` or ``~``) followed by one *compound selector* built
-        only from type, class and universal selectors, e.g.
-        ``:has(> a.important)``; anything else, such as an ID
-        (``:has(#id)``) or a selector list (``:has(a, b)``), is not
+      - Yes, e.g. ``:has(> a.important, + p b)``; ``:scope`` inside it is not
         supported (Level 4)
-    * - Case-insensitive (``i``) and case-sensitive (``s``) attribute value
-        flags, ``:nth-child(An+B of S)``, ``:dir()``, ``:focus-within``,
+    * - ``[attr=val i]``, ``[attr=val s]``
+      - Yes; ``i`` makes the value comparison ASCII case-insensitive, ``s``
+        has no effect since values are already compared case-sensitively
+        (Level 4)
+    * - ``:nth-child(An+B of S)``, ``:dir()``, ``:focus-within``,
         ``:focus-visible``, ``:default``, ``:placeholder-shown``,
         ``:read-only``/``:read-write``, ``:required``/``:optional``,
         ``:valid``/``:invalid``/``:in-range``/``:out-of-range``,
@@ -208,7 +207,7 @@ Type, universal, namespace, ID and class selectors:
     >>> xpath("e#myid")
     "e[@id = 'myid']"
     >>> xpath("e.warning")
-    "e[@class and contains(concat(' ', normalize-space(@class), ' '), ' warning ')]"
+    "e[@class and contains(@class, 'warning') and contains(concat(' ', normalize-space(@class), ' '), ' warning ')]"
 
 Attribute selectors:
 
@@ -219,7 +218,7 @@ Attribute selectors:
     >>> xpath('e[foo="bar"]')
     "e[@foo = 'bar']"
     >>> xpath('e[foo~="bar"]')
-    "e[@foo and contains(concat(' ', normalize-space(@foo), ' '), ' bar ')]"
+    "e[@foo and contains(@foo, 'bar') and contains(concat(' ', normalize-space(@foo), ' '), ' bar ')]"
     >>> xpath('e[foo^="bar"]')
     "e[@foo and starts-with(@foo, 'bar')]"
     >>> xpath('e[foo$="bar"]')
@@ -236,7 +235,7 @@ Combinators and grouping:
 .. sourcecode:: pycon
 
     >>> xpath("e f")
-    'e/descendant-or-self::*/f'
+    'e/descendant::f'
     >>> xpath("e > f")
     'e/f'
     >>> xpath("e + f")
@@ -272,7 +271,7 @@ Structural pseudo-classes:
     >>> xpath("e:has(> f)")
     'e[./f]'
     >>> xpath("div:has(bar.foo)")
-    "div[descendant::bar[@class and contains(concat(' ', normalize-space(@class), ' '), ' foo ')]]"
+    "div[descendant::bar[@class and contains(@class, 'foo') and contains(concat(' ', normalize-space(@class), ' '), ' foo ')]]"
 
 ``:lang()`` and the non-standard ``:contains()``:
 
@@ -334,10 +333,10 @@ Translation
 
 In :file:`cssselect/xpath.py`, ``GenericTranslator.xpath()`` walks that tree
 and turns it into an ``XPathExpr``, a small builder that accumulates an
-XPath ``path`` (e.g. ``foo/descendant-or-self::*/``), an ``element`` node
-test, and a predicate ``condition``, joined together into a string. It
-dispatches on the parsed node's class name, lower-cased and prefixed with
-``xpath_``, e.g. an ``Attrib`` node is handled by ``xpath_attrib()``.
+XPath ``path`` (e.g. ``foo/descendant::``), an ``element`` node test, and a
+predicate ``condition``, joined together into a string. It dispatches on the
+parsed node's class name, lower-cased and prefixed with ``xpath_``, e.g. an
+``Attrib`` node is handled by ``xpath_attrib()``.
 
 A handful of node types dispatch a second time, by name, to keep one method
 per CSS construct instead of one large method with a chain of ``if``\\ s.
@@ -349,11 +348,11 @@ a suffix identifying the kind of dispatch:
   are handled by ``xpath_first_child_pseudo()`` and
   ``xpath_nth_child_function()``. These two are open-ended: adding a
   pseudo-class or function is adding a method with the matching name.
-* ``CombinedSelector`` and ``Relation`` (whose subselector can carry its own
-  leading combinator, e.g. ``:has(> a)``) dispatch on the combinator, mapped
-  by name in ``GenericTranslator.combinator_mapping``, e.g. ``>`` becomes
-  ``xpath_child_combinator()`` and ``xpath_relation_child_combinator()``
-  respectively.
+* ``CombinedSelector`` and ``Relation`` (each of whose arguments can carry
+  its own leading combinator, e.g. ``:has(> a)``) dispatch on the
+  combinator, mapped by name in ``GenericTranslator.combinator_mapping``,
+  e.g. ``>`` becomes ``xpath_child_combinator()`` and
+  ``xpath_relation_child_combinator()`` respectively.
 * ``Attrib`` dispatches on the attribute operator, mapped by name in
   ``GenericTranslator.attribute_operator_mapping``, e.g. ``^=`` becomes
   ``xpath_attrib_prefixmatch()``.
@@ -401,5 +400,10 @@ In CSS you can use ``namespace-prefix|element``, similar to
 ``namespace-prefix:element`` in an XPath expression.  In fact, it maps
 one-to-one. How prefixes are mapped to namespace URIs depends on the
 XPath implementation.
+
+``*|element`` matches an element in any namespace, including none.
+``|element`` and a bare ``element`` both match only elements with no
+namespace. The same rules apply to attribute names, e.g.
+``[*|attrib]`` and ``[|attrib]``.
 
 .. include:: ../CHANGES

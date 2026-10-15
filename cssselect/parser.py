@@ -16,13 +16,19 @@ from __future__ import annotations
 import operator
 import re
 import sys
-from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, Union, cast, overload
+from typing import (
+    TYPE_CHECKING,
+    Literal,
+    Protocol,
+    Self,
+    TypeAlias,
+    Union,
+    cast,
+    overload,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Sequence
-
-    # typing.Self requires Python 3.11
-    from typing_extensions import Self
 
 
 def ascii_lower(string: str) -> str:
@@ -266,37 +272,46 @@ class Negation:
         return a1 + a2, b1 + b2, c1 + c2
 
 
+def _combinator_prefix(combinator: Token) -> str:
+    # The descendant combinator is implicit in :has() arguments.
+    if combinator.value == " ":
+        return ""
+    return f"{combinator.value} "
+
+
 class Relation:
     """
-    Represents selector:has(subselector)
+    Represents selector:has(relative_selector_list)
+
+    .. attribute:: arguments
+
+        The relative selector list, as a list of ``(combinator, selector)``
+        pairs. *combinator* is the leading combinator token of the argument,
+        which is a space token when the argument does not spell one out.
+
     """
 
-    def __init__(self, selector: Tree, combinator: Token, subselector: Selector):
+    def __init__(self, selector: Tree, arguments: Sequence[tuple[Token, Selector]]):
         self.selector = selector
-        self.combinator = combinator
-        self.subselector = subselector
-
-    def _combinator_prefix(self) -> str:
-        # The descendant combinator is implicit in :has() arguments.
-        if self.combinator.value == " ":
-            return ""
-        return f"{self.combinator.value} "
+        self.arguments = arguments
 
     def __repr__(self) -> str:
-        return (
-            f"{self.__class__.__name__}[{self.selector!r}"
-            f":has({self._combinator_prefix()}{self.subselector!r})]"
+        args_str = ", ".join(
+            f"{_combinator_prefix(combinator)}{subselector!r}"
+            for combinator, subselector in self.arguments
         )
+        return f"{self.__class__.__name__}[{self.selector!r}:has({args_str})]"
 
     def canonical(self) -> str:
-        subsel = self.subselector.canonical()
-        if len(subsel) > 1:
-            subsel = subsel.lstrip("*")
-        return f"{self.selector.canonical()}:has({self._combinator_prefix()}{subsel})"
+        args_str = ", ".join(
+            f"{_combinator_prefix(combinator)}{subselector.canonical()}"
+            for combinator, subselector in self.arguments
+        )
+        return f"{self.selector.canonical()}:has({args_str})"
 
     def specificity(self) -> tuple[int, int, int]:
         a1, b1, c1 = self.selector.specificity()
-        a2, b2, c2 = self.subselector.specificity()
+        a2, b2, c2 = max(subselector.specificity() for _, subselector in self.arguments)
         return a1 + a2, b1 + b2, c1 + c2
 
 
@@ -416,7 +431,10 @@ class Attrib:
     def canonical(self) -> str:
         attrib = _serialize_ident(self.attrib)
         if self.namespace:
-            attrib = f"{_serialize_ident(self.namespace)}|{attrib}"
+            namespace = (
+                "*" if self.namespace == "*" else _serialize_ident(self.namespace)
+            )
+            attrib = f"{namespace}|{attrib}"
 
         if self.operator == "exists":
             op = attrib
@@ -437,7 +455,10 @@ class Element:
     """
     Represents namespace|element
 
-    `None` is for the universal selector '*'
+    `None` is for the universal selector '*'. `namespace` is ``"*"``
+    for the explicit namespace wildcard, e.g. ``*|div``, and `None`
+    both for an unprefixed element and for the explicit ``|div``
+    no-namespace syntax.
 
     """
 
@@ -453,7 +474,10 @@ class Element:
     def canonical(self) -> str:
         element = _serialize_ident(self.element) if self.element else "*"
         if self.namespace:
-            element = f"{_serialize_ident(self.namespace)}|{element}"
+            namespace = (
+                "*" if self.namespace == "*" else _serialize_ident(self.namespace)
+            )
+            element = f"{namespace}|{element}"
         return element
 
     def specificity(self) -> tuple[int, int, int]:
@@ -613,12 +637,12 @@ def parse_simple_selector(
             namespace = stream.next().value
         else:
             stream.next()
-            namespace = None
+            namespace = "*"
         if stream.peek() == ("DELIM", "|"):
             stream.next()
             element = stream.next_ident_or_star()
         else:
-            element = namespace
+            element = None if namespace == "*" else namespace
             namespace = None
     else:
         element = namespace = None
@@ -626,11 +650,7 @@ def parse_simple_selector(
     pseudo_element: PseudoElement | None = None
     while 1:
         peek = stream.peek()
-        if (
-            peek.type in ("S", "EOF")
-            or peek.is_delim(",", "+", ">", "~")
-            or (inside_negation and peek == ("DELIM", ")"))
-        ):
+        if peek.type in ("S", "EOF") or peek.is_delim(",", "+", ">", "~", ")"):
             break
         if pseudo_element:
             raise SelectorSyntaxError(
@@ -727,9 +747,7 @@ def parse_simple_selector(
                     )
                 result = Negation(result, argument)
             elif ident.lower() == "has":
-                combinator, arguments = parse_relative_selector(stream)
-                result = Relation(result, combinator, arguments)
-
+                result = Relation(result, parse_relative_selector(stream))
             elif ident.lower() in ("matches", "is"):
                 selectors = parse_simple_selector_arguments(stream)
                 result = Matching(result, selectors)
@@ -761,47 +779,51 @@ def parse_arguments(stream: TokenStream) -> list[Token]:  # noqa: RET503
             raise SelectorSyntaxError(f"Expected an argument, got {next_}")
 
 
-def parse_relative_selector(stream: TokenStream) -> tuple[Token, Selector]:
-    stream.skip_whitespace()
-    subselector_tokens: list[Token] = []
-    next_ = stream.next()
-
-    if next_.is_delim("+", ">", "~"):
-        combinator = next_
-        stream.skip_whitespace()
-        next_ = stream.next()
-    else:
-        combinator = Token("DELIM", " ", pos=0)
-
-    seen_whitespace = False
+def parse_relative_selector(stream: TokenStream) -> list[tuple[Token, Selector]]:
+    """Parse the relative selector list of a :has() argument, i.e. a
+    comma-separated list of complex selectors, each optionally preceded by a
+    combinator."""
+    arguments = []
     while 1:
-        if next_.type == "S":
-            # Whitespace is valid before the closing parenthesis; anywhere
-            # else it would be a descendant combinator, which is not
-            # supported in :has() arguments.
-            seen_whitespace = True
-        elif next_.type == "IDENT" or next_.is_delim(".", "*"):
-            if seen_whitespace:
-                raise SelectorSyntaxError(f"Expected an argument, got {next_}")
-            subselector_tokens.append(next_)
-        elif next_.is_delim(")"):
-            break
+        stream.skip_whitespace()
+        peek = stream.peek()
+        if peek.is_delim("+", ">", "~"):
+            combinator = stream.next()
+            stream.skip_whitespace()
         else:
-            raise SelectorSyntaxError(f"Expected an argument, got {next_}")
-        next_ = stream.next()
-
-    # Reparse the collected tokens instead of their concatenated source
-    # text, so that escaped identifiers are preserved.
-    subselector_tokens.append(EOFToken(next_.pos))
-    result, _ = parse_simple_selector(TokenStream(subselector_tokens))
-    return combinator, Selector(result)
+            combinator = Token("DELIM", " ", pos=peek.pos)
+        result, pseudo_element = parse_simple_selector(stream)
+        while 1:
+            if pseudo_element:
+                raise SelectorSyntaxError(
+                    f"Got pseudo-element ::{pseudo_element} inside function"
+                )
+            # Whitespace before a comma or the closing parenthesis is not a
+            # descendant combinator.
+            stream.skip_whitespace()
+            peek = stream.peek()
+            if peek.is_delim(",", ")"):
+                break
+            if peek.type == "EOF":
+                raise SelectorSyntaxError(f"Expected ')', got {peek}")
+            if peek.is_delim("+", ">", "~"):
+                argument_combinator = cast("str", stream.next().value)
+                stream.skip_whitespace()
+            else:
+                argument_combinator = " "
+            next_selector, pseudo_element = parse_simple_selector(stream)
+            result = CombinedSelector(result, argument_combinator, next_selector)
+        arguments.append((combinator, Selector(result)))
+        if stream.next().is_delim(")"):
+            break
+    return arguments
 
 
 def parse_simple_selector_arguments(stream: TokenStream) -> list[Tree]:
     arguments = []
     while 1:
         result, pseudo_element = parse_simple_selector(
-            stream, inside_negation=True, inside_selector_list=True
+            stream, inside_selector_list=True
         )
         if pseudo_element:
             raise SelectorSyntaxError(
@@ -822,23 +844,31 @@ def parse_simple_selector_arguments(stream: TokenStream) -> list[Tree]:
 
 def parse_attrib(selector: Tree, stream: TokenStream) -> Attrib:
     stream.skip_whitespace()
-    attrib = stream.next_ident_or_star()
-    if attrib is None and stream.peek() != ("DELIM", "|"):
-        raise SelectorSyntaxError(f"Expected '|', got {stream.peek()}")
+    attrib: str | None
     namespace: str | None
     op: str | None
     if stream.peek() == ("DELIM", "|"):
+        # The explicit "no namespace" syntax, e.g. [|attr].
         stream.next()
-        if stream.peek() == ("DELIM", "="):
-            namespace = None
-            stream.next()
-            op = "|="
-        else:
-            namespace = attrib
-            attrib = stream.next_ident()
-            op = None
+        namespace = None
+        attrib = stream.next_ident()
+        op = None
     else:
-        namespace = op = None
+        attrib = stream.next_ident_or_star()
+        if attrib is None and stream.peek() != ("DELIM", "|"):
+            raise SelectorSyntaxError(f"Expected '|', got {stream.peek()}")
+        if stream.peek() == ("DELIM", "|"):
+            stream.next()
+            if stream.peek() == ("DELIM", "="):
+                namespace = None
+                stream.next()
+                op = "|="
+            else:
+                namespace = "*" if attrib is None else attrib
+                attrib = stream.next_ident()
+                op = None
+        else:
+            namespace = op = None
     if op is None:
         stream.skip_whitespace()
         next_ = stream.next()
@@ -991,13 +1021,16 @@ _sub_unicode_escape = re.compile(TokenMacros.unicode_escape, re.IGNORECASE).sub
 _sub_newline_escape = re.compile(r"\\(?:\n|\r\n|\r|\f)").sub
 _sub_string_control_char = re.compile(r"[\x00-\x1f\x7f]").sub
 
+# CSS Syntax Level 3, §3.3: fold a raw U+0000 or surrogate code point to U+FFFD.
+_sub_invalid_input_char = re.compile("[\x00\ud800-\udfff]").sub
+
 # Same as r'\1', but faster on CPython
 _replace_simple = operator.methodcaller("group", 1)
 
 
 def _replace_unicode(match: re.Match[str]) -> str:
     codepoint = int(match.group(1), 16)
-    if codepoint > sys.maxunicode or 0xD800 <= codepoint <= 0xDFFF:
+    if codepoint == 0 or codepoint > sys.maxunicode or 0xD800 <= codepoint <= 0xDFFF:
         codepoint = 0xFFFD
     return chr(codepoint)
 
@@ -1048,6 +1081,8 @@ def _serialize_ident(value: str) -> str:
 
 
 def tokenize(s: str) -> Iterator[Token]:
+    # Preprocess the input stream (§3.3); the substitution is length-preserving.
+    s = _sub_invalid_input_char("\N{REPLACEMENT CHARACTER}", s)
     pos = 0
     len_s = len(s)
     while pos < len_s:
