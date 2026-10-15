@@ -88,9 +88,9 @@ class TestCssselect(unittest.TestCase):
             return result
 
         assert parse_many("*") == ["Element[*]"]
-        assert parse_many("*|*") == ["Element[*]"]
-        assert parse_many("*|foo") == ["Element[foo]"]
-        assert parse_many("|foo") == ["Element[foo]"]
+        assert parse_many("*|*") == ["Element[*|*]"]
+        assert parse_many("*|foo") == ["Element[*|foo]"]
+        assert parse_many("foo", "|foo") == ["Element[foo]"]
         assert parse_many("|*") == ["Element[*]"]
         assert parse_many("foo|*") == ["Element[foo|*]"]
         assert parse_many("foo|bar") == ["Element[foo|bar]"]
@@ -204,6 +204,20 @@ class TestCssselect(unittest.TestCase):
         ]
         assert parse_many("div:has(~ div.foo)") == [
             "Relation[Element[div]:has(~ Selector[Class[Element[div].foo]])]"
+        ]
+        assert parse_many("div:has(a b)") == [
+            (
+                "Relation[Element[div]:has("
+                "Selector[CombinedSelector[Element[a] <followed> Element[b]]])]"
+            )
+        ]
+        assert parse_many("div:has(a, > b, + c d)") == [
+            (
+                "Relation[Element[div]:has("
+                "Selector[Element[a]], "
+                "> Selector[Element[b]], "
+                "+ Selector[CombinedSelector[Element[c] <followed> Element[d]]])]"
+            )
         ]
         assert parse_many("div:is(.foo, #bar)") == [
             "Matching[Element[div]:is(Class[Element[*].foo], Hash[Element[*]#bar])]"
@@ -394,6 +408,10 @@ class TestCssselect(unittest.TestCase):
         assert specificity(":has(foo)") == (0, 0, 1)
         assert specificity(":has(.foo)") == (0, 1, 0)
         assert specificity(":has(> foo)") == (0, 0, 1)
+        assert specificity(":has(foo bar)") == (0, 0, 2)
+        # The most specific argument of the list wins
+        assert specificity(":has(.foo, #bar)") == (1, 0, 0)
+        assert specificity(":has(> .foo, bar)") == (0, 1, 0)
 
         assert specificity(":is(.foo, #bar)") == (1, 0, 0)
         assert specificity(":is(:hover, :visited)") == (0, 1, 0)
@@ -466,6 +484,10 @@ class TestCssselect(unittest.TestCase):
         css2css(":has(~ foo)")
         css2css(":has(+ foo)")
         css2css("div:has(> div.foo)")
+        css2css(":has(foo bar)")
+        # a "*" that is a whole compound selector is kept
+        css2css(":has(* > bar)")
+        css2css("div:has(> div.foo, + p, bar baz)")
         css2css(":is(#bar, .foo)")
         css2css(":is(:focused, :visited)")
         css2css(":where(:focused, :visited)")
@@ -642,7 +664,7 @@ class TestCssselect(unittest.TestCase):
         assert get_error("*:scope") is None
         assert get_error("div:scope") is None
         assert get_error("foo, *:scope") is None
-        # :scope is rejected in :is()/:where()/:matches() arguments too;
+        # :scope is rejected in :is()/:where()/:matches()/:has() arguments too;
         # a comma there separates arguments, not selectors.
         assert get_error(":is(:scope)") == (
             'Got pseudo-class ":scope" not at the start of a selector'
@@ -659,22 +681,31 @@ class TestCssselect(unittest.TestCase):
         assert get_error("foo, :is(a, :scope)") == (
             'Got pseudo-class ":scope" not at the start of a selector'
         )
+        assert get_error(":has(a, :scope)") == (
+            'Got pseudo-class ":scope" not at the start of a selector'
+        )
         assert get_error("> div p") == ("Expected selector, got <DELIM '>' at 0>")
 
-        # Unsupported :has() with several arguments
-        assert get_error(":has(a, b)") == ("Expected an argument, got <DELIM ',' at 6>")
-        assert get_error(":has()") == ("Expected selector, got <EOF at 5>")
-        assert get_error(":has(a b)") == ("Expected an argument, got <IDENT 'b' at 7>")
-        assert get_error(":has(a .b)") == ("Expected an argument, got <DELIM '.' at 7>")
+        assert get_error(":has()") == ("Expected selector, got <DELIM ')' at 5>")
+        assert get_error(":has(a,)") == ("Expected selector, got <DELIM ')' at 7>")
+        assert get_error(":has(,a)") == ("Expected selector, got <DELIM ',' at 5>")
+        assert get_error(":has(> )") == ("Expected selector, got <DELIM ')' at 7>")
+        assert get_error(":has(a") == ("Expected ')', got <EOF at 6>")
+        assert get_error(":has(a, b") == ("Expected ')', got <EOF at 9>")
         # '-' is not a valid relative combinator
-        assert get_error(":has(- p)") == ("Expected an argument, got <DELIM '-' at 5>")
+        assert get_error(":has(- p)") == ("Expected selector, got <DELIM '-' at 5>")
         # Strings and numbers are not selectors
-        assert get_error(':has("a")') == ("Expected an argument, got <STRING 'a' at 5>")
-        assert get_error(":has(1)") == ("Expected an argument, got <NUMBER '1' at 5>")
+        assert get_error(':has("a")') == ("Expected selector, got <STRING 'a' at 5>")
+        assert get_error(":has(1)") == ("Expected selector, got <NUMBER '1' at 5>")
+        assert get_error(":has(a::before)") == (
+            "Got pseudo-element ::before inside function"
+        )
         # Whitespace around a :has() argument is not a combinator
         assert get_error("e:has(f )") is None
         assert get_error("e:has( > f )") is None
         assert get_error(":has(.a )") is None
+        assert get_error(":has(a b)") is None
+        assert get_error(":has(a, b)") is None
 
     def test_translation(self) -> None:
         def xpath(css: str) -> str:
@@ -682,13 +713,17 @@ class TestCssselect(unittest.TestCase):
 
         assert xpath("*") == "*"
         assert xpath("e") == "e"
-        assert xpath("*|e") == "e"
+        assert xpath("|e") == "e"
+        assert xpath("*|e") == "*[local-name() = 'e']"
+        assert xpath("*|*") == "*"
         assert xpath("e|f") == "e:f"
         assert xpath("e[foo]") == "e[@foo]"
+        assert xpath("e[|foo]") == "e[@foo]"
+        assert xpath("e[*|foo]") == "e[attribute::*[local-name() = 'foo']]"
         assert xpath("e[foo|bar]") == "e[@foo:bar]"
         assert xpath('e[foo="bar"]') == "e[@foo = 'bar']"
         assert xpath('e[foo~="bar"]') == (
-            "e[@foo and contains(concat(' ', normalize-space(@foo), ' '), ' bar ')]"
+            "e[@foo and contains(@foo, 'bar') and contains(concat(' ', normalize-space(@foo), ' '), ' bar ')]"
         )
         assert xpath('e[foo^="bar"]') == ("e[@foo and starts-with(@foo, 'bar')]")
         assert xpath('e[foo$="bar"]') == (
@@ -765,8 +800,8 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:nth-of-type(1)") == ("e[count(preceding-sibling::e) = 0]")
         assert xpath("e:nth-last-of-type(1)") == ("e[count(following-sibling::e) = 0]")
         assert xpath("div e:nth-last-of-type(1) .aclass") == (
-            "div/descendant-or-self::*/e[count(following-sibling::e) = 0]"
-            "/descendant-or-self::*/*[@class and contains("
+            "div/descendant::e[count(following-sibling::e) = 0]"
+            "/descendant::*[@class and contains(@class, 'aclass') and contains("
             "concat(' ', normalize-space(@class), ' '), ' aclass ')]"
         )
 
@@ -786,50 +821,70 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:hover") == ("e[0]")  # never matches
         assert (
             xpath("div:has(bar.foo)") == "div[descendant::bar"
-            "[@class and contains(concat(' ', normalize-space(@class), ' '), ' foo ')]]"
+            "[@class and contains(@class, 'foo') and contains(concat(' ', normalize-space(@class), ' '), ' foo ')]]"
         )
         assert xpath("e:has(> f)") == "e[./f]"
         assert xpath("e:has(f)") == "e[descendant::f]"
         assert xpath("e:has(~ f)") == "e[following-sibling::f]"
-        assert (
-            xpath("e:has(+ f)")
-            == "e[following-sibling::*[(self::f) and (position() = 1)]]"
-        )
+        assert xpath("e:has(+ f)") == "e[following-sibling::*[1]/self::f]"
         assert xpath("e:has(> f.bar)") == (
-            "e[./f[@class and contains("
+            "e[./f[@class and contains(@class, 'bar') and contains("
             "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
         )
         assert xpath("e:has(> .bar)") == (
-            "e[./*[@class and contains("
+            "e[./*[@class and contains(@class, 'bar') and contains("
             "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
         )
         assert xpath("e:has(~ f.bar)") == (
-            "e[following-sibling::f[@class and contains("
+            "e[following-sibling::f[@class and contains(@class, 'bar') and contains("
             "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
         )
         assert xpath("e:has(+ f.bar)") == (
-            "e[following-sibling::*[((@class and contains("
-            "concat(' ', normalize-space(@class), ' '), ' bar ')) "
-            "and (self::f)) and (position() = 1)]]"
+            "e[following-sibling::*[1]/self::f[@class and contains(@class, 'bar') and contains("
+            "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
         )
         assert xpath("e:has(+ .bar)") == (
-            "e[following-sibling::*[(@class and contains("
-            "concat(' ', normalize-space(@class), ' '), ' bar ')) "
-            "and (position() = 1)]]"
+            "e[following-sibling::*[1]/self::*[@class and contains(@class, 'bar') and contains("
+            "concat(' ', normalize-space(@class), ' '), ' bar ')]]"
         )
-        assert xpath("e:has(+ *)") == "e[following-sibling::*[position() = 1]]"
+        assert xpath("e:has(+ *)") == "e[following-sibling::*[1]/self::*]"
         assert xpath("e.foo:has(f)") == (
-            "e[(@class and contains("
+            "e[(@class and contains(@class, 'foo') and contains("
             "concat(' ', normalize-space(@class), ' '), ' foo ')) and (descendant::f)]"
+        )
+        # Combinators inside a :has() argument
+        assert xpath("e:has(f g)") == "e[descendant::f/descendant::g]"
+        assert xpath("e:has(> f > g)") == "e[./f/g]"
+        assert xpath("e:has(~ f + g)") == (
+            "e[following-sibling::f/following-sibling::*"
+            "[(self::g) and (position() = 1)]]"
+        )
+        # A leading "+" applies to the first step of the argument, so that any
+        # further step is walked from the adjacent sibling.
+        assert xpath("e:has(+ f g)") == (
+            "e[following-sibling::*[1]/self::f/descendant::g]"
+        )
+        # A relative selector list matches if any of its arguments does
+        assert xpath("e:has(f, > g)") == "e[(descendant::f) or (./g)]"
+        assert xpath("e.foo:has(f, g)") == (
+            "e[(@class and contains(@class, 'foo') and contains("
+            "concat(' ', normalize-space(@class), ' '), ' foo ')) "
+            "and ((descendant::f) or (descendant::g))]"
+        )
+        # Compound and functional selectors inside :has()
+        assert xpath("e:has(#f)") == "e[descendant::*[@id = 'f']]"
+        assert xpath("e:has([bar])") == "e[descendant::*[@bar]]"
+        assert xpath("e:has(:not(f))") == "e[descendant::*[not(self::f)]]"
+        assert xpath("e:has(f:nth-child(2))") == (
+            "e[descendant::f[count(preceding-sibling::*) = 1]]"
         )
         # Negating :has(): the relative selector must be kept as a predicate,
         # not turned into a literal name test.
         assert xpath("e:not(:has(a))") == "e[not(descendant::a)]"
         assert xpath("e:not(:has(> a))") == "e[not(./a)]"
         assert xpath("e:not(:has(~ a))") == "e[not(following-sibling::a)]"
-        assert xpath("e:not(:has(+ a))") == (
-            "e[not(following-sibling::*[(self::a) and (position() = 1)])]"
-        )
+        assert xpath("e:not(:has(+ a))") == "e[not(following-sibling::*[1]/self::a)]"
+        assert xpath("e:not(:has(a, > b))") == "e[not((descendant::a) or (./b))]"
         # A complex selector in :not() is matched against the element itself,
         # walking combinators through reverse axes.
         assert xpath("e:not(a b)") == "e[not(self::b and ancestor::*[self::a])]"
@@ -844,7 +899,7 @@ class TestCssselect(unittest.TestCase):
             "e[not(self::c and parent::*[self::b and parent::*[self::a]])]"
         )
         assert xpath("e:not(.a > #b)") == (
-            "e[not(@id = 'b' and parent::*[@class and contains("
+            "e[not(@id = 'b' and parent::*[@class and contains(@class, 'a') and contains("
             "concat(' ', normalize-space(@class), ' '), ' a ')])]"
         )
         # A "*" compound selector only constrains the axis
@@ -885,7 +940,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e:contains("foo")') == ("e[contains(., 'foo')]")
         assert xpath("e:ConTains(foo)") == ("e[contains(., 'foo')]")
         assert xpath("e.warning") == (
-            "e[@class and contains("
+            "e[@class and contains(@class, 'warning') and contains("
             "concat(' ', normalize-space(@class), ' '), ' warning ')]"
         )
         assert xpath("e#myid") == ("e[@id = 'myid']")
@@ -893,7 +948,8 @@ class TestCssselect(unittest.TestCase):
             "e[not(count(preceding-sibling::*) mod 2 = 0)]"
         )
         assert xpath("e:nOT(*)") == ("e[0]")  # never matches
-        assert xpath("e f") == ("e/descendant-or-self::*/f")
+        assert xpath("e f") == ("e/descendant::f")
+        assert xpath("e *") == ("e/descendant-or-self::*/*")
         assert xpath("e > f") == ("e/f")
         assert xpath("e + f") == (
             "e/following-sibling::*[(self::f) and (position() = 1)]"
@@ -902,20 +958,18 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e ~ f:nth-child(3)") == (
             "e/following-sibling::f[count(preceding-sibling::*) = 2]"
         )
-        assert xpath("div#container p") == (
-            "div[@id = 'container']/descendant-or-self::*/p"
-        )
+        assert xpath("div#container p") == ("div[@id = 'container']/descendant::p")
         assert xpath("e:where(foo)") == "e[self::foo]"
         assert xpath("e:where(foo, bar)") == "e[(self::foo) or (self::bar)]"
         assert xpath("e:is(.a,.b)") == xpath("e:is(.a, .b)")
         assert xpath("e:is(*, .foo)") == "e"
         assert xpath("e:where(*, foo)") == "e"
         assert xpath("e.foo:is(.a, .b)") == (
-            "e[(@class and contains("
+            "e[(@class and contains(@class, 'foo') and contains("
             "concat(' ', normalize-space(@class), ' '), ' foo ')) and "
-            "((@class and contains("
+            "((@class and contains(@class, 'a') and contains("
             "concat(' ', normalize-space(@class), ' '), ' a ')) or "
-            "(@class and contains("
+            "(@class and contains(@class, 'b') and contains("
             "concat(' ', normalize-space(@class), ' '), ' b ')))]"
         )
         assert xpath("e:is(:has(f))") == "e[descendant::f]"
@@ -954,6 +1008,10 @@ class TestCssselect(unittest.TestCase):
         assert xpath(r"di\[v") == ("*[name() = 'di[v']")
         assert xpath(r"[h\a0 ref]") == ("*[attribute::*[name() = 'h ref']]")  # h\xa0ref
         assert xpath(r"[h\]ref]") == ("*[attribute::*[name() = 'h]ref']]")
+        # A trailing newline is not a name character either
+        assert xpath(r"div\a ") == "*[name() = 'div\n']"
+        assert xpath(r"[href\a ]") == "*[attribute::*[name() = 'href\n']]"
+        assert xpath(r"ns\a |div") == "*[name() = 'ns\n:div']"
         # Escaped identifiers survive inside :has() arguments
         assert xpath(r"e:has(di\[v)") == "e[descendant::*[name() = 'di[v']]"
 
@@ -962,7 +1020,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath("*:scope") == "*[position() = 1]"
         assert xpath("div:scope") == "*[(self::div) and (position() = 1)]"
         assert xpath(".foo:scope") == (
-            "*[(@class and contains("
+            "*[(@class and contains(@class, 'foo') and contains("
             "concat(' ', normalize-space(@class), ' '), ' foo ')) "
             "and (position() = 1)]"
         )
@@ -1038,6 +1096,9 @@ class TestCssselect(unittest.TestCase):
             lower_case_attribute_values = True
 
         assert LowerValues().css_to_xpath("[Foo=BAR]", prefix="") == "*[@Foo = 'bar']"
+        # The folding is ASCII-only: str.lower() would turn U+212A
+        # (KELVIN SIGN) into ASCII "k".
+        assert LowerValues().css_to_xpath('[foo="K"]', prefix="") == "*[@foo = 'K']"
 
     def test_add_name_test(self) -> None:
         # Directly exercise XPathExpr.add_name_test(), part of the
@@ -1068,7 +1129,7 @@ class TestCssselect(unittest.TestCase):
         assert css[1:] in xpath
         xpath = xpath.encode("ascii", "xmlcharrefreplace").decode("ASCII")
         assert xpath == (
-            "descendant-or-self::*[@class and contains("
+            "descendant-or-self::*[@class and contains(@class, 'a&#193;b') and contains("
             "concat(' ', normalize-space(@class), ' '), ' a&#193;b ')]"
         )
 
@@ -1107,9 +1168,30 @@ class TestCssselect(unittest.TestCase):
         )
         # A code point beyond the Unicode range is replaced with U+FFFD.
         assert css_to_xpath(r"\110000") == ("descendant-or-self::*[name() = '\ufffd']")
+        # A null code point is likewise replaced with U+FFFD, so no NUL
+        # character can leak into the generated XPath string.
+        assert css_to_xpath(r"*[aval='\0 ']") == (
+            "descendant-or-self::*[@aval = '\ufffd']"
+        )
         # unescape_ident() resolves both unicode and simple escapes.
         assert unescape_ident(r"\41 B") == "AB"
         assert unescape_ident(r"\-foo") == "-foo"
+
+    def test_input_preprocessing(self) -> None:
+        # CSS Syntax §3.3: a raw U+0000 or surrogate code point (not an
+        # escape) is folded to U+FFFD before tokenizing.
+        css_to_xpath = GenericTranslator().css_to_xpath
+        assert css_to_xpath('*[aval="x\x00y"]') == (
+            "descendant-or-self::*[@aval = 'x�y']"
+        )
+        assert css_to_xpath('*[aval="x\ud800y"]') == (
+            "descendant-or-self::*[@aval = 'x�y']"
+        )
+        assert css_to_xpath(':contains("x\udfffy")') == (
+            "descendant-or-self::*[contains(., 'x�y')]"
+        )
+        # A raw NUL in an identifier becomes a valid U+FFFD name character.
+        assert str(next(tokenize("foo\x00bar"))) == "<IDENT 'foo�bar' at 0>"
 
     def test_xpath_pseudo_elements(self) -> None:
         class CustomTranslator(GenericTranslator):
@@ -1200,7 +1282,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath("::text-node") == "descendant-or-self::*/text()"
         assert xpath("::attr-href") == "descendant-or-self::*/@href"
         assert xpath("p img::attr(src)") == (
-            "descendant-or-self::p/descendant-or-self::*/img/@src"
+            "descendant-or-self::p/descendant::img/@src"
         )
         assert xpath(":scope") == "descendant-or-self::*[position() = 1]"
         assert xpath(":first-or-second[href]") == (
@@ -1319,6 +1401,42 @@ class TestCssselect(unittest.TestCase):
         for argument_string, argument_list in mappings:
             css = f"::pseudo_element({argument_string})"
             assert argument_types(css) == argument_list
+
+    def test_html_non_ascii_element_names(self) -> None:
+        xpath = HTMLTranslator().css_to_xpath
+        assert xpath("x-Ä") == "descendant-or-self::*[name() = 'x-Ä']"
+        assert xpath("X-Ä") == "descendant-or-self::*[name() = 'x-Ä']"
+        assert xpath("*|X-Ä") == "descendant-or-self::*[local-name() = 'x-Ä']"
+        assert xpath("X-ä") == "descendant-or-self::*[name() = 'x-ä']"
+
+    def test_html_non_ascii_attribute_names(self) -> None:
+        xpath = HTMLTranslator().css_to_xpath
+        assert (
+            xpath("[DATA-Ä]")
+            == "descendant-or-self::*[attribute::*[name() = 'data-Ä']]"
+        )
+        assert (
+            xpath('[DATA-Ä="yes"]')
+            == "descendant-or-self::*[attribute::*[name() = 'data-Ä'] = 'yes']"
+        )
+        assert xpath("[*|DATA-Ä]") == (
+            "descendant-or-self::*[attribute::*[local-name() = 'data-Ä']]"
+        )
+        assert (
+            xpath('[DATA-ä="yes"]')
+            == "descendant-or-self::*[attribute::*[name() = 'data-ä'] = 'yes']"
+        )
+
+    def test_html_non_ascii_lang(self) -> None:
+        # Language-range matching is ASCII case-insensitive (RFC 4647);
+        # str.lower() folds U+212A (KELVIN SIGN) into ASCII "k".
+        xpath = HTMLTranslator().css_to_xpath
+        assert xpath(":lang(K)") == (
+            "descendant-or-self::*[ancestor-or-self::*[@lang][1]"
+            "[starts-with(concat(translate(@lang, "
+            "'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), "
+            "'-'), 'K-')]]"
+        )
 
     def test_select(self) -> None:
         document = etree.fromstring(HTML_IDS)
@@ -1472,7 +1590,11 @@ class TestCssselect(unittest.TestCase):
 
         assert pcss("span:only-child") == ["foobar-span"]
         assert pcss("li div:only-child") == ["li-div"]
-        assert pcss("div *:only-child") == ["li-div", "foobar-span"]
+        assert pcss("div *:only-child") == [
+            "li-div",
+            "checkbox-legend-enabled",
+            "foobar-span",
+        ]
         # The root element has no siblings, so it matches :only-child
         # (just like :first-child and :last-child)
         assert pcss("html:only-child") == ["html"]
@@ -1523,7 +1645,8 @@ class TestCssselect(unittest.TestCase):
             "first-li",
             "li-div",
             "p-b",
-            "checkbox-fieldset-disabled",
+            "legend",
+            "checkbox-legend-enabled",
             "area-href",
         ]
         assert pcss("a[href]") == ["tag-anchor", "nofollow-anchor"]
@@ -1552,6 +1675,19 @@ class TestCssselect(unittest.TestCase):
             "fifth-li",
             "sixth-li",
         ]
+        # A relative selector list matches if any of its arguments does
+        assert pcss("ol:has(#li-div, #missing)") == ["first-ol"]
+        assert pcss("li:has(> div, + li.c)") == ["second-li", "third-li"]
+        assert pcss("ol:has(> li.c, > li[lang])") == ["first-ol"]
+        assert pcss("ol:has(#missing, > #missing)") == []
+        # Combinators inside a :has() argument
+        assert pcss("div:has(ol li.c)") == ["outer-div"]
+        assert pcss("div:has(> ol > li.c)") == ["outer-div"]
+        assert pcss("li:has(+ li.c ~ li)") == ["second-li", "third-li"]
+        # Compound and functional selectors inside :has()
+        assert pcss("ol:has(li[lang])") == ["first-ol"]
+        assert pcss("ol:has(> #third-li)") == ["first-ol"]
+        assert pcss("p:has(:not(b))") == ["paragraph"]
         assert pcss("ol:not(:has(div))") == ["second-ol"]
         assert pcss("ol:not(:has(> div))") == ["first-ol", "second-ol"]
         assert pcss("li:not(:has(div))") == [
@@ -1623,19 +1759,19 @@ class TestCssselect(unittest.TestCase):
         ]
         assert pcss(":visited", html_only=True) == []
         assert pcss(":enabled", html_only=True) == [
-            "link-href",
-            "tag-anchor",
-            "nofollow-anchor",
             "checkbox-unchecked",
             "text-checked",
+            "hidden-unchecked",
             "checkbox-checked",
-            "area-href",
+            "checkbox-legend-enabled",
         ]
         assert pcss(":disabled", html_only=True) == [
             "checkbox-disabled",
+            "hidden-disabled",
             "checkbox-disabled-checked",
             "fieldset",
             "checkbox-fieldset-disabled",
+            "hidden-fieldset-disabled",
         ]
         assert pcss(":checked", html_only=True) == [
             "checkbox-checked",
@@ -1814,14 +1950,15 @@ c"></li>
    <input type="checkbox" id="checkbox-unchecked" />
    <input type="checkbox" id="checkbox-disabled" disabled="" />
    <input type="text" id="text-checked" checked="checked" />
-   <input type="hidden" />
-   <input type="hidden" disabled="disabled" />
+   <input type="hidden" id="hidden-unchecked" />
+   <input type="hidden" id="hidden-disabled" disabled="disabled" />
    <input type="checkbox" id="checkbox-checked" checked="checked" />
    <input type="checkbox" id="checkbox-disabled-checked"
           disabled="disabled" checked="checked" />
    <fieldset id="fieldset" disabled="disabled">
+     <legend id="legend"><input type="checkbox" id="checkbox-legend-enabled" /></legend>
      <input type="checkbox" id="checkbox-fieldset-disabled" />
-     <input type="hidden" />
+     <input type="hidden" id="hidden-fieldset-disabled" />
    </fieldset>
  </p>
  <ol id="second-ol">

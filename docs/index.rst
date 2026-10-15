@@ -24,7 +24,7 @@ for some selectors, based on HTML-specific element types or attributes.)
     ...     print('Invalid selector.')
     ...
     >>> print(expression)
-    descendant-or-self::div[@class and contains(concat(' ', normalize-space(@class), ' '), ' content ')]
+    descendant-or-self::div[@class and contains(@class, 'content') and contains(concat(' ', normalize-space(@class), ' '), ' content ')]
 
 The resulting expression can be used with lxml's `XPath engine`_:
 
@@ -114,11 +114,8 @@ be implemented):
   Limitations: ``:scope`` is rejected inside them, and their selector list is
   not forgiving, i.e. an unsupported argument makes the whole selector invalid
   instead of being ignored.
-* The ``:has()`` pseudo-class. Limitation: it takes a single argument, made of
-  an optional leading combinator (``>``, ``+`` or ``~``) followed by one
-  *compound selector* built only from type, class and universal selectors
-  (e.g. ``:has(> a.important)``). Anything else is unsupported, e.g. an ID
-  (``:has(#id)``), or a selector list (``:has(a, b)``).
+* The ``:has()`` pseudo-class, e.g. ``:has(> a.important, + p b)``. Limitation:
+  ``:scope`` is rejected inside it.
 * The ``i`` and ``s`` attribute selector flags, e.g. ``[href^="HTTP" i]``.
   ``i`` makes the value comparison ASCII case-insensitive. ``s`` is accepted
   but has no effect, since attribute values are already compared
@@ -176,5 +173,10 @@ In CSS you can use ``namespace-prefix|element``, similar to
 ``namespace-prefix:element`` in an XPath expression.  In fact, it maps
 one-to-one. How prefixes are mapped to namespace URIs depends on the
 XPath implementation.
+
+``*|element`` matches an element in any namespace, including none.
+``|element`` and a bare ``element`` both match only elements with no
+namespace. The same rules apply to attribute names, e.g.
+``[*|attrib]`` and ``[|attrib]``.
 
 .. include:: ../CHANGES

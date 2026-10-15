@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import re
 from string import ascii_lowercase, ascii_uppercase
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Self, cast
 
 from cssselect.parser import (
     Attrib,
@@ -40,9 +40,6 @@ from cssselect.parser import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
-
-    # typing.Self requires Python 3.11
-    from typing_extensions import Self
 
 
 class ExpressionError(SelectorError, RuntimeError):
@@ -122,10 +119,10 @@ split_at_single_quotes = re.compile("('+)").split
 # The spec is actually more permissive than that, but don’t bother.
 # This is just for the fast path.
 # http://www.w3.org/TR/REC-xml/#NT-NameStartChar
-is_safe_name = re.compile("^[a-zA-Z_][a-zA-Z0-9_.-]*$").match
+is_safe_name = re.compile("[a-zA-Z_][a-zA-Z0-9_.-]*").fullmatch
 
 # Test that the string is not empty and does not contain whitespace
-is_non_whitespace = re.compile(r"^[^ \t\r\n\f]+$").match
+is_non_whitespace = re.compile(r"[^ \t\r\n\f]+").fullmatch
 
 
 #### Translation
@@ -175,7 +172,7 @@ class GenericTranslator:
         "^=": "prefixmatch",
         "$=": "suffixmatch",
         "*=": "substringmatch",
-        "!=": "different",  # XXX Not in Level 3 but meh
+        "!=": "different",  # not part of Selectors Level 3, but widely supported
     }
 
     #: The attribute used for ID selectors depends on the document language:
@@ -343,18 +340,18 @@ class GenericTranslator:
         return sub_xpath.condition or None
 
     def xpath_relation(self, relation: Relation) -> XPathExpr:
-        xpath = self.xpath(relation.selector)
-        combinator = relation.combinator
-        subselector = relation.subselector
-        right = self.xpath(subselector.parsed_tree)
-        method = cast(
-            "Callable[[XPathExpr, XPathExpr], XPathExpr]",
-            getattr(
-                self,
-                f"xpath_relation_{self.combinator_mapping[cast('str', combinator.value)]}_combinator",
-            ),
-        )
-        return method(xpath, right)
+        condition = ""
+        for combinator, subselector in relation.arguments:
+            method = cast(
+                "Callable[[XPathExpr], str]",
+                getattr(
+                    self,
+                    f"xpath_relation_{self.combinator_mapping[cast('str', combinator.value)]}_combinator",
+                ),
+            )
+            argument = method(self.xpath(subselector.parsed_tree))
+            condition = f"({condition}) or ({argument})" if condition else argument
+        return self.xpath(relation.selector).add_condition(condition)
 
     def xpath_matching(self, matching: Matching) -> XPathExpr:
         return self._xpath_add_selector_list_condition(
@@ -414,7 +411,6 @@ class GenericTranslator:
             getattr(self, method_name, None),
         )
         if not method:
-            # TODO: better error message for pseudo-elements?
             raise ExpressionError(f"The pseudo-class :{pseudo.ident} is unknown")
         return method(self.xpath(pseudo.selector))
 
@@ -426,21 +422,27 @@ class GenericTranslator:
             getattr(self, f"xpath_attrib_{operator}"),
         )
         if self.lower_case_attribute_names:
-            name = selector.attrib.lower()
+            name = ascii_lower(selector.attrib)
         else:
             name = selector.attrib
-        safe = is_safe_name(name)
-        if selector.namespace:
-            name = f"{selector.namespace}:{name}"
-            safe = safe and is_safe_name(selector.namespace)
-        if safe:
-            attrib = "@" + name
+        if selector.namespace == "*":
+            # Namespace wildcard, e.g. "[*|href]": any namespace, including
+            # none. XPath 1.0 has no "*:name" name test for this, so match
+            # by local name instead.
+            attrib = f"attribute::*[local-name() = {self.xpath_literal(name)}]"
         else:
-            attrib = f"attribute::*[name() = {self.xpath_literal(name)}]"
+            safe = is_safe_name(name)
+            if selector.namespace:
+                name = f"{selector.namespace}:{name}"
+                safe = safe and is_safe_name(selector.namespace)
+            if safe:
+                attrib = "@" + name
+            else:
+                attrib = f"attribute::*[name() = {self.xpath_literal(name)}]"
         if selector.value is None:
             value = None
         elif self.lower_case_attribute_values:
-            value = cast("str", selector.value.value).lower()
+            value = ascii_lower(cast("str", selector.value.value))
         else:
             value = selector.value.value
         if selector.flag == "i" and value:
@@ -470,8 +472,15 @@ class GenericTranslator:
         else:
             safe = bool(is_safe_name(element))
             if self.lower_case_element_names:
-                element = element.lower()
-        if selector.namespace:
+                element = ascii_lower(element)
+            if selector.namespace == "*":
+                # Namespace wildcard, e.g. "*|div": any namespace,
+                # including none. XPath 1.0 has no "*:name" name test
+                # for this, so match by local name instead.
+                xpath = self.xpathexpr_cls(element="*")
+                xpath.add_condition(f"local-name() = {self.xpath_literal(element)}")
+                return xpath
+        if selector.namespace and selector.namespace != "*":
             # Namespace prefixes are case-sensitive.
             # http://www.w3.org/TR/css3-namespace/#prefixes
             element = f"{selector.namespace}:{element}"
@@ -492,7 +501,12 @@ class GenericTranslator:
         self, left: XPathExpr, right: XPathExpr
     ) -> XPathExpr:
         """right is a child, grand-child or further descendant of left"""
-        return left.join("/descendant-or-self::*/", right)
+        if right.element == "*" and not right.condition and not right.path:
+            # A subclass that maps a pseudo-element to a different node test
+            # rewrites the trailing "descendant-or-self::*/*" of the
+            # expression, so an unconstrained right-hand side keeps that shape.
+            return left.join("/descendant-or-self::*/", right)
+        return left.join("/descendant::", right)
 
     def xpath_child_combinator(self, left: XPathExpr, right: XPathExpr) -> XPathExpr:
         """right is an immediate child of left"""
@@ -516,31 +530,28 @@ class GenericTranslator:
     # into `path`/`element`) so that `element` stays a plain element name:
     # later steps such as :first-of-type or :not() read and rewrite it.
 
-    def xpath_relation_descendant_combinator(
-        self, left: XPathExpr, right: XPathExpr
-    ) -> XPathExpr:
-        """right is a child, grand-child or further descendant of left; select left"""
-        return left.add_condition(f"descendant::{right}")
+    def xpath_relation_descendant_combinator(self, right: XPathExpr) -> str:
+        """right is a child, grand-child or further descendant of the element"""
+        return f"descendant::{right}"
 
-    def xpath_relation_child_combinator(
-        self, left: XPathExpr, right: XPathExpr
-    ) -> XPathExpr:
-        """right is an immediate child of left; select left"""
-        return left.add_condition(f"./{right}")
+    def xpath_relation_child_combinator(self, right: XPathExpr) -> str:
+        """right is an immediate child of the element"""
+        return f"./{right}"
 
-    def xpath_relation_direct_adjacent_combinator(
-        self, left: XPathExpr, right: XPathExpr
-    ) -> XPathExpr:
-        """right is a sibling immediately after left; select left"""
-        right.add_name_test()
-        right.add_condition("position() = 1")
-        return left.add_condition(f"following-sibling::{right}")
+    def xpath_relation_direct_adjacent_combinator(self, right: XPathExpr) -> str:
+        """right is a sibling immediately after the element"""
+        # Test the first step of right against that sibling itself, so that
+        # any further step of right is walked from there.
+        if right.path:
+            head, sep, tail = right.path.partition("/")
+            right.path = f"self::{head}{sep}{tail}"
+        else:
+            right.element = f"self::{right.element}"
+        return f"following-sibling::*[1]/{right}"
 
-    def xpath_relation_indirect_adjacent_combinator(
-        self, left: XPathExpr, right: XPathExpr
-    ) -> XPathExpr:
-        """right is a sibling after left, immediately or not; select left"""
-        return left.add_condition(f"following-sibling::{right}")
+    def xpath_relation_indirect_adjacent_combinator(self, right: XPathExpr) -> str:
+        """right is a sibling after the element, immediately or not"""
+        return f"following-sibling::{right}"
 
     # Function: dispatch by function/pseudo-class name
 
@@ -821,7 +832,8 @@ class GenericTranslator:
         if value and is_non_whitespace(value):
             arg = self.xpath_literal(" " + value + " ")
             xpath.add_condition(
-                f"{name} and contains(concat(' ', normalize-space({name}), ' '), {arg})"
+                f"{name} and contains({name}, {self.xpath_literal(value)}) "
+                f"and contains(concat(' ', normalize-space({name}), ' '), {arg})"
             )
         else:
             xpath.add_condition("0")
@@ -881,10 +893,10 @@ class HTMLTranslator(GenericTranslator):
 
     Has a more useful implementation of some pseudo-classes based on
     HTML-specific element names and attribute names, as described in
-    the `HTML5 specification`_. It assumes no-quirks mode.
+    the `HTML specification`_. It assumes no-quirks mode.
     The API is the same as :class:`GenericTranslator`.
 
-    .. _HTML5 specification: http://www.w3.org/TR/html5/links.html#selectors
+    .. _HTML specification: https://html.spec.whatwg.org/multipage/semantics-other.html#pseudo-classes
 
     :param xhtml:
         If false (the default), element names and attribute names
@@ -917,7 +929,9 @@ class HTMLTranslator(GenericTranslator):
             )
         value = function.arguments[0].value
         assert value
-        arg = self.xpath_literal(value.lower() + "-")
+        # Language-range matching is ASCII case-insensitive (RFC 4647),
+        # like the translate() on the document side of the comparison.
+        arg = self.xpath_literal(ascii_lower(value) + "-")
         return xpath.add_condition(
             "ancestor-or-self::*[@lang][1][starts-with(concat("
             # XPath 1.0 has no lower-case function...
@@ -934,62 +948,67 @@ class HTMLTranslator(GenericTranslator):
     # Links are never visited, the implementation for :visited is the same
     # as in GenericTranslator
 
+    # An element is a descendant of a disabled fieldset ancestor unless it is
+    # a descendant of that fieldset's own first legend element child. lxml's
+    # XPath evaluator has no generate-id() or current(), so the exemption is
+    # tested by checking whether any ancestor legend is also the first legend
+    # child of a disabled ancestor fieldset; with several nested disabled
+    # fieldsets this can exempt an element that a fully spec-accurate
+    # algorithm would still treat as disabled.
+    _disabled_by_fieldset = (
+        "ancestor::fieldset[@disabled] and not("
+        "count(ancestor::legend | ancestor::fieldset[@disabled]/legend[1]) < "
+        "count(ancestor::legend) + count(ancestor::fieldset[@disabled]/legend[1])"
+        ")"
+    )
+
     def xpath_disabled_pseudo(self, xpath: XPathExpr) -> XPathExpr:
-        # http://www.w3.org/TR/html5/section-index.html#attributes-1
+        # https://html.spec.whatwg.org/multipage/semantics-other.html#concept-element-disabled
         return xpath.add_condition(
-            """
+            f"""
         (
             @disabled and
             (
-                (name(.) = 'input' and @type != 'hidden') or
+                name(.) = 'input' or
                 name(.) = 'button' or
                 name(.) = 'select' or
                 name(.) = 'textarea' or
-                name(.) = 'command' or
                 name(.) = 'fieldset' or
                 name(.) = 'optgroup' or
                 name(.) = 'option'
             )
         ) or (
             (
-                (name(.) = 'input' and @type != 'hidden') or
+                name(.) = 'input' or
                 name(.) = 'button' or
                 name(.) = 'select' or
                 name(.) = 'textarea'
             )
-            and ancestor::fieldset[@disabled]
+            and {self._disabled_by_fieldset}
+        ) or (
+            name(.) = 'option' and ancestor::optgroup[@disabled]
         )
         """
         )
-        # FIXME: in the second half, add "and is not a descendant of that
-        # fieldset element's first legend element child, if any."
 
     def xpath_enabled_pseudo(self, xpath: XPathExpr) -> XPathExpr:
-        # http://www.w3.org/TR/html5/section-index.html#attributes-1
+        # https://html.spec.whatwg.org/multipage/semantics-other.html#concept-element-disabled
         return xpath.add_condition(
-            """
+            f"""
         (
-            @href and (
-                name(.) = 'a' or
-                name(.) = 'link' or
-                name(.) = 'area'
-            )
-        ) or (
             (
-                name(.) = 'command' or
                 name(.) = 'fieldset' or
                 name(.) = 'optgroup'
             )
             and not(@disabled)
         ) or (
             (
-                (name(.) = 'input' and @type != 'hidden') or
+                name(.) = 'input' or
                 name(.) = 'button' or
                 name(.) = 'select' or
-                name(.) = 'textarea' or
-                name(.) = 'keygen'
+                name(.) = 'textarea'
             )
-            and not (@disabled or ancestor::fieldset[@disabled])
+            and not(@disabled) and not({self._disabled_by_fieldset})
         ) or (
             name(.) = 'option' and not(
                 @disabled or ancestor::optgroup[@disabled]
@@ -997,9 +1016,3 @@ class HTMLTranslator(GenericTranslator):
         )
         """
         )
-        # FIXME: ... or "li elements that are children of menu elements,
-        # and that have a child element that defines a command, if the first
-        # such element's Disabled State facet is false (not disabled)".
-        # FIXME: after ancestor::fieldset[@disabled], add "and is not a
-        # descendant of that fieldset element's first legend element child,
-        # if any."
