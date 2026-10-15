@@ -961,6 +961,10 @@ class TestCssselect(unittest.TestCase):
         assert xpath(r"di\[v") == ("*[name() = 'di[v']")
         assert xpath(r"[h\a0 ref]") == ("*[attribute::*[name() = 'h ref']]")  # h\xa0ref
         assert xpath(r"[h\]ref]") == ("*[attribute::*[name() = 'h]ref']]")
+        # A trailing newline is not a name character either
+        assert xpath(r"div\a ") == "*[name() = 'div\n']"
+        assert xpath(r"[href\a ]") == "*[attribute::*[name() = 'href\n']]"
+        assert xpath(r"ns\a |div") == "*[name() = 'ns\n:div']"
         # Escaped identifiers survive inside :has() arguments
         assert xpath(r"e:has(di\[v)") == "e[descendant::*[name() = 'di[v']]"
 
