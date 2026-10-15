@@ -119,10 +119,10 @@ split_at_single_quotes = re.compile("('+)").split
 # The spec is actually more permissive than that, but don’t bother.
 # This is just for the fast path.
 # http://www.w3.org/TR/REC-xml/#NT-NameStartChar
-is_safe_name = re.compile("^[a-zA-Z_][a-zA-Z0-9_.-]*$").match
+is_safe_name = re.compile("[a-zA-Z_][a-zA-Z0-9_.-]*").fullmatch
 
 # Test that the string is not empty and does not contain whitespace
-is_non_whitespace = re.compile(r"^[^ \t\r\n\f]+$").match
+is_non_whitespace = re.compile(r"[^ \t\r\n\f]+").fullmatch
 
 
 #### Translation
