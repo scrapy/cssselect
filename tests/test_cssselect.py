@@ -1142,6 +1142,16 @@ class TestCssselect(unittest.TestCase):
         # unescape_ident() resolves both unicode and simple escapes.
         assert unescape_ident(r"\41 B") == "AB"
         assert unescape_ident(r"\-foo") == "-foo"
+        # Each escape is decoded once: an escaped backslash, or one produced
+        # by \5c, does not start another escape.
+        assert unescape_ident(r"a\\31") == "a\\31"
+        assert unescape_ident(r"a\5c 41") == "a\\41"
+        assert css_to_xpath(r"*[aval='\\31 ']") == (
+            "descendant-or-self::*[@aval = '\\31 ']"
+        )
+        assert css_to_xpath(r"*[aval='\5c 41']") == (
+            "descendant-or-self::*[@aval = '\\41']"
+        )
 
     def test_input_preprocessing(self) -> None:
         # CSS Syntax §3.3: a raw U+0000 or surrogate code point (not an
