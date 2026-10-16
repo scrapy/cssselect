@@ -467,6 +467,11 @@ class TestCssselect(unittest.TestCase):
         css2css("div:is(*)")
         css2css(":is(*, .foo)")
         css2css(":where(*)")
+        # a namespace wildcard is not a redundant universal selector
+        css2css("foo *|bar")
+        css2css("foo > *|*")
+        css2css(":is(*|foo, bar)")
+        css2css(":where(*|foo)")
         css2css("foo:empty")
         css2css("foo::before")
         css2css("foo:empty::before")
