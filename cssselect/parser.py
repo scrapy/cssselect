@@ -331,8 +331,8 @@ class Matching:
         selector_arguments = []
         for s in self.selector_list:
             selarg = s.canonical()
-            if len(selarg) > 1:
-                selarg = selarg.lstrip("*")
+            if len(selarg) > 1 and selarg[0] == "*" and selarg[1] in "#.[:":
+                selarg = selarg[1:]
             selector_arguments.append(selarg)
         args_str = ", ".join(selector_arguments)
         return f"{self.selector.canonical()}:is({args_str})"
@@ -361,8 +361,8 @@ class SpecificityAdjustment:
         selector_arguments = []
         for s in self.selector_list:
             selarg = s.canonical()
-            if len(selarg) > 1:
-                selarg = selarg.lstrip("*")
+            if len(selarg) > 1 and selarg[0] == "*" and selarg[1] in "#.[:":
+                selarg = selarg[1:]
             selector_arguments.append(selarg)
         args_str = ", ".join(selector_arguments)
         return f"{self.selector.canonical()}:where({args_str})"
@@ -521,8 +521,8 @@ class CombinedSelector:
 
     def canonical(self) -> str:
         subsel = self.subselector.canonical()
-        if len(subsel) > 1:
-            subsel = subsel.lstrip("*")
+        if len(subsel) > 1 and subsel[0] == "*" and subsel[1] in "#.[:":
+            subsel = subsel[1:]
         combinator = " " if self.combinator == " " else f" {self.combinator} "
         return f"{self.selector.canonical()}{combinator}{subsel}"
 
