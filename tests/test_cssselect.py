@@ -1315,6 +1315,13 @@ class TestCssselect(unittest.TestCase):
         assert series("Odd") == (2, 1)
         assert series("N") == (1, 0)
         assert series("-N+3") == (-1, 3)
+        # Only ASCII digits, as in the An+B microsyntax.
+        assert series("\u0663") is None  # ARABIC-INDIC DIGIT THREE
+        assert series("\uff13") is None  # FULLWIDTH DIGIT THREE
+        assert series("n+\u0663") is None
+        assert series("\u0662n+1") is None
+        assert series("1_0") is None
+        assert series("2n+1_0") is None
 
     def test_lang(self) -> None:
         document = etree.fromstring(XMLLANG_IDS)
