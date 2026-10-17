@@ -900,6 +900,17 @@ def parse_attrib(selector: Tree, stream: TokenStream) -> Attrib:
     return Attrib(selector, namespace, cast("str", attrib), op, value, flag)
 
 
+# An An+B integer: ASCII digits only, unlike int(), which also accepts other
+# Unicode decimal digits, underscores and surrounding whitespace.
+_match_series_integer = re.compile("[+-]?[0-9]+").fullmatch
+
+
+def _parse_series_integer(s: str) -> int:
+    if not _match_series_integer(s):
+        raise ValueError(f"Invalid integer in series: {s!r}")
+    return int(s)
+
+
 def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:
     """Parses the arguments for :nth-child() and friends."""
     for token in tokens:
@@ -915,7 +926,7 @@ def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:
         return 1, 0
     if "n" not in s:
         # Just b
-        return 0, int(s)
+        return 0, _parse_series_integer(s)
     a, b = s.split("n", 1)
     a_as_int: int
     if not a:
@@ -923,8 +934,8 @@ def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:
     elif a in {"-", "+"}:
         a_as_int = int(a + "1")
     else:
-        a_as_int = int(a)
-    b_as_int = int(b) if b else 0
+        a_as_int = _parse_series_integer(a)
+    b_as_int = _parse_series_integer(b) if b else 0
     return a_as_int, b_as_int
 
 
