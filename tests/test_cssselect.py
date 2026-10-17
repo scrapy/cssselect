@@ -478,6 +478,8 @@ class TestCssselect(unittest.TestCase):
         css2css('::name(arg + "val" - 3)', "::name(arg+'val'-3)")
         css2css("#lorem + foo#ipsum:first-child > bar::first-line")
         css2css("foo > *")
+        css2css("foo *.bar", "foo .bar")
+        css2css("foo > *[bar]", "foo > [bar]")
         # a leading universal selector is only redundant in a compound
         # selector
         css2css("* > foo")
