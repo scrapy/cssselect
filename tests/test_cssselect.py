@@ -532,6 +532,12 @@ class TestCssselect(unittest.TestCase):
         assert get_error("div > ") == ("Expected selector, got <EOF at 6>")
         assert get_error("  > div") == ("Expected selector, got <DELIM '>' at 2>")
         assert get_error("foo|#bar") == ("Expected ident or '*', got <HASH 'bar' at 4>")
+        assert get_error(r"\*|foo") == (
+            "Expected namespace prefix, got <IDENT '*' at 0>"
+        )
+        assert get_error(r"[\2a|foo]") == (
+            "Expected namespace prefix, got <IDENT '*' at 1>"
+        )
         assert get_error(".foo|bar") == ("Expected selector, got <DELIM '|' at 4>")
         assert get_error("#bar|foo") == ("Expected selector, got <DELIM '|' at 4>")
         assert get_error("[baz]|foo") == ("Expected selector, got <DELIM '|' at 5>")
@@ -965,6 +971,11 @@ class TestCssselect(unittest.TestCase):
         assert xpath(r"div\a ") == "*[name() = 'div\n']"
         assert xpath(r"[href\a ]") == "*[attribute::*[name() = 'href\n']]"
         assert xpath(r"ns\a |div") == "*[name() = 'ns\n:div']"
+        # An escaped "*" is a name, not the universal selector or wildcard
+        assert xpath(r"\*") == "*[name() = '*']"
+        assert xpath(r"\2a") == "*[name() = '*']"
+        assert xpath(r"e > \*") == "e/*[name() = '*']"
+        assert xpath(r"[\*]") == "*[attribute::*[name() = '*']]"
         # Escaped identifiers survive inside :has() arguments
         assert xpath(r"e:has(di\[v)") == "e[descendant::*[name() = 'di[v']]"
 
