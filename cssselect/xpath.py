@@ -443,11 +443,22 @@ class GenericTranslator:
             value = ascii_lower(cast("str", selector.value.value))
         else:
             value = selector.value.value
+        attribute = None
+        if selector.namespace == "*" and selector.operator not in ("exists", "!="):
+            # String functions convert a node-set to its first node's value.
+            # Apply the operator to each attribute before testing existence.
+            attribute = attrib
+            attrib = "."
         if selector.flag == "i" and value:
             # ASCII-lowering both sides is what the specification defines a
             # case-insensitive match as, and all XPath 1.0 can express.
             attrib = f"translate({attrib}, {self.xpath_literal(ascii_uppercase)}, {self.xpath_literal(ascii_lowercase)})"
             value = ascii_lower(value)
+        if attribute is not None:
+            condition = method(self.xpathexpr_cls(), attrib, value).condition
+            return self.xpath(selector.selector).add_condition(
+                f"{attribute}[{condition}]"
+            )
         return method(self.xpath(selector.selector), attrib, value)
 
     def xpath_class(self, class_selector: Class) -> XPathExpr:
