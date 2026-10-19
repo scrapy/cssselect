@@ -638,10 +638,16 @@ def parse_simple_selector(
             stream.next()
             namespace = "*"
         if stream.peek() == ("DELIM", "|"):
+            if peek.type == "IDENT" and namespace == "*":
+                # An escaped "*" (e.g. "\*|f") is a prefix named "*",
+                # not the namespace wildcard, and no XPath prefix can be "*".
+                raise SelectorSyntaxError(f"Expected namespace prefix, got {peek}")
             stream.next()
             element = stream.next_ident_or_star()
         else:
-            element = None if namespace == "*" else namespace
+            # An escaped "*" (e.g. "\*") is a type selector for elements
+            # named "*", not the universal selector.
+            element = namespace if peek.type == "IDENT" else None
             namespace = None
     else:
         element = namespace = None
@@ -863,6 +869,11 @@ def parse_attrib(selector: Tree, stream: TokenStream) -> Attrib:
                 stream.next()
                 op = "|="
             else:
+                if attrib == "*":
+                    # An escaped "*" (e.g. "[\*|attr]"), not the wildcard.
+                    raise SelectorSyntaxError(
+                        f"Expected namespace prefix, got {stream.used[-2]}"
+                    )
                 namespace = "*" if attrib is None else attrib
                 attrib = stream.next_ident()
                 op = None
