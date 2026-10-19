@@ -334,7 +334,7 @@ class GenericTranslator:
             if left is not None:
                 axis = f"{axis}[{left}]"
             right = self._xpath_match_condition(selector.subselector)
-            return axis if right is None else f"{right} and {axis}"
+            return axis if right is None else f"({right}) and {axis}"
         sub_xpath = self.xpath(selector)
         sub_xpath.add_name_test()
         return sub_xpath.condition or None
