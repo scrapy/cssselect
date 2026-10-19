@@ -925,8 +925,7 @@ class HTMLTranslator(GenericTranslator):
             raise ExpressionError(
                 f"Expected a single string or ident for :lang(), got {function.arguments!r}"
             )
-        value = function.arguments[0].value
-        assert value
+        value = cast("str", function.arguments[0].value)
         # Language-range matching is ASCII case-insensitive (RFC 4647),
         # like the translate() on the document side of the comparison.
         arg = self.xpath_literal(ascii_lower(value) + "-")

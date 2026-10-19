@@ -1371,6 +1371,17 @@ class TestCssselect(unittest.TestCase):
         # The HTML translator requires a string or ident argument too.
         with pytest.raises(ExpressionError, match=r":lang\(\)"):
             HTMLTranslator().css_to_xpath(":lang(1)")
+        # Selectors 4: :lang("") matches (only) elements whose language is
+        # not tagged, i.e. an empty lang attribute.
+        html_document = html.fromstring(
+            '<div lang="en"><p id="tagged"></p></div>'
+            '<div lang=""><p id="untagged"></p></div>'
+        )
+        html_items = typing.cast(
+            "list[etree._Element]",
+            html_document.xpath(HTMLTranslator().css_to_xpath('p:lang("")')),
+        )
+        assert [element.get("id") for element in html_items] == ["untagged"]
         # The XHTML variant keeps element and attribute names case-sensitive.
         assert HTMLTranslator(xhtml=True).css_to_xpath("A") == ("descendant-or-self::A")
         assert HTMLTranslator().css_to_xpath("A") == ("descendant-or-self::a")
