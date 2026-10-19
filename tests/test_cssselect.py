@@ -871,27 +871,37 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:not(:has(a, > b))") == "e[not((descendant::a) or (./b))]"
         # A complex selector in :not() is matched against the element itself,
         # walking combinators through reverse axes.
-        assert xpath("e:not(a b)") == "e[not(self::b and ancestor::*[self::a])]"
-        assert xpath("e:not(a > b)") == "e[not(self::b and parent::*[self::a])]"
+        assert xpath("e:not(a b)") == "e[not((self::b) and ancestor::*[self::a])]"
+        assert xpath("e:not(a > b)") == "e[not((self::b) and parent::*[self::a])]"
         assert xpath("e:not(a + b)") == (
-            "e[not(self::b and preceding-sibling::*[1][self::a])]"
+            "e[not((self::b) and preceding-sibling::*[1][self::a])]"
         )
         assert xpath("e:not(a ~ b)") == (
-            "e[not(self::b and preceding-sibling::*[self::a])]"
+            "e[not((self::b) and preceding-sibling::*[self::a])]"
         )
         assert xpath("e:not(a > b > c)") == (
-            "e[not(self::c and parent::*[self::b and parent::*[self::a]])]"
+            "e[not((self::c) and parent::*[(self::b) and parent::*[self::a]])]"
         )
         assert xpath("e:not(.a > #b)") == (
-            "e[not(@id = 'b' and parent::*[@class and contains(@class, 'a') and contains("
+            "e[not((@id = 'b') and parent::*[@class and contains(@class, 'a') and contains("
             "concat(' ', normalize-space(@class), ' '), ' a ')])]"
         )
         # A "*" compound selector only constrains the axis
-        assert xpath("e:not(* > b)") == "e[not(self::b and parent::*)]"
+        assert xpath("e:not(* > b)") == "e[not((self::b) and parent::*)]"
         assert xpath("e:not(a > *)") == "e[not(parent::*[self::a])]"
         assert xpath("e:not(* *)") == "e[not(ancestor::*)]"
         assert xpath("e:not(a:has(> b) c)") == (
-            "e[not(self::c and ancestor::*[(./b) and (self::a)])]"
+            "e[not((self::c) and ancestor::*[(./b) and (self::a)])]"
+        )
+        # A disjunction from the last compound selector stays grouped
+        assert xpath("e:not(a > [x!=y])") == (
+            "e[not((not(@x) or @x != 'y') and parent::*[self::a])]"
+        )
+        assert xpath("e:not(a > :is(b, c))") == (
+            "e[not(((self::b) or (self::c)) and parent::*[self::a])]"
+        )
+        assert xpath("e:not(a > :has(b, c))") == (
+            "e[not(((descendant::b) or (descendant::c)) and parent::*[self::a])]"
         )
         # Element-reading pseudo-classes chained after :has()
         assert xpath("e:has(f):first-of-type") == (
@@ -964,7 +974,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath("*:not(ns|*)") == "*[not(self::ns:*)]"
         assert xpath("e:is(ns|f)") == "e[self::ns:f]"
         assert xpath("*:not(ns|f)") == "*[not(self::ns:f)]"
-        assert xpath("*:not(ns|f > f)") == "*[not(self::f and parent::*[self::ns:f])]"
+        assert xpath("*:not(ns|f > f)") == "*[not((self::f) and parent::*[self::ns:f])]"
         assert xpath("x + ns|f") == (
             "x/following-sibling::*[(self::ns:f) and (position() = 1)]"
         )
@@ -1781,6 +1791,30 @@ class TestCssselect(unittest.TestCase):
             "checkbox-checked",
             "checkbox-disabled-checked",
         ]
+
+    def test_select_complex_negation(self) -> None:
+        """``*:not(S)`` selects exactly ``*`` minus ``S``."""
+        document = etree.fromstring(HTML_IDS)
+
+        def select(css: str, translator: GenericTranslator) -> list[etree._Element]:
+            xpath = translator.css_to_xpath(css)
+            return typing.cast("list[etree._Element]", document.xpath(xpath))
+
+        for translator in (GenericTranslator(), HTMLTranslator()):
+            all_elements = select("*", translator)
+            for css in (
+                "ol > [lang!=En-us]",
+                "ol > :is(div, li)",
+                "ol > :where(div, li)",
+                "ol > :matches(div, li)",
+                "div > :has(li, b)",
+                "legend > :enabled",
+                "fieldset > :disabled",
+            ):
+                matching = select(css, translator)
+                assert select(f"*:not({css})", translator) == [
+                    element for element in all_elements if element not in matching
+                ]
 
     def test_select_with_namespace(self) -> None:
         # The document prefix (n) deliberately differs from the selector
