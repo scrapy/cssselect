@@ -313,6 +313,7 @@ class GenericTranslator:
         return method(self.xpath(combined.selector), self.xpath(combined.subselector))
 
     def xpath_negation(self, negation: Negation) -> XPathExpr:
+        """Translate ``:not()``."""
         xpath = self.xpath(negation.selector)
         condition = self._xpath_match_condition(negation.subselector)
         if condition is None:
@@ -340,6 +341,7 @@ class GenericTranslator:
         return sub_xpath.condition or None
 
     def xpath_relation(self, relation: Relation) -> XPathExpr:
+        """Translate ``:has()``."""
         condition = ""
         for combinator, subselector in relation.arguments:
             method = cast(
@@ -354,11 +356,13 @@ class GenericTranslator:
         return self.xpath(relation.selector).add_condition(condition)
 
     def xpath_matching(self, matching: Matching) -> XPathExpr:
+        """Translate ``:is()`` and its alias ``:matches()``."""
         return self._xpath_add_selector_list_condition(
             self.xpath(matching.selector), matching.selector_list
         )
 
     def xpath_specificityadjustment(self, matching: SpecificityAdjustment) -> XPathExpr:
+        """Translate ``:where()``."""
         return self._xpath_add_selector_list_condition(
             self.xpath(matching.selector), matching.selector_list
         )
