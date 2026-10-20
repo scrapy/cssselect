@@ -627,6 +627,7 @@ def parse_simple_selector(
     stream: TokenStream,
     inside_negation: bool = False,
     inside_selector_list: bool = False,
+    inside_relative_selector: bool = False,
 ) -> tuple[Tree, PseudoElement | None]:
     stream.skip_whitespace()
     selector_start = len(stream.used)
@@ -697,16 +698,18 @@ def parse_simple_selector(
                 result = Pseudo(result, ident)
                 if result.ident == "scope":
                     # :scope is only supported at the start of a selector,
-                    # i.e. never in :is()/:where()/:matches() arguments
-                    # (where a preceding comma separates arguments, not
-                    # selectors), and otherwise only when the tokens
+                    # i.e. never in :is()/:where()/:matches() or :has()
+                    # arguments (where a preceding comma separates arguments,
+                    # not selectors), and otherwise only when the tokens
                     # preceding its compound selector are the start of the
                     # input or a comma.
                     preceding = stream.used[:selector_start]
                     while preceding and preceding[-1].type == "S":
                         preceding = preceding[:-1]
-                    if inside_selector_list or (
-                        preceding and not preceding[-1].is_delim(",")
+                    if (
+                        inside_selector_list
+                        or inside_relative_selector
+                        or (preceding and not preceding[-1].is_delim(","))
                     ):
                         raise SelectorSyntaxError(
                             'Got pseudo-class ":scope" not at the start of a selector'
@@ -797,7 +800,9 @@ def parse_relative_selector(stream: TokenStream) -> list[tuple[Token, Selector]]
             stream.skip_whitespace()
         else:
             combinator = Token("DELIM", " ", pos=peek.pos)
-        result, pseudo_element = parse_simple_selector(stream)
+        result, pseudo_element = parse_simple_selector(
+            stream, inside_relative_selector=True
+        )
         while 1:
             if pseudo_element:
                 raise SelectorSyntaxError(
