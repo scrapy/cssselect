@@ -1841,6 +1841,78 @@ class TestCssselect(unittest.TestCase):
         assert pcss("*:not(ns|a)") == ["nil", "plain", "ns-el2"]
         assert pcss("b + ns|c") == ["ns-el2"]
 
+    def test_select_with_wildcard_attribute_values(self) -> None:
+        cases = [
+            ("=", "prefix-token", "prefix-token"),
+            ("~=", "prefix-token", "before prefix-token after"),
+            ("|=", "prefix", "prefix-token"),
+            ("^=", "prefix", "prefix-token"),
+            ("$=", "token", "prefix-token"),
+            ("*=", "fix-to", "prefix-token"),
+        ]
+        attribute_names = [
+            ("{urn:a}label", "{urn:b}label"),
+            ("label", "{urn:a}label"),
+            ("{urn:a}label", "label"),
+        ]
+        for operator, value, matching_value in cases:
+            for flag in ("", " i", " s"):
+                for first, second in attribute_names:
+                    with self.subTest(operator=operator, flag=flag, first=first):
+                        document = etree.XML("<root/>")
+                        for identifier, values in (
+                            ("first", (matching_value, "other")),
+                            ("second", ("other", matching_value)),
+                            ("neither", ("other", "unrelated")),
+                        ):
+                            item = etree.SubElement(document, "item", id=identifier)
+                            item.set(first, values[0])
+                            item.set(second, values[1])
+                        etree.SubElement(document, "item", id="missing")
+                        value_to_match = value.upper() if flag == " i" else value
+                        selector = f'item[*|label{operator}"{value_to_match}"{flag}]'
+                        xpath = GenericTranslator().css_to_xpath(selector)
+                        assert document.xpath(xpath + "/@id") == ["first", "second"]
+
+    def test_select_with_wildcard_attribute_empty_values(self) -> None:
+        document = etree.XML(
+            '<root xmlns:a="urn:a" xmlns:b="urn:b">'
+            '<item id="first" a:label="" b:label="other"/>'
+            '<item id="second" a:label="other" b:label=""/>'
+            '<item id="nonempty" a:label="other"/>'
+            '<item id="missing"/></root>'
+        )
+        for flag in ("", " i", " s"):
+            for operator in ("=", "~=", "^=", "$=", "*="):
+                with self.subTest(operator=operator, flag=flag):
+                    xpath = GenericTranslator().css_to_xpath(
+                        f'item[*|label{operator}""{flag}]'
+                    )
+                    expected = ["first", "second"] if operator == "=" else []
+                    assert document.xpath(xpath + "/@id") == expected
+
+    def test_select_with_wildcard_attribute_combinations(self) -> None:
+        document = etree.XML(
+            '<root xmlns:a="urn:a" xmlns:b="urn:b">'
+            '<item id="split" a:label="prefix-other" b:label="other-token"/>'
+            '<item id="second" a:label="other" b:label="prefix-token"/>'
+            '<item id="unicode" a:label="other" b:label="ÄBC"/>'
+            '<item id="missing"/></root>'
+        )
+        cases = [
+            ('item[*|label^="prefix"][*|label$="token"]', ["split", "second"]),
+            ('item:not([*|label^="prefix"])', ["unicode", "missing"]),
+            ('item:is([*|label^="prefix"])', ["split", "second"]),
+            ('root:has(> item[*|label$="token"]) > item#second', ["second"]),
+            ('item[*|label="äbc" i]', []),
+            ('item[*|label="Äbc" i]', ["unicode"]),
+            ('item[*|label="Äbc" s]', []),
+        ]
+        for selector, expected in cases:
+            with self.subTest(selector=selector):
+                xpath = GenericTranslator().css_to_xpath(selector)
+                assert document.xpath(xpath + "/@id") == expected
+
     def test_select_with_default_namespace(self) -> None:
         # A bare "f" translates to an unprefixed XPath node test, which
         # only matches elements in *no* namespace, so it cannot see
