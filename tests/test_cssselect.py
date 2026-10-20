@@ -668,6 +668,12 @@ class TestCssselect(unittest.TestCase):
         assert get_error("foo, :is(a, :scope)") == (
             'Got pseudo-class ":scope" not at the start of a selector'
         )
+        assert get_error(":has(:scope)") == (
+            'Got pseudo-class ":scope" not at the start of a selector'
+        )
+        assert get_error("a:has(b, :scope)") == (
+            'Got pseudo-class ":scope" not at the start of a selector'
+        )
         assert get_error("> div p") == ("Expected selector, got <DELIM '>' at 0>")
 
         assert get_error(":has()") == ("Expected selector, got <DELIM ')' at 5>")
