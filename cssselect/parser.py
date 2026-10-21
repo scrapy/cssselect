@@ -631,6 +631,12 @@ def parse_simple_selector(
 ) -> tuple[Tree, PseudoElement | None]:
     stream.skip_whitespace()
     selector_start = len(stream.used)
+    # Whether the tokens preceding this compound selector (ignoring
+    # whitespace) are the start of the input or a comma, for :scope.
+    preceding = selector_start - 1
+    while preceding >= 0 and stream.used[preceding].type == "S":
+        preceding -= 1
+    at_selector_start = preceding < 0 or stream.used[preceding].is_delim(",")
     peek = stream.peek()
     if peek.type == "IDENT" or peek == ("DELIM", "*"):
         if peek.type == "IDENT":
@@ -696,24 +702,20 @@ def parse_simple_selector(
                 continue
             if stream.peek() != ("DELIM", "("):
                 result = Pseudo(result, ident)
-                if result.ident == "scope":
-                    # :scope is only supported at the start of a selector,
-                    # i.e. never in :is()/:where()/:matches() or :has()
-                    # arguments (where a preceding comma separates arguments,
-                    # not selectors), and otherwise only when the tokens
-                    # preceding its compound selector are the start of the
-                    # input or a comma.
-                    preceding = stream.used[:selector_start]
-                    while preceding and preceding[-1].type == "S":
-                        preceding = preceding[:-1]
-                    if (
-                        inside_selector_list
-                        or inside_relative_selector
-                        or (preceding and not preceding[-1].is_delim(","))
-                    ):
-                        raise SelectorSyntaxError(
-                            'Got pseudo-class ":scope" not at the start of a selector'
-                        )
+                # :scope is only supported at the start of a selector,
+                # i.e. never in :is()/:where()/:matches() or :has()
+                # arguments (where a preceding comma separates arguments,
+                # not selectors), and otherwise only when the tokens
+                # preceding its compound selector are the start of the
+                # input or a comma.
+                if result.ident == "scope" and (
+                    inside_selector_list
+                    or inside_relative_selector
+                    or not at_selector_start
+                ):
+                    raise SelectorSyntaxError(
+                        'Got pseudo-class ":scope" not at the start of a selector'
+                    )
                 continue
             stream.next()
             stream.skip_whitespace()
