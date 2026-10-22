@@ -125,6 +125,17 @@ is_safe_name = re.compile("[a-zA-Z_][a-zA-Z0-9_.-]*").fullmatch
 is_non_whitespace = re.compile(r"[^ \t\r\n\f]+").fullmatch
 
 
+def _or_conditions(conditions: list[str]) -> str:
+    """Join conditions with "or".
+
+    Built in one pass: wrapping the accumulated condition again for each one
+    would take quadratic time in the number of conditions.
+    """
+    if len(conditions) == 1:
+        return conditions[0]
+    return " or ".join(f"({condition})" for condition in conditions)
+
+
 #### Translation
 
 
@@ -340,7 +351,7 @@ class GenericTranslator:
         return sub_xpath.condition or None
 
     def xpath_relation(self, relation: Relation) -> XPathExpr:
-        condition = ""
+        conditions: list[str] = []
         for combinator, subselector in relation.arguments:
             method = cast(
                 "Callable[[XPathExpr], str]",
@@ -349,9 +360,8 @@ class GenericTranslator:
                     f"xpath_relation_{self.combinator_mapping[cast('str', combinator.value)]}_combinator",
                 ),
             )
-            argument = method(self.xpath(subselector.parsed_tree))
-            condition = f"({condition}) or ({argument})" if condition else argument
-        return self.xpath(relation.selector).add_condition(condition)
+            conditions.append(method(self.xpath(subselector.parsed_tree)))
+        return self.xpath(relation.selector).add_condition(_or_conditions(conditions))
 
     def xpath_matching(self, matching: Matching) -> XPathExpr:
         return self._xpath_add_selector_list_condition(
@@ -368,7 +378,7 @@ class GenericTranslator:
     ) -> XPathExpr:
         """Add a condition matching any selector of the list
         (for :is() and :where())."""
-        condition = ""
+        conditions: list[str] = []
         for e in (self.xpath(selector) for selector in selector_list):
             if e.path:
                 # Only a combined selector (e.g. "a b") translates to a path,
@@ -385,10 +395,8 @@ class GenericTranslator:
                 # This argument matches any element, so the whole selector
                 # list does too: it adds no condition.
                 return xpath
-            condition = (
-                f"({condition}) or ({e.condition})" if condition else e.condition
-            )
-        return xpath.add_condition(condition)
+            conditions.append(e.condition)
+        return xpath.add_condition(_or_conditions(conditions))
 
     def xpath_function(self, function: Function) -> XPathExpr:
         """Translate a functional pseudo-class."""

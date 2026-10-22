@@ -856,6 +856,9 @@ class TestCssselect(unittest.TestCase):
         )
         # A relative selector list matches if any of its arguments does
         assert xpath("e:has(f, > g)") == "e[(descendant::f) or (./g)]"
+        assert xpath("e:has(f, > g, + h)") == (
+            "e[(descendant::f) or (./g) or (following-sibling::*[1]/self::h)]"
+        )
         assert xpath("e.foo:has(f, g)") == (
             "e[(@class and contains(@class, 'foo') and contains("
             "concat(' ', normalize-space(@class), ' '), ' foo ')) "
@@ -952,6 +955,9 @@ class TestCssselect(unittest.TestCase):
         assert xpath("div#container p") == ("div[@id = 'container']/descendant::p")
         assert xpath("e:where(foo)") == "e[self::foo]"
         assert xpath("e:where(foo, bar)") == "e[(self::foo) or (self::bar)]"
+        assert xpath("e:where(foo, bar, baz)") == (
+            "e[(self::foo) or (self::bar) or (self::baz)]"
+        )
         assert xpath("e:is(.a,.b)") == xpath("e:is(.a, .b)")
         assert xpath("e:is(*, .foo)") == "e"
         assert xpath("e:where(*, foo)") == "e"
