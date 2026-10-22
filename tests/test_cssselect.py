@@ -553,6 +553,7 @@ class TestCssselect(unittest.TestCase):
         assert get_error(":#foo") == ("Expected ident, got <HASH 'foo' at 1>")
         assert get_error("[*]") == ("Expected '|', got <DELIM ']' at 2>")
         assert get_error("[foo|]") == ("Expected ident, got <DELIM ']' at 5>")
+        assert get_error("[*|=x]") == ("Expected ident, got <DELIM '=' at 3>")
         assert get_error("[#]") == ("Expected ident or '*', got <DELIM '#' at 1>")
         assert get_error("[foo=#]") == (
             "Expected string or ident, got <DELIM '#' at 5>"

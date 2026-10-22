@@ -869,7 +869,7 @@ def parse_attrib(selector: Tree, stream: TokenStream) -> Attrib:
             raise SelectorSyntaxError(f"Expected '|', got {stream.peek()}")
         if stream.peek() == ("DELIM", "|"):
             stream.next()
-            if stream.peek() == ("DELIM", "="):
+            if attrib is not None and stream.peek() == ("DELIM", "="):
                 namespace = None
                 stream.next()
                 op = "|="
