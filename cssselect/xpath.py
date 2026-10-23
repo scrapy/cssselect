@@ -126,11 +126,7 @@ is_non_whitespace = re.compile(r"[^ \t\r\n\f]+").fullmatch
 
 
 def _or_conditions(conditions: list[str]) -> str:
-    """Join conditions with "or".
-
-    Built in one pass: wrapping the accumulated condition again for each one
-    would take quadratic time in the number of conditions.
-    """
+    """Join conditions with "or"."""
     if len(conditions) == 1:
         return conditions[0]
     return " or ".join(f"({condition})" for condition in conditions)
