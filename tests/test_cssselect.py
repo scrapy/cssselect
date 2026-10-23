@@ -92,7 +92,7 @@ class TestCssselect(unittest.TestCase):
         assert parse_many("*|*") == ["Element[*|*]"]
         assert parse_many("*|foo") == ["Element[*|foo]"]
         assert parse_many("foo", "|foo") == ["Element[foo]"]
-        assert parse_many("|*") == ["Element[*]"]
+        assert parse_many("|*") == ["Element[|*]"]
         assert parse_many("foo|*") == ["Element[foo|*]"]
         assert parse_many("foo|bar") == ["Element[foo|bar]"]
         # This will never match, but it is valid:
@@ -470,6 +470,8 @@ class TestCssselect(unittest.TestCase):
         # a namespace wildcard is not a redundant universal selector
         css2css("foo *|bar")
         css2css("foo > *|*")
+        css2css("foo > |*")
+        css2css("|*.foo")
         css2css(":is(*|foo, bar)")
         css2css(":where(*|foo)")
         css2css("foo:empty")
@@ -706,6 +708,9 @@ class TestCssselect(unittest.TestCase):
         assert xpath("|e") == "e"
         assert xpath("*|e") == "*[local-name() = 'e']"
         assert xpath("*|*") == "*"
+        assert xpath("|*") == "*[namespace-uri() = '']"
+        assert xpath("e > |*") == "e/*[namespace-uri() = '']"
+        assert xpath("e:not(|*)") == "e[not(namespace-uri() = '')]"
         assert xpath("e|f") == "e:f"
         assert xpath("e[foo]") == "e[@foo]"
         assert xpath("e[|foo]") == "e[@foo]"

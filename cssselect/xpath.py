@@ -476,6 +476,11 @@ class GenericTranslator:
         """Translate a type or universal selector."""
         element = selector.element
         if not element:
+            if selector.namespace == "":
+                # "|*": any element with no namespace.
+                xpath = self.xpathexpr_cls(element="*")
+                xpath.add_condition("namespace-uri() = ''")
+                return xpath
             element = "*"
             safe = True
         else:
