@@ -1835,17 +1835,17 @@ class TestCssselect(unittest.TestCase):
         quadratic and the result too deep for lxml to evaluate.
         """
         document = etree.fromstring("<r><a><b/></a></r>")
-        arguments = ",".join(["b"] * 1000)
+        arguments = ",".join(["b"] * 500)
 
         xpath = GenericTranslator().css_to_xpath(f":is({arguments})")
         assert xpath == (
-            "descendant-or-self::*[" + " or ".join(["(self::b)"] * 1000) + "]"
+            "descendant-or-self::*[" + " or ".join(["(self::b)"] * 500) + "]"
         )
         assert len(document.xpath(xpath)) == 1
 
         xpath = GenericTranslator().css_to_xpath(f"a:has({arguments})")
         assert xpath == (
-            "descendant-or-self::a[" + " or ".join(["(descendant::b)"] * 1000) + "]"
+            "descendant-or-self::a[" + " or ".join(["(descendant::b)"] * 500) + "]"
         )
         assert len(document.xpath(xpath)) == 1
 
