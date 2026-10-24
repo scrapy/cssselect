@@ -1920,6 +1920,29 @@ class TestCssselect(unittest.TestCase):
                 xpath = GenericTranslator().css_to_xpath(selector)
                 assert document.xpath(xpath + "/@id") == expected
 
+    def test_select_with_wildcard_attribute_different(self) -> None:
+        # [*|label!=v] is :not([*|label=v]) (except for an empty value),
+        # whichever attribute comes first.
+        document = etree.XML(
+            '<root xmlns:a="urn:a" xmlns:b="urn:b">'
+            '<item id="first" a:label="bar" b:label="baz"/>'
+            '<item id="second" a:label="baz" b:label="BAR"/>'
+            '<item id="other" a:label="baz"/>'
+            '<item id="empty" a:label="" b:label="baz"/>'
+            '<item id="missing"/></root>'
+        )
+        cases = [
+            ("item[*|label!=bar]", ["second", "other", "empty", "missing"]),
+            ("item[*|label!=bar s]", ["second", "other", "empty", "missing"]),
+            ("item[*|label!=bar i]", ["other", "empty", "missing"]),
+            ('item[*|label!=""]', ["first", "second", "other"]),
+            ('item[*|label!="" i]', ["first", "second", "other"]),
+        ]
+        for selector, expected in cases:
+            with self.subTest(selector=selector):
+                xpath = GenericTranslator().css_to_xpath(selector)
+                assert document.xpath(xpath + "/@id") == expected
+
     def test_select_with_default_namespace(self) -> None:
         # A bare "f" translates to an unprefixed XPath node test, which
         # only matches elements in *no* namespace, so it cannot see

@@ -444,7 +444,7 @@ class GenericTranslator:
         else:
             value = selector.value.value
         attribute = None
-        if selector.namespace == "*" and selector.operator not in ("exists", "!="):
+        if selector.namespace == "*" and selector.operator != "exists":
             # String functions convert a node-set to its first node's value.
             # Apply the operator to each attribute before testing existence.
             attribute = attrib
@@ -454,6 +454,18 @@ class GenericTranslator:
             # case-insensitive match as, and all XPath 1.0 can express.
             attrib = f"translate({attrib}, {self.xpath_literal(ascii_uppercase)}, {self.xpath_literal(ascii_lowercase)})"
             value = ascii_lower(value)
+        if attribute is not None and selector.operator == "!=":
+            # [*|foo!=bar] is :not([*|foo=bar]): no attribute may be equal,
+            # not just one of them different. An empty value still requires
+            # the attribute to exist, like [foo!=''].
+            assert value is not None
+            condition = self.xpath_attrib_equals(
+                self.xpathexpr_cls(), attrib, value
+            ).condition
+            condition = f"not({attribute}[{condition}])"
+            if not value:
+                condition = f"{attribute} and {condition}"
+            return self.xpath(selector.selector).add_condition(condition)
         if attribute is not None:
             condition = method(self.xpathexpr_cls(), attrib, value).condition
             return self.xpath(selector.selector).add_condition(
