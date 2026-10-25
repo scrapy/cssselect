@@ -1357,6 +1357,17 @@ class TestCssselect(unittest.TestCase):
         assert series("\u0662n+1") is None
         assert series("1_0") is None
         assert series("2n+1_0") is None
+        # Whitespace only around the sign of B, never inside a number.
+        assert series("-n- 3") == (-1, -3)
+        assert series("2\\6e +1") == (2, 1)
+        assert series("1 2") is None
+        assert series("+ 5") is None
+        assert series("2 n") is None
+        assert series("+ n+3") is None
+        assert series("- n+3") is None
+        assert series("2n 1") is None
+        assert series("2n + 1 0") is None
+        assert series("2n+1/**/0") is None
 
     def test_lang(self) -> None:
         document = etree.fromstring(XMLLANG_IDS)

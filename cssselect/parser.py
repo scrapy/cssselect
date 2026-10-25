@@ -929,13 +929,29 @@ def _parse_series_integer(s: str) -> int:
     return int(s)
 
 
+# The B of An+B with whitespace: only around a sign that is a token of its
+# own, as in "2n + 1" or "2n- 1".
+_match_series_spaced_b = re.compile(" ?[+-] ?[0-9]+").fullmatch
+
+
 def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:
     """Parses the arguments for :nth-child() and friends."""
+    parts = []
+    end = None
     for token in tokens:
         if token.type == "STRING":
             raise ValueError("String tokens not allowed in series.")
+        value = cast("str", token.value)
+        if end is not None and token.pos != end:
+            # Whitespace or a comment between two tokens, which must not
+            # join them: "1 2" is not "12". An escaped identifier is longer
+            # in the source than its value, but whitespace is allowed after
+            # the identifier that ends An anyway.
+            parts.append(" ")
+        parts.append(value)
+        end = token.pos + len(value)
     # The An+B microsyntax is ASCII-case-insensitive: 2N+1, EVEN, Odd...
-    s = ascii_lower("".join(cast("str", token.value) for token in tokens).strip())
+    s = ascii_lower("".join(parts).strip())
     if s == "odd":
         return 2, 1
     if s == "even":
@@ -953,6 +969,10 @@ def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:
         a_as_int = int(a + "1")
     else:
         a_as_int = _parse_series_integer(a)
+    if " " in b:
+        if not _match_series_spaced_b(b):
+            raise ValueError(f"Invalid integer in series: {b!r}")
+        b = b.replace(" ", "")
     b_as_int = _parse_series_integer(b) if b else 0
     return a_as_int, b_as_int
 
