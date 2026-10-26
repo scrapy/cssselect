@@ -457,7 +457,8 @@ class Element:
     `None` is for the universal selector '*'. `namespace` is ``"*"``
     for the explicit namespace wildcard, e.g. ``*|div``, and `None`
     both for an unprefixed element and for the explicit ``|div``
-    no-namespace syntax.
+    no-namespace syntax. ``|*`` (any element with no namespace) has
+    `namespace` ``""``.
 
     """
 
@@ -472,7 +473,7 @@ class Element:
 
     def canonical(self) -> str:
         element = _serialize_ident(self.element) if self.element else "*"
-        if self.namespace:
+        if self.namespace is not None:
             namespace = (
                 "*" if self.namespace == "*" else _serialize_ident(self.namespace)
             )
@@ -679,7 +680,9 @@ def parse_simple_selector(
             if len(stream.used) != selector_start:
                 raise SelectorSyntaxError(f"Expected selector, got {peek}")
             stream.next()
-            result = Element(None, stream.next_ident_or_star())
+            element = stream.next_ident_or_star()
+            # Unlike *, |* only matches elements with no namespace.
+            result = Element("" if element is None else None, element)
         elif peek == ("DELIM", "["):
             stream.next()
             result = parse_attrib(result, stream)
