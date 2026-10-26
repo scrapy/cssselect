@@ -862,6 +862,9 @@ class TestCssselect(unittest.TestCase):
         )
         # A relative selector list matches if any of its arguments does
         assert xpath("e:has(f, > g)") == "e[(descendant::f) or (./g)]"
+        assert xpath("e:has(f, > g, + h)") == (
+            "e[(descendant::f) or (./g) or (following-sibling::*[1]/self::h)]"
+        )
         assert xpath("e.foo:has(f, g)") == (
             "e[(@class and contains(@class, 'foo') and contains("
             "concat(' ', normalize-space(@class), ' '), ' foo ')) "
@@ -958,6 +961,9 @@ class TestCssselect(unittest.TestCase):
         assert xpath("div#container p") == ("div[@id = 'container']/descendant::p")
         assert xpath("e:where(foo)") == "e[self::foo]"
         assert xpath("e:where(foo, bar)") == "e[(self::foo) or (self::bar)]"
+        assert xpath("e:where(foo, bar, baz)") == (
+            "e[(self::foo) or (self::bar) or (self::baz)]"
+        )
         assert xpath("e:is(.a,.b)") == xpath("e:is(.a, .b)")
         assert xpath("e:is(*, .foo)") == "e"
         assert xpath("e:where(*, foo)") == "e"
@@ -1827,6 +1833,27 @@ class TestCssselect(unittest.TestCase):
                 assert select(f"*:not({css})", translator) == [
                     element for element in all_elements if element not in matching
                 ]
+
+    def test_select_long_selector_list(self) -> None:
+        """A selector list is joined in a single ``or`` chain.
+
+        Nesting one level of parentheses per argument makes translation
+        quadratic and the result too deep for lxml to evaluate.
+        """
+        document = etree.fromstring("<r><a><b/></a></r>")
+        arguments = ",".join(["b"] * 500)
+
+        xpath = GenericTranslator().css_to_xpath(f":is({arguments})")
+        assert xpath == (
+            "descendant-or-self::*[" + " or ".join(["(self::b)"] * 500) + "]"
+        )
+        assert len(document.xpath(xpath)) == 1
+
+        xpath = GenericTranslator().css_to_xpath(f"a:has({arguments})")
+        assert xpath == (
+            "descendant-or-self::a[" + " or ".join(["(descendant::b)"] * 500) + "]"
+        )
+        assert len(document.xpath(xpath)) == 1
 
     def test_select_with_namespace(self) -> None:
         # The document prefix (n) deliberately differs from the selector
