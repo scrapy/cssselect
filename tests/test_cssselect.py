@@ -998,17 +998,31 @@ class TestCssselect(unittest.TestCase):
         assert xpath(r"di\[v") == ("*[local-name() = 'di[v' and namespace-uri() = '']")
         assert xpath(r"ns|di\[v") == ("ns:*[local-name() = 'di[v']")
         assert xpath(r"[ns|h\]ref]") == ("*[attribute::ns:*[local-name() = 'h]ref']]")
-        assert xpath(r"[h\a0 ref]") == ("*[attribute::*[name() = 'h ref']]")  # h\xa0ref
-        assert xpath(r"[h\]ref]") == ("*[attribute::*[name() = 'h]ref']]")
+        assert xpath(r"[h\a0 ref]") == (  # h\xa0ref
+            "*[attribute::*[local-name() = 'h ref' and namespace-uri() = '']]"
+        )
+        assert xpath(r"[h\]ref]") == (
+            "*[attribute::*[local-name() = 'h]ref' and namespace-uri() = '']]"
+        )
+        # An escaped ":" is part of the name, not a prefix: no match for a
+        # namespaced p:ref attribute either.
+        assert xpath(r"[p\:ref]") == (
+            "*[attribute::*[local-name() = 'p:ref' and namespace-uri() = '']]"
+        )
         # A trailing newline is not a name character either
         assert xpath(r"div\a ") == "*[local-name() = 'div\n' and namespace-uri() = '']"
-        assert xpath(r"[href\a ]") == "*[attribute::*[name() = 'href\n']]"
+        assert xpath(r"[href\a ]") == (
+            "*[attribute::*[local-name() = 'href\n' and namespace-uri() = '']]"
+        )
         assert xpath(r"ns\a |div") == "*[name() = 'ns\n:div']"
+        assert xpath(r"[ns\a |href]") == "*[attribute::*[name() = 'ns\n:href']]"
         # An escaped "*" is a name, not the universal selector or wildcard
         assert xpath(r"\*") == "*[local-name() = '*' and namespace-uri() = '']"
         assert xpath(r"\2a") == "*[local-name() = '*' and namespace-uri() = '']"
         assert xpath(r"e > \*") == "e/*[local-name() = '*' and namespace-uri() = '']"
-        assert xpath(r"[\*]") == "*[attribute::*[name() = '*']]"
+        assert xpath(r"[\*]") == (
+            "*[attribute::*[local-name() = '*' and namespace-uri() = '']]"
+        )
         # Escaped identifiers survive inside :has() arguments
         assert xpath(r"e:has(di\[v)") == (
             "e[descendant::*[local-name() = 'di[v' and namespace-uri() = '']]"
@@ -1469,20 +1483,15 @@ class TestCssselect(unittest.TestCase):
 
     def test_html_non_ascii_attribute_names(self) -> None:
         xpath = HTMLTranslator().css_to_xpath
-        assert (
-            xpath("[DATA-Ä]")
-            == "descendant-or-self::*[attribute::*[name() = 'data-Ä']]"
-        )
-        assert (
-            xpath('[DATA-Ä="yes"]')
-            == "descendant-or-self::*[attribute::*[name() = 'data-Ä'] = 'yes']"
-        )
+        data_a = "attribute::*[local-name() = 'data-Ä' and namespace-uri() = '']"
+        assert xpath("[DATA-Ä]") == f"descendant-or-self::*[{data_a}]"
+        assert xpath('[DATA-Ä="yes"]') == f"descendant-or-self::*[{data_a} = 'yes']"
         assert xpath("[*|DATA-Ä]") == (
             "descendant-or-self::*[attribute::*[local-name() = 'data-Ä']]"
         )
-        assert (
-            xpath('[DATA-ä="yes"]')
-            == "descendant-or-self::*[attribute::*[name() = 'data-ä'] = 'yes']"
+        assert xpath('[DATA-ä="yes"]') == (
+            "descendant-or-self::*"
+            "[attribute::*[local-name() = 'data-ä' and namespace-uri() = ''] = 'yes']"
         )
 
     def test_html_non_ascii_lang(self) -> None:
@@ -1887,6 +1896,9 @@ class TestCssselect(unittest.TestCase):
         assert pcss("*:not(ns|ä)") == ["nil", "plain"]
         assert pcss("[ns|ö]") == ["ns-el"]
         assert pcss("[ö]") == ["plain"]
+        # An escaped ":" is part of the attribute name, not a prefix, so this
+        # must not match the namespaced n:ö attribute by its name().
+        assert pcss(r"[n\:ö]") == []
 
     def test_select_with_wildcard_attribute_values(self) -> None:
         cases = [
