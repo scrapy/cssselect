@@ -430,13 +430,19 @@ class GenericTranslator:
             attrib = f"attribute::*[local-name() = {self.xpath_literal(name)}]"
         else:
             safe = is_safe_name(name)
-            if selector.namespace:
-                name = f"{selector.namespace}:{name}"
-                safe = safe and is_safe_name(selector.namespace)
-            if safe:
-                attrib = "@" + name
+            if selector.namespace and not safe and is_safe_name(selector.namespace):
+                # Like for elements, test the local name within the mapped
+                # namespace: name() would compare the prefix as written in
+                # the document instead.
+                attrib = f"attribute::{selector.namespace}:*[local-name() = {self.xpath_literal(name)}]"
             else:
-                attrib = f"attribute::*[name() = {self.xpath_literal(name)}]"
+                if selector.namespace:
+                    name = f"{selector.namespace}:{name}"
+                    safe = safe and is_safe_name(selector.namespace)
+                if safe:
+                    attrib = "@" + name
+                else:
+                    attrib = f"attribute::*[name() = {self.xpath_literal(name)}]"
         if selector.value is None:
             value = None
         elif self.lower_case_attribute_values:
@@ -494,19 +500,34 @@ class GenericTranslator:
                 xpath = self.xpathexpr_cls(element="*")
                 xpath.add_condition(f"local-name() = {self.xpath_literal(element)}")
                 return xpath
+        prefix = ""
         if selector.namespace and selector.namespace != "*":
             # Namespace prefixes are case-sensitive.
             # http://www.w3.org/TR/css3-namespace/#prefixes
-            element = f"{selector.namespace}:{element}"
-            safe = safe and bool(is_safe_name(selector.namespace))
-        xpath = self.xpathexpr_cls(element=element)
-        if not safe:
-            # Not usable as an XPath name test (e.g. an escaped identifier
-            # like di\a0 v): compare the serialized name instead. Done here
-            # rather than through add_name_test(), which would mistake a ":"
-            # inside such a name for a namespace prefix separator.
-            xpath.add_condition(f"name() = {self.xpath_literal(element)}")
-            xpath.element = "*"
+            prefix = f"{selector.namespace}:"
+            if not is_safe_name(selector.namespace):
+                # A prefix not usable in an XPath name test cannot be
+                # resolved through the prefix mapping: compare the
+                # serialized name instead.
+                xpath = self.xpathexpr_cls(element="*")
+                xpath.add_condition(f"name() = {self.xpath_literal(prefix + element)}")
+                return xpath
+        if safe:
+            return self.xpathexpr_cls(element=prefix + element)
+        # Not usable as an XPath name test (e.g. an escaped identifier like
+        # di\a0 v, or a non-ASCII name): test the local name and the
+        # namespace separately, with the same meaning as the node test for a
+        # safe name. name() would compare the qualified name as written in
+        # the document, which for a bare "div" also matches elements in a
+        # default namespace, and for "ns|div" compares the document prefix
+        # instead of the mapped namespace. Done here rather than through
+        # add_name_test(), which would mistake a ":" inside such a name for
+        # a namespace prefix separator.
+        xpath = self.xpathexpr_cls(element=f"{prefix}*")
+        condition = f"local-name() = {self.xpath_literal(element)}"
+        if not prefix:
+            condition += " and namespace-uri() = ''"
+        xpath.add_condition(condition)
         return xpath
 
     # CombinedSelector: dispatch by combinator

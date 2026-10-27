@@ -992,21 +992,27 @@ class TestCssselect(unittest.TestCase):
         )
 
         # Invalid characters in XPath element names
-        assert xpath(r"di\a0 v") == ("*[name() = 'di v']")  # di\xa0v
-        assert xpath(r"di\[v") == ("*[name() = 'di[v']")
+        assert xpath(r"di\a0 v") == (  # di\xa0v
+            "*[local-name() = 'di v' and namespace-uri() = '']"
+        )
+        assert xpath(r"di\[v") == ("*[local-name() = 'di[v' and namespace-uri() = '']")
+        assert xpath(r"ns|di\[v") == ("ns:*[local-name() = 'di[v']")
+        assert xpath(r"[ns|h\]ref]") == ("*[attribute::ns:*[local-name() = 'h]ref']]")
         assert xpath(r"[h\a0 ref]") == ("*[attribute::*[name() = 'h ref']]")  # h\xa0ref
         assert xpath(r"[h\]ref]") == ("*[attribute::*[name() = 'h]ref']]")
         # A trailing newline is not a name character either
-        assert xpath(r"div\a ") == "*[name() = 'div\n']"
+        assert xpath(r"div\a ") == "*[local-name() = 'div\n' and namespace-uri() = '']"
         assert xpath(r"[href\a ]") == "*[attribute::*[name() = 'href\n']]"
         assert xpath(r"ns\a |div") == "*[name() = 'ns\n:div']"
         # An escaped "*" is a name, not the universal selector or wildcard
-        assert xpath(r"\*") == "*[name() = '*']"
-        assert xpath(r"\2a") == "*[name() = '*']"
-        assert xpath(r"e > \*") == "e/*[name() = '*']"
+        assert xpath(r"\*") == "*[local-name() = '*' and namespace-uri() = '']"
+        assert xpath(r"\2a") == "*[local-name() = '*' and namespace-uri() = '']"
+        assert xpath(r"e > \*") == "e/*[local-name() = '*' and namespace-uri() = '']"
         assert xpath(r"[\*]") == "*[attribute::*[name() = '*']]"
         # Escaped identifiers survive inside :has() arguments
-        assert xpath(r"e:has(di\[v)") == "e[descendant::*[name() = 'di[v']]"
+        assert xpath(r"e:has(di\[v)") == (
+            "e[descendant::*[local-name() = 'di[v' and namespace-uri() = '']]"
+        )
 
         # :scope, alone and in a compound selector
         assert xpath(":scope") == "*[position() = 1]"
@@ -1109,7 +1115,7 @@ class TestCssselect(unittest.TestCase):
     def test_add_name_test(self) -> None:
         # Directly exercise XPathExpr.add_name_test(), part of the
         # customization API: translation never feeds it a name unusable in
-        # a node test (xpath_element() compares those with name() itself),
+        # a node test (xpath_element() tests those by local name itself),
         # but a subclass can, and then the name() fallback must be used.
         def name_test(element: str) -> str:
             xpath = XPathExpr(element=element)
@@ -1173,7 +1179,9 @@ class TestCssselect(unittest.TestCase):
             """descendant-or-self::*[@aval = "'  '"]"""
         )
         # A code point beyond the Unicode range is replaced with U+FFFD.
-        assert css_to_xpath(r"\110000") == ("descendant-or-self::*[name() = '\ufffd']")
+        assert css_to_xpath(r"\110000") == (
+            "descendant-or-self::*[local-name() = '\ufffd' and namespace-uri() = '']"
+        )
         # A null code point is likewise replaced with U+FFFD, so no NUL
         # character can leak into the generated XPath string.
         assert css_to_xpath(r"*[aval='\0 ']") == (
@@ -1449,10 +1457,15 @@ class TestCssselect(unittest.TestCase):
 
     def test_html_non_ascii_element_names(self) -> None:
         xpath = HTMLTranslator().css_to_xpath
-        assert xpath("x-Ä") == "descendant-or-self::*[name() = 'x-Ä']"
-        assert xpath("X-Ä") == "descendant-or-self::*[name() = 'x-Ä']"
+        xpath_x_a = (
+            "descendant-or-self::*[local-name() = 'x-Ä' and namespace-uri() = '']"
+        )
+        assert xpath("x-Ä") == xpath_x_a
+        assert xpath("X-Ä") == xpath_x_a
         assert xpath("*|X-Ä") == "descendant-or-self::*[local-name() = 'x-Ä']"
-        assert xpath("X-ä") == "descendant-or-self::*[name() = 'x-ä']"
+        assert xpath("X-ä") == (
+            "descendant-or-self::*[local-name() = 'x-ä' and namespace-uri() = '']"
+        )
 
     def test_html_non_ascii_attribute_names(self) -> None:
         xpath = HTMLTranslator().css_to_xpath
@@ -1864,6 +1877,17 @@ class TestCssselect(unittest.TestCase):
         assert pcss("*:not(ns|a)") == ["nil", "plain", "ns-el2"]
         assert pcss("b + ns|c") == ["ns-el2"]
 
+        # Names unusable in an XPath node test (here non-ASCII) must go
+        # through the namespace mapping too, not compare name() as a string.
+        document = etree.XML(
+            '<r xmlns:n="urn:x"><n:ä id="ns-el" n:ö="1"/><ä id="plain" ö="1"/></r>'
+        )
+        assert pcss("ns|ä") == ["ns-el"]
+        assert pcss("ä") == ["plain"]
+        assert pcss("*:not(ns|ä)") == ["nil", "plain"]
+        assert pcss("[ns|ö]") == ["ns-el"]
+        assert pcss("[ö]") == ["plain"]
+
     def test_select_with_wildcard_attribute_values(self) -> None:
         cases = [
             ("=", "prefix-token", "prefix-token"),
@@ -1942,7 +1966,9 @@ class TestCssselect(unittest.TestCase):
         # elements in a default namespace. Predicate positions (:is(),
         # :not(), "+") must agree with that, not compare name() (which
         # would match such elements by their unprefixed qualified name).
-        document = etree.XML('<r xmlns="urn:d"><x id="x"/><f id="dns-f"/></r>')
+        document = etree.XML(
+            '<r xmlns="urn:d"><x id="x"/><f id="dns-f"/><ä id="dns-ä"/></r>'
+        )
         css_to_xpath = GenericTranslator().css_to_xpath
 
         def pcss(css: str) -> list[str]:
@@ -1956,7 +1982,13 @@ class TestCssselect(unittest.TestCase):
         assert pcss("x + f") == []
         # ... and since "f" does not match the default-namespaced <f>,
         # :not(f) must not exclude it.
-        assert pcss("*:not(f)") == ["nil", "x", "dns-f"]
+        assert pcss("*:not(f)") == ["nil", "x", "dns-f", "dns-ä"]
+        # A name unusable in an XPath node test (here non-ASCII) must follow
+        # the same rule, not match the unprefixed name() of such an element.
+        assert pcss("ä") == []
+        assert pcss(":is(ä)") == []
+        assert pcss("x + ä") == []
+        assert pcss("*:not(ä)") == ["nil", "x", "dns-f", "dns-ä"]
 
     def test_select_shakespeare(self) -> None:
         document = html.document_fromstring(HTML_SHAKESPEARE)
