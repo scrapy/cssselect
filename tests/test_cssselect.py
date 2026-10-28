@@ -892,7 +892,16 @@ class TestCssselect(unittest.TestCase):
             "e[not((self::b) and preceding-sibling::*[self::a])]"
         )
         assert xpath("e:not(a > b > c)") == (
-            "e[not((self::c) and parent::*[(self::b) and parent::*[self::a]])]"
+            "e[not((self::c) and parent::*[self::b]/parent::*[self::a])]"
+        )
+        # Further combinators extend a single location path: nested
+        # predicates would take exponential time to evaluate.
+        assert xpath("e:not(a b ~ c + d > f)") == (
+            "e[not((self::f) and parent::*[self::d]/preceding-sibling::*[1][self::c]"
+            "/preceding-sibling::*[self::b]/ancestor::*[self::a])]"
+        )
+        assert xpath("e:not(a * * f)") == (
+            "e[not((self::f) and ancestor::*/ancestor::*/ancestor::*[self::a])]"
         )
         assert xpath("e:not(.a > #b)") == (
             "e[not((@id = 'b') and parent::*[@class and contains(@class, 'a') and contains("
@@ -1760,6 +1769,8 @@ class TestCssselect(unittest.TestCase):
             "seventh-li",
         ]
         assert pcss("li:not(#second-li ~ li)") == ["first-li", "second-li"]
+        assert pcss("li:not(div > ol li + li ~ li)") == ["first-li", "second-li"]
+        assert pcss("div:not(body > * * *)") == ["outer-div", "foobar-div"]
         assert pcss("li:has(div):nth-of-type(2)") == ["second-li"]
         assert pcss("li:has(div):first-of-type") == []
         assert pcss("ol:has(li):first-of-type") == ["first-ol"]
