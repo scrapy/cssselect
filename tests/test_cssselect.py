@@ -894,8 +894,6 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:not(a > b > c)") == (
             "e[not((self::c) and parent::*[self::b]/parent::*[self::a])]"
         )
-        # Further combinators extend a single location path: nested
-        # predicates would take exponential time to evaluate.
         assert xpath("e:not(a b ~ c + d > f)") == (
             "e[not((self::f) and parent::*[self::d]/preceding-sibling::*[1][self::c]"
             "/preceding-sibling::*[self::b]/ancestor::*[self::a])]"

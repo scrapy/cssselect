@@ -329,10 +329,6 @@ class GenericTranslator:
         axes for combinators.
         """
         if isinstance(selector, CombinedSelector):
-            # Walk the combinators as a single location path, not as nested
-            # predicates: a nested predicate is evaluated again for each node
-            # its axis reaches, which takes time exponential in the number of
-            # combinators (e.g. :not(x * * * * * *) in a deep document).
             steps = []
             left: Tree = selector
             while isinstance(left, CombinedSelector):
