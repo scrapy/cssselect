@@ -13,7 +13,6 @@ See AUTHORS for more details.
 
 from __future__ import annotations
 
-import operator
 import re
 import sys
 from typing import (
@@ -452,7 +451,8 @@ class Element:
     `None` is for the universal selector '*'. `namespace` is ``"*"``
     for the explicit namespace wildcard, e.g. ``*|div``, and `None`
     both for an unprefixed element and for the explicit ``|div``
-    no-namespace syntax.
+    no-namespace syntax. ``|*`` (any element with no namespace) has
+    `namespace` ``""``.
 
     """
 
@@ -467,7 +467,7 @@ class Element:
 
     def canonical(self) -> str:
         element = _serialize_ident(self.element) if self.element else "*"
-        if self.namespace:
+        if self.namespace is not None:
             namespace = (
                 "*" if self.namespace == "*" else _serialize_ident(self.namespace)
             )
@@ -515,9 +515,7 @@ class CombinedSelector:
         )
 
     def canonical(self) -> str:
-        subsel = self.subselector.canonical()
-        if len(subsel) > 1:
-            subsel = subsel.lstrip("*")
+        subsel = _strip_universal(self.subselector.canonical())
         combinator = " " if self.combinator == " " else f" {self.combinator} "
         return f"{self.selector.canonical()}{combinator}{subsel}"
 
@@ -624,6 +622,12 @@ def parse_compound_selector(
 ) -> tuple[Tree, PseudoElement | None]:
     stream.skip_whitespace()
     selector_start = len(stream.used)
+    # Whether the tokens preceding this compound selector (ignoring
+    # whitespace) are the start of the input or a comma, for :scope.
+    preceding = selector_start - 1
+    while preceding >= 0 and stream.used[preceding].type == "S":
+        preceding -= 1
+    at_selector_start = preceding < 0 or stream.used[preceding].is_delim(",")
     peek = stream.peek()
     if peek.type == "IDENT" or peek == ("DELIM", "*"):
         if peek.type == "IDENT":
@@ -632,10 +636,16 @@ def parse_compound_selector(
             stream.next()
             namespace = "*"
         if stream.peek() == ("DELIM", "|"):
+            if peek.type == "IDENT" and namespace == "*":
+                # An escaped "*" (e.g. "\*|f") is a prefix named "*",
+                # not the namespace wildcard, and no XPath prefix can be "*".
+                raise SelectorSyntaxError(f"Expected namespace prefix, got {peek}")
             stream.next()
             element = stream.next_ident_or_star()
         else:
-            element = None if namespace == "*" else namespace
+            # An escaped "*" (e.g. "\*") is a type selector for elements
+            # named "*", not the universal selector.
+            element = namespace if peek.type == "IDENT" else None
             namespace = None
     else:
         element = namespace = None
@@ -660,7 +670,9 @@ def parse_compound_selector(
             if len(stream.used) != selector_start:
                 raise SelectorSyntaxError(f"Expected selector, got {peek}")
             stream.next()
-            result = Element(None, stream.next_ident_or_star())
+            element = stream.next_ident_or_star()
+            # Unlike *, |* only matches elements with no namespace.
+            result = Element("" if element is None else None, element)
         elif peek == ("DELIM", "["):
             stream.next()
             result = parse_attrib(result, stream)
@@ -683,22 +695,18 @@ def parse_compound_selector(
                 continue
             if stream.peek() != ("DELIM", "("):
                 result = Pseudo(result, ident)
-                if result.ident == "scope":
-                    # :scope is only supported at the start of a selector,
-                    # i.e. never in :not()/:is()/:where()/:matches()/:has()
-                    # arguments (where a preceding comma separates
-                    # arguments, not selectors), and otherwise only when the
-                    # tokens preceding its compound selector are the start
-                    # of the input or a comma.
-                    preceding = stream.used[:selector_start]
-                    while preceding and preceding[-1].type == "S":
-                        preceding = preceding[:-1]
-                    if inside_selector_list or (
-                        preceding and not preceding[-1].is_delim(",")
-                    ):
-                        raise SelectorSyntaxError(
-                            'Got pseudo-class ":scope" not at the start of a selector'
-                        )
+                # :scope is only supported at the start of a selector,
+                # i.e. never in :not()/:is()/:where()/:matches()/:has()
+                # arguments (where a preceding comma separates arguments,
+                # not selectors), and otherwise only when the tokens
+                # preceding its compound selector are the start of the
+                # input or a comma.
+                if result.ident == "scope" and (
+                    inside_selector_list or not at_selector_start
+                ):
+                    raise SelectorSyntaxError(
+                        'Got pseudo-class ":scope" not at the start of a selector'
+                    )
                 continue
             stream.next()
             stream.skip_whitespace()
@@ -834,11 +842,16 @@ def parse_attrib(selector: Tree, stream: TokenStream) -> Attrib:
             raise SelectorSyntaxError(f"Expected '|', got {stream.peek()}")
         if stream.peek() == ("DELIM", "|"):
             stream.next()
-            if stream.peek() == ("DELIM", "="):
+            if attrib is not None and stream.peek() == ("DELIM", "="):
                 namespace = None
                 stream.next()
                 op = "|="
             else:
+                if attrib == "*":
+                    # An escaped "*" (e.g. "[\*|attr]"), not the wildcard.
+                    raise SelectorSyntaxError(
+                        f"Expected namespace prefix, got {stream.used[-2]}"
+                    )
                 namespace = "*" if attrib is None else attrib
                 attrib = stream.next_ident()
                 op = None
@@ -876,13 +889,40 @@ def parse_attrib(selector: Tree, stream: TokenStream) -> Attrib:
     return Attrib(selector, namespace, cast("str", attrib), op, value, flag)
 
 
+# An An+B integer: ASCII digits only, unlike int(), which also accepts other
+# Unicode decimal digits, underscores and surrounding whitespace.
+_match_series_integer = re.compile("[+-]?[0-9]+").fullmatch
+
+
+def _parse_series_integer(s: str) -> int:
+    if not _match_series_integer(s):
+        raise ValueError(f"Invalid integer in series: {s!r}")
+    return int(s)
+
+
+# The B of An+B with whitespace: only around a sign that is a token of its
+# own, as in "2n + 1" or "2n- 1".
+_match_series_spaced_b = re.compile(" ?[+-] ?[0-9]+").fullmatch
+
+
 def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:
     """Parses the arguments for :nth-child() and friends."""
+    parts = []
+    end = None
     for token in tokens:
         if token.type == "STRING":
             raise ValueError("String tokens not allowed in series.")
+        value = cast("str", token.value)
+        if end is not None and token.pos != end:
+            # Whitespace or a comment between two tokens, which must not
+            # join them: "1 2" is not "12". An escaped identifier is longer
+            # in the source than its value, but whitespace is allowed after
+            # the identifier that ends An anyway.
+            parts.append(" ")
+        parts.append(value)
+        end = token.pos + len(value)
     # The An+B microsyntax is ASCII-case-insensitive: 2N+1, EVEN, Odd...
-    s = ascii_lower("".join(cast("str", token.value) for token in tokens).strip())
+    s = ascii_lower("".join(parts).strip())
     if s == "odd":
         return 2, 1
     if s == "even":
@@ -891,7 +931,7 @@ def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:
         return 1, 0
     if "n" not in s:
         # Just b
-        return 0, int(s)
+        return 0, _parse_series_integer(s)
     a, b = s.split("n", 1)
     a_as_int: int
     if not a:
@@ -899,8 +939,12 @@ def parse_series(tokens: Iterable[Token]) -> tuple[int, int]:
     elif a in {"-", "+"}:
         a_as_int = int(a + "1")
     else:
-        a_as_int = int(a)
-    b_as_int = int(b) if b else 0
+        a_as_int = _parse_series_integer(a)
+    if " " in b:
+        if not _match_series_spaced_b(b):
+            raise ValueError(f"Invalid integer in series: {b!r}")
+        b = b.replace(" ", "")
+    b_as_int = _parse_series_integer(b) if b else 0
     return a_as_int, b_as_int
 
 
@@ -991,16 +1035,16 @@ _match_string_by_quote = {
     '"': _compile(r'([^\n\r\f\\"]|%(string_escape)s)*'),
 }
 
-_sub_simple_escape = re.compile(r"\\(.)").sub
-_sub_unicode_escape = re.compile(TokenMacros.unicode_escape, re.IGNORECASE).sub
-_sub_newline_escape = re.compile(r"\\(?:\n|\r\n|\r|\f)").sub
+# Each escape is decoded in a single left-to-right pass, so that the output
+# of one escape is never read as (part of) another.
+_sub_escape = re.compile(TokenMacros.unicode_escape + r"|\\(.)", re.IGNORECASE).sub
+_sub_string_escape = re.compile(
+    TokenMacros.unicode_escape + r"|\\(?:\n|\r\n|\r|\f)|\\(.)", re.IGNORECASE
+).sub
 _sub_string_control_char = re.compile(r"[\x00-\x1f\x7f]").sub
 
 # CSS Syntax Level 3, §3.3: fold a raw U+0000 or surrogate code point to U+FFFD.
 _sub_invalid_input_char = re.compile("[\x00\ud800-\udfff]").sub
-
-# Same as r'\1', but faster on CPython
-_replace_simple = operator.methodcaller("group", 1)
 
 
 def _replace_unicode(match: re.Match[str]) -> str:
@@ -1010,6 +1054,13 @@ def _replace_unicode(match: re.Match[str]) -> str:
     return chr(codepoint)
 
 
+def _replace_escape(match: re.Match[str]) -> str:
+    if match.group(1) is not None:
+        return _replace_unicode(match)
+    # A simple escape, or an escaped newline (only in strings).
+    return match.group(2) or ""
+
+
 def _replace_string_control_char(match: re.Match[str]) -> str:
     # The trailing space ends the escape sequence, in case the next
     # character is a hexadecimal digit.
@@ -1017,8 +1068,7 @@ def _replace_string_control_char(match: re.Match[str]) -> str:
 
 
 def unescape_ident(value: str) -> str:
-    value = _sub_unicode_escape(_replace_unicode, value)
-    return _sub_simple_escape(_replace_simple, value)
+    return _sub_escape(_replace_escape, value)
 
 
 def _serialize_ident(value: str) -> str:
@@ -1090,12 +1140,7 @@ def tokenize(s: str) -> Iterator[Token]:
                 raise SelectorSyntaxError(f"Unclosed string at {pos}")
             if s[end_pos] != quote:
                 raise SelectorSyntaxError(f"Invalid string at {pos}")
-            value = _sub_simple_escape(
-                _replace_simple,
-                _sub_unicode_escape(
-                    _replace_unicode, _sub_newline_escape("", match.group())
-                ),
-            )
+            value = _sub_string_escape(_replace_escape, match.group())
             yield Token("STRING", value, pos)
             pos = end_pos + 1
             continue
