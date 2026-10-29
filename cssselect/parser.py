@@ -730,7 +730,9 @@ def parse_simple_selector(
                 if inside_negation:
                     raise SelectorSyntaxError("Got nested :not()")
                 argument, argument_pseudo_element = parse_simple_selector(
-                    stream, inside_negation=True
+                    stream,
+                    inside_negation=True,
+                    inside_relative_selector=inside_relative_selector,
                 )
                 while 1:
                     # Whitespace before the closing parenthesis is not a
@@ -753,19 +755,31 @@ def parse_simple_selector(
                     else:
                         argument_combinator = " "
                     next_selector, argument_pseudo_element = parse_simple_selector(
-                        stream, inside_negation=True
+                        stream,
+                        inside_negation=True,
+                        inside_relative_selector=inside_relative_selector,
                     )
                     argument = CombinedSelector(
                         argument, argument_combinator, next_selector
                     )
                 result = Negation(result, argument)
             elif ident.lower() == "has":
+                # :has() cannot be nested (Selectors 4, 14.3), not even
+                # through :is(), :where() or :not(). Each level would also
+                # nest an XPath predicate whose evaluation cost multiplies
+                # with the size of the document.
+                if inside_relative_selector:
+                    raise SelectorSyntaxError("Got nested :has()")
                 result = Relation(result, parse_relative_selector(stream))
             elif ident.lower() in ("matches", "is"):
-                selectors = parse_simple_selector_arguments(stream)
+                selectors = parse_simple_selector_arguments(
+                    stream, inside_relative_selector
+                )
                 result = Matching(result, selectors)
             elif ident.lower() == "where":
-                selectors = parse_simple_selector_arguments(stream)
+                selectors = parse_simple_selector_arguments(
+                    stream, inside_relative_selector
+                )
                 result = SpecificityAdjustment(result, selectors)
             else:
                 result = Function(result, ident, parse_arguments(stream))
@@ -826,7 +840,9 @@ def parse_relative_selector(stream: TokenStream) -> list[tuple[Token, Selector]]
                 stream.skip_whitespace()
             else:
                 argument_combinator = " "
-            next_selector, pseudo_element = parse_simple_selector(stream)
+            next_selector, pseudo_element = parse_simple_selector(
+                stream, inside_relative_selector=True
+            )
             result = CombinedSelector(result, argument_combinator, next_selector)
         arguments.append((combinator, Selector(result)))
         if stream.next().is_delim(")"):
@@ -834,11 +850,15 @@ def parse_relative_selector(stream: TokenStream) -> list[tuple[Token, Selector]]
     return arguments
 
 
-def parse_simple_selector_arguments(stream: TokenStream) -> list[Tree]:
+def parse_simple_selector_arguments(
+    stream: TokenStream, inside_relative_selector: bool = False
+) -> list[Tree]:
     arguments = []
     while 1:
         result, pseudo_element = parse_simple_selector(
-            stream, inside_selector_list=True
+            stream,
+            inside_selector_list=True,
+            inside_relative_selector=inside_relative_selector,
         )
         if pseudo_element:
             raise SelectorSyntaxError(

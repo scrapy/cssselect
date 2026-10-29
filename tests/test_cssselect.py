@@ -677,6 +677,13 @@ class TestCssselect(unittest.TestCase):
         assert get_error("a:has(b, :scope)") == (
             'Got pseudo-class ":scope" not at the start of a selector'
         )
+        assert get_error("a:has(b:has(c))") == ("Got nested :has()")
+        assert get_error("a:has(b c:has(d))") == ("Got nested :has()")
+        assert get_error("a:has(> b, ~ c:has(d))") == ("Got nested :has()")
+        assert get_error("a:has(:is(b, c:has(d)))") == ("Got nested :has()")
+        assert get_error("a:has(:where(:has(d)))") == ("Got nested :has()")
+        assert get_error("a:has(:not(b:has(d)))") == ("Got nested :has()")
+        assert get_error("a:has(b :not(c > d:has(e)))") == ("Got nested :has()")
         assert get_error("> div p") == ("Expected selector, got <DELIM '>' at 0>")
 
         assert get_error(":has()") == ("Expected selector, got <DELIM ')' at 5>")

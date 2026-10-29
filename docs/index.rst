@@ -114,7 +114,8 @@ be implemented):
   also rejected inside them, while ``:has()`` is supported (e.g.
   ``:is(:has(> a))``).
 * The ``:has()`` pseudo-class, e.g. ``:has(> a.important, + p b)``. Limitation:
-  ``:scope`` is rejected inside it.
+  ``:scope`` is rejected inside it, and like in the specification it cannot
+  be nested (e.g. ``:has(a:has(b))`` or ``:has(:is(:has(b)))``).
 * The ``i`` and ``s`` attribute selector flags, e.g. ``[href^="HTTP" i]``.
   ``i`` makes the value comparison ASCII case-insensitive. ``s`` is accepted
   but has no effect, since attribute values are already compared
