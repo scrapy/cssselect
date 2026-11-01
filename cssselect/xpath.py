@@ -929,11 +929,15 @@ class HTMLTranslator(GenericTranslator):
 
     def xpath_checked_pseudo(self, xpath: XPathExpr) -> XPathExpr:
         # FIXME: is this really all the elements?
+        type_attr = (
+            "translate(@type, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "
+            "'abcdefghijklmnopqrstuvwxyz')"
+        )
         return xpath.add_condition(
             "(@selected and name(.) = 'option') or "
             "(@checked "
             "and (name(.) = 'input' or name(.) = 'command')"
-            "and (@type = 'checkbox' or @type = 'radio'))"
+            f"and ({type_attr} = 'checkbox' or {type_attr} = 'radio'))"
         )
 
     def xpath_lang_function(self, xpath: XPathExpr, function: Function) -> XPathExpr:
