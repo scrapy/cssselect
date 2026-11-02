@@ -423,20 +423,30 @@ class GenericTranslator:
             name = ascii_lower(selector.attrib)
         else:
             name = selector.attrib
+        safe = is_safe_name(name)
+        literal = self.xpath_literal(name)
         if selector.namespace == "*":
             # Namespace wildcard, e.g. "[*|href]": any namespace, including
             # none. XPath 1.0 has no "*:name" name test for this, so match
             # by local name instead.
-            attrib = f"attribute::*[local-name() = {self.xpath_literal(name)}]"
+            attrib = f"attribute::*[local-name() = {literal}]"
+        elif not selector.namespace and safe:
+            attrib = "@" + name
+        elif not selector.namespace:
+            # Like for elements, a name unusable in an XPath name test is
+            # matched by local name and the lack of a namespace.
+            attrib = f"attribute::*[local-name() = {literal} and namespace-uri() = '']"
+        elif not is_safe_name(selector.namespace):
+            # A prefix unusable in an XPath name test cannot be resolved
+            # through the prefix mapping: compare the serialized name instead.
+            qualified = f"{selector.namespace}:{name}"
+            attrib = f"attribute::*[name() = {self.xpath_literal(qualified)}]"
+        elif safe:
+            attrib = f"@{selector.namespace}:{name}"
         else:
-            safe = is_safe_name(name)
-            if selector.namespace:
-                name = f"{selector.namespace}:{name}"
-                safe = safe and is_safe_name(selector.namespace)
-            if safe:
-                attrib = "@" + name
-            else:
-                attrib = f"attribute::*[name() = {self.xpath_literal(name)}]"
+            # Test the local name within the mapped namespace: name() would
+            # compare the prefix as written in the document instead.
+            attrib = f"attribute::{selector.namespace}:*[local-name() = {literal}]"
         if selector.value is None:
             value = None
         elif self.lower_case_attribute_values:
@@ -494,19 +504,27 @@ class GenericTranslator:
                 xpath = self.xpathexpr_cls(element="*")
                 xpath.add_condition(f"local-name() = {self.xpath_literal(element)}")
                 return xpath
+        prefix = ""
         if selector.namespace and selector.namespace != "*":
             # Namespace prefixes are case-sensitive.
             # http://www.w3.org/TR/css3-namespace/#prefixes
-            element = f"{selector.namespace}:{element}"
-            safe = safe and bool(is_safe_name(selector.namespace))
-        xpath = self.xpathexpr_cls(element=element)
-        if not safe:
-            # Not usable as an XPath name test (e.g. an escaped identifier
-            # like di\a0 v): compare the serialized name instead. Done here
-            # rather than through add_name_test(), which would mistake a ":"
-            # inside such a name for a namespace prefix separator.
-            xpath.add_condition(f"name() = {self.xpath_literal(element)}")
-            xpath.element = "*"
+            prefix = f"{selector.namespace}:"
+            if not is_safe_name(selector.namespace):
+                # A prefix not usable in an XPath name test cannot be
+                # resolved through the prefix mapping: compare the
+                # serialized name instead.
+                xpath = self.xpathexpr_cls(element="*")
+                xpath.add_condition(f"name() = {self.xpath_literal(prefix + element)}")
+                return xpath
+        if safe:
+            return self.xpathexpr_cls(element=prefix + element)
+        # A name unusable in an XPath name test (e.g. di\a0 v) is matched by
+        # local name within the prefix, or by the lack of a namespace.
+        xpath = self.xpathexpr_cls(element=f"{prefix}*")
+        condition = f"local-name() = {self.xpath_literal(element)}"
+        if not prefix:
+            condition += " and namespace-uri() = ''"
+        xpath.add_condition(condition)
         return xpath
 
     # CombinedSelector: dispatch by combinator
