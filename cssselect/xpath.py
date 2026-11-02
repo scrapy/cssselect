@@ -329,12 +329,18 @@ class GenericTranslator:
         axes for combinators.
         """
         if isinstance(selector, CombinedSelector):
-            axis = self._reverse_combinator_mapping[selector.combinator]
-            left = self._xpath_match_condition(selector.selector)
-            if left is not None:
-                axis = f"{axis}[{left}]"
+            steps = []
+            left: Tree = selector
+            while isinstance(left, CombinedSelector):
+                axis = self._reverse_combinator_mapping[left.combinator]
+                left = left.selector
+                condition = self._xpath_match_condition(
+                    left.subselector if isinstance(left, CombinedSelector) else left
+                )
+                steps.append(axis if condition is None else f"{axis}[{condition}]")
+            path = "/".join(steps)
             right = self._xpath_match_condition(selector.subselector)
-            return axis if right is None else f"({right}) and {axis}"
+            return path if right is None else f"({right}) and {path}"
         sub_xpath = self.xpath(selector)
         sub_xpath.add_name_test()
         return sub_xpath.condition or None
