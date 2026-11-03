@@ -751,7 +751,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath('e[foo="BAR" s]') == "e[@foo = 'BAR']"
 
         # --- nth-* and nth-last-* -------------------------------------
-        assert xpath("e:nth-child(1)") == ("e[count(preceding-sibling::*) = 0]")
+        assert xpath("e:nth-child(1)") == ("e[not(preceding-sibling::*[1])]")
 
         # always true
         assert xpath("e:nth-child(n)") == ("e")
@@ -759,22 +759,23 @@ class TestCssselect(unittest.TestCase):
         # always true too
         assert xpath("e:nth-child(n-10)") == ("e")
         # b=2 is the limit...
-        assert xpath("e:nth-child(n+2)") == ("e[count(preceding-sibling::*) >= 1]")
+        assert xpath("e:nth-child(n+2)") == ("e[preceding-sibling::*[1]]")
         # always false
         assert xpath("e:nth-child(-n)") == ("e[0]")
+        assert xpath("e:nth-child(0)") == ("e[0]")
         # equivalent to first child
-        assert xpath("e:nth-child(-n+1)") == ("e[count(preceding-sibling::*) <= 0]")
+        assert xpath("e:nth-child(-n+1)") == ("e[not(preceding-sibling::*[1])]")
 
         assert xpath("e:nth-child(3n+2)") == (
-            "e[(count(preceding-sibling::*) >= 1) and "
+            "e[(preceding-sibling::*[1]) and "
             "((count(preceding-sibling::*) +2) mod 3 = 0)]"
         )
         assert xpath("e:nth-child(3n-2)") == (
             "e[count(preceding-sibling::*) mod 3 = 0]"
         )
-        assert xpath("e:nth-child(-n+6)") == ("e[count(preceding-sibling::*) <= 5]")
+        assert xpath("e:nth-child(-n+6)") == ("e[not(preceding-sibling::*[6])]")
 
-        assert xpath("e:nth-last-child(1)") == ("e[count(following-sibling::*) = 0]")
+        assert xpath("e:nth-last-child(1)") == ("e[not(following-sibling::*[1])]")
         assert xpath("e:nth-last-child(2n)") == (
             "e[(count(following-sibling::*) +1) mod 2 = 0]"
         )
@@ -782,34 +783,32 @@ class TestCssselect(unittest.TestCase):
             "e[count(following-sibling::*) mod 2 = 0]"
         )
         assert xpath("e:nth-last-child(2n+2)") == (
-            "e[(count(following-sibling::*) >= 1) and "
+            "e[(following-sibling::*[1]) and "
             "((count(following-sibling::*) +1) mod 2 = 0)]"
         )
         assert xpath("e:nth-last-child(3n+1)") == (
             "e[count(following-sibling::*) mod 3 = 0]"
         )
         # represents the two last e elements
-        assert xpath("e:nth-last-child(-n+2)") == (
-            "e[count(following-sibling::*) <= 1]"
-        )
+        assert xpath("e:nth-last-child(-n+2)") == ("e[not(following-sibling::*[2])]")
 
-        assert xpath("e:nth-of-type(1)") == ("e[count(preceding-sibling::e) = 0]")
-        assert xpath("e:nth-last-of-type(1)") == ("e[count(following-sibling::e) = 0]")
+        assert xpath("e:nth-of-type(1)") == ("e[not(preceding-sibling::e[1])]")
+        assert xpath("e:nth-last-of-type(1)") == ("e[not(following-sibling::e[1])]")
         assert xpath("div e:nth-last-of-type(1) .aclass") == (
-            "div/descendant::e[count(following-sibling::e) = 0]"
+            "div/descendant::e[not(following-sibling::e[1])]"
             "/descendant::*[@class and contains(@class, 'aclass') and contains("
             "concat(' ', normalize-space(@class), ' '), ' aclass ')]"
         )
 
-        assert xpath("e:first-child") == ("e[count(preceding-sibling::*) = 0]")
-        assert xpath("e:last-child") == ("e[count(following-sibling::*) = 0]")
-        assert xpath("e:first-of-type") == ("e[count(preceding-sibling::e) = 0]")
-        assert xpath("e:last-of-type") == ("e[count(following-sibling::e) = 0]")
+        assert xpath("e:first-child") == ("e[not(preceding-sibling::*[1])]")
+        assert xpath("e:last-child") == ("e[not(following-sibling::*[1])]")
+        assert xpath("e:first-of-type") == ("e[not(preceding-sibling::e[1])]")
+        assert xpath("e:last-of-type") == ("e[not(following-sibling::e[1])]")
         assert xpath("e:only-child") == (
-            "e[count(preceding-sibling::*) = 0 and count(following-sibling::*) = 0]"
+            "e[not(preceding-sibling::*[1]) and not(following-sibling::*[1])]"
         )
         assert xpath("e:only-of-type") == (
-            "e[count(preceding-sibling::e) = 0 and count(following-sibling::e) = 0]"
+            "e[not(preceding-sibling::e[1]) and not(following-sibling::e[1])]"
         )
         assert xpath("e:empty") == ("e[not(*) and not(string-length())]")
         assert xpath("e:EmPTY") == ("e[not(*) and not(string-length())]")
@@ -872,7 +871,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:has([bar])") == "e[descendant::*[@bar]]"
         assert xpath("e:has(:not(f))") == "e[descendant::*[not(self::f)]]"
         assert xpath("e:has(f:nth-child(2))") == (
-            "e[descendant::f[count(preceding-sibling::*) = 1]]"
+            "e[descendant::f[preceding-sibling::*[1] and not(preceding-sibling::*[2])]]"
         )
         # Negating :has(): the relative selector must be kept as a predicate,
         # not turned into a literal name test.
@@ -917,20 +916,22 @@ class TestCssselect(unittest.TestCase):
         )
         # Element-reading pseudo-classes chained after :has()
         assert xpath("e:has(f):first-of-type") == (
-            "e[(descendant::f) and (count(preceding-sibling::e) = 0)]"
+            "e[(descendant::f) and (not(preceding-sibling::e[1]))]"
         )
         assert xpath("e:has(f):last-of-type") == (
-            "e[(descendant::f) and (count(following-sibling::e) = 0)]"
+            "e[(descendant::f) and (not(following-sibling::e[1]))]"
         )
         assert xpath("e:has(f):nth-of-type(2)") == (
-            "e[(descendant::f) and (count(preceding-sibling::e) = 1)]"
+            "e[(descendant::f) and (preceding-sibling::e[1] "
+            "and not(preceding-sibling::e[2]))]"
         )
         assert xpath("e:has(f):nth-last-of-type(2)") == (
-            "e[(descendant::f) and (count(following-sibling::e) = 1)]"
+            "e[(descendant::f) and (following-sibling::e[1] "
+            "and not(following-sibling::e[2]))]"
         )
         assert xpath("e:has(f):only-of-type") == (
-            "e[(descendant::f) and (count(preceding-sibling::e) = 0 "
-            "and count(following-sibling::e) = 0)]"
+            "e[(descendant::f) and (not(preceding-sibling::e[1]) "
+            "and not(following-sibling::e[1]))]"
         )
         with pytest.raises(ExpressionError):
             xpath("*:has(f):first-of-type")
@@ -953,7 +954,8 @@ class TestCssselect(unittest.TestCase):
         )
         assert xpath("e ~ f") == ("e/following-sibling::f")
         assert xpath("e ~ f:nth-child(3)") == (
-            "e/following-sibling::f[count(preceding-sibling::*) = 2]"
+            "e/following-sibling::f[preceding-sibling::*[2] "
+            "and not(preceding-sibling::*[3])]"
         )
         assert xpath("div#container p") == ("div[@id = 'container']/descendant::p")
         assert xpath("e:where(foo)") == "e[self::foo]"

@@ -634,8 +634,8 @@ class GenericTranslator:
 
         # early-exit condition 2:
         # ~~~~~~~~~~~~~~~~~~~~~~~
-        # an+b-1 siblings with a<0 and (b-1)<0 is not possible
-        if a < 0 and b_min_1 < 0:
+        # an+b-1 siblings with a<=0 and (b-1)<0 is not possible
+        if a <= 0 and b_min_1 < 0:
             return xpath.add_condition("0")
 
         # `add_name_test` boolean is inverted and somewhat counter-intuitive:
@@ -643,18 +643,26 @@ class GenericTranslator:
         # nth_of_type() calls nth_child(add_name_test=False)
         nodetest = "*" if add_name_test else f"{xpath.element}"
 
-        # count siblings before or after the element
+        # siblings before or after the element
         if not last:
-            siblings_count = f"count(preceding-sibling::{nodetest})"
+            siblings = f"preceding-sibling::{nodetest}"
         else:
-            siblings_count = f"count(following-sibling::{nodetest})"
+            siblings = f"following-sibling::{nodetest}"
+        siblings_count = f"count({siblings})"
+
+        # count(***-sibling::***) >= k is tested as ***-sibling::***[k],
+        # which only walks the k nearest siblings instead of all of them.
 
         # special case of fixed position: nth-*(0n+b)
         # if a == 0:
         # ~~~~~~~~~~
         #    count(***-sibling::***) = b-1
         if a == 0:
-            return xpath.add_condition(f"{siblings_count} = {b_min_1}")
+            if b_min_1 == 0:
+                return xpath.add_condition(f"not({siblings}[1])")
+            return xpath.add_condition(
+                f"{siblings}[{b_min_1}] and not({siblings}[{b_min_1 + 1}])"
+            )
 
         expressions = []
 
@@ -663,12 +671,12 @@ class GenericTranslator:
             # so if a>0, and (b-1)<=0, an "n" exists to satisfy this,
             # therefore, the predicate is only interesting if (b-1)>0
             if b_min_1 > 0:
-                expressions.append(f"{siblings_count} >= {b_min_1}")
+                expressions.append(f"{siblings}[{b_min_1}]")
         else:
             # if a<0, and (b-1)<0, no "n" satisfies this,
             # this is tested above as an early exit condition
             # otherwise,
-            expressions.append(f"{siblings_count} <= {b_min_1}")
+            expressions.append(f"not({siblings}[{b_min_1 + 1}])")
 
         # operations modulo 1 or -1 are simpler, one only needs to verify:
         #
@@ -769,31 +777,31 @@ class GenericTranslator:
         return xpath.add_condition("position() = 1")
 
     def xpath_first_child_pseudo(self, xpath: XPathExpr) -> XPathExpr:
-        return xpath.add_condition("count(preceding-sibling::*) = 0")
+        return xpath.add_condition("not(preceding-sibling::*[1])")
 
     def xpath_last_child_pseudo(self, xpath: XPathExpr) -> XPathExpr:
-        return xpath.add_condition("count(following-sibling::*) = 0")
+        return xpath.add_condition("not(following-sibling::*[1])")
 
     def xpath_first_of_type_pseudo(self, xpath: XPathExpr) -> XPathExpr:
         self._check_of_type_element(xpath, "first-of-type")
-        return xpath.add_condition(f"count(preceding-sibling::{xpath.element}) = 0")
+        return xpath.add_condition(f"not(preceding-sibling::{xpath.element}[1])")
 
     def xpath_last_of_type_pseudo(self, xpath: XPathExpr) -> XPathExpr:
         self._check_of_type_element(xpath, "last-of-type")
-        return xpath.add_condition(f"count(following-sibling::{xpath.element}) = 0")
+        return xpath.add_condition(f"not(following-sibling::{xpath.element}[1])")
 
     def xpath_only_child_pseudo(self, xpath: XPathExpr) -> XPathExpr:
-        # Count siblings, not the parent's children: the root element has
+        # Test siblings, not the parent's children: the root element has
         # no parent, but it has no siblings either, so it must match.
         return xpath.add_condition(
-            "count(preceding-sibling::*) = 0 and count(following-sibling::*) = 0"
+            "not(preceding-sibling::*[1]) and not(following-sibling::*[1])"
         )
 
     def xpath_only_of_type_pseudo(self, xpath: XPathExpr) -> XPathExpr:
         self._check_of_type_element(xpath, "only-of-type")
         return xpath.add_condition(
-            f"count(preceding-sibling::{xpath.element}) = 0 "
-            f"and count(following-sibling::{xpath.element}) = 0"
+            f"not(preceding-sibling::{xpath.element}[1]) "
+            f"and not(following-sibling::{xpath.element}[1])"
         )
 
     def xpath_empty_pseudo(self, xpath: XPathExpr) -> XPathExpr:
