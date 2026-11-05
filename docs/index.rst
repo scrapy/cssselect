@@ -108,20 +108,18 @@ be implemented):
 
 * The ``:scope`` pseudo-class. Limitation: it can only be used at a start of a
   selector.
-* The ``:is()`` and ``:where()`` pseudo-classes. Limitation: their arguments
-  are a comma-separated list of *compound selectors*; combinators are not
-  allowed (e.g. ``:is(a b)`` or ``:is(a > b)``). ``:not()`` and ``:scope`` are
-  also rejected inside them, while ``:has()`` is supported (e.g.
-  ``:is(:has(> a))``).
+* A *selector list* of *complex selectors* as the argument of the ``:is()``,
+  ``:where()`` and ``:not()`` pseudo-classes, e.g.
+  ``:is(a.important > b, :has(> a))`` or ``:not(a > b, :not(.c))``.
+  Limitations: ``:scope`` is rejected inside them, and their selector list is
+  not forgiving, i.e. an unsupported argument makes the whole selector invalid
+  instead of being ignored.
 * The ``:has()`` pseudo-class, e.g. ``:has(> a.important, + p b)``. Limitation:
   ``:scope`` is rejected inside it.
 * The ``i`` and ``s`` attribute selector flags, e.g. ``[href^="HTTP" i]``.
   ``i`` makes the value comparison ASCII case-insensitive. ``s`` is accepted
   but has no effect, since attribute values are already compared
   case-sensitively.
-* The ``:not()`` pseudo-class with a *complex selector* argument, e.g.
-  ``:not(a.important[rel] > b)``. Limitation: it takes a single argument, so a
-  selector list is unsupported (e.g. ``:not(a, b)``).
 
 These are non-standard extensions:
 
