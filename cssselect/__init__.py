@@ -12,6 +12,7 @@ See AUTHORS for more details.
 
 from cssselect.parser import (
     FunctionalPseudoElement,
+    QualifiedPseudoElement,
     Selector,
     SelectorError,
     SelectorSyntaxError,
@@ -24,6 +25,7 @@ __all__ = (
     "FunctionalPseudoElement",
     "GenericTranslator",
     "HTMLTranslator",
+    "QualifiedPseudoElement",
     "Selector",
     "SelectorError",
     "SelectorSyntaxError",

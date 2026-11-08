@@ -54,6 +54,9 @@ is a group of two selectors.
 .. autoclass:: Selector()
     :members:
 
+.. autoclass:: QualifiedPseudoElement(pseudo_element, state)
+    :members:
+
 .. autoclass:: FunctionalPseudoElement
 
 .. autoclass:: GenericTranslator
@@ -150,6 +153,48 @@ These are non-standard extensions:
     It seems "string quoting" meant "quote escaping". There is indeed
     no quote escaping, but the xpath_literal method handles this.
     It should not be a problem anymore.
+
+
+Pseudo-classes after a pseudo-element
+-------------------------------------
+
+The parser accepts the user-action pseudo-classes ``:hover``, ``:active``,
+``:focus``, ``:focus-visible`` and ``:focus-within`` after a pseudo-element.
+They can also be combined with ``:is()``, ``:where()`` and ``:not()``, subject
+to the existing limitations of those functions. Their arguments must contain
+only these pseudo-classes; type, class, ID and attribute selectors are not
+allowed in this position. Pseudo-element-specific states, chained
+pseudo-elements and combinators after a pseudo-element remain unsupported.
+
+For example, ``.item::before:hover`` constrains the pseudo-element's state,
+while ``.item:hover::before`` constrains the originating element's state.
+The parser preserves this distinction::
+
+    >>> from cssselect import parse
+    >>> selector = parse(".item::before:hover")[0]
+    >>> selector.canonical()
+    '.item::before:hover'
+    >>> selector.specificity()
+    (0, 2, 1)
+    >>> selector.pseudo_element.pseudo_element
+    'before'
+    >>> selector.pseudo_element.state.canonical()
+    '*:hover'
+
+For the new syntax, :attr:`Selector.pseudo_element` is a
+:class:`QualifiedPseudoElement`. Unqualified pseudo-elements keep their
+existing string or :class:`FunctionalPseudoElement` representation.
+The originating element remains in ``Selector.parsed_tree``.
+
+XPath translation still rejects pseudo-elements by default. Calling
+:meth:`GenericTranslator.selector_to_xpath` without
+``translate_pseudo_elements=True`` ignores the whole qualified pseudo-element,
+including its state. A custom ``GenericTranslator.xpath_pseudo_element``
+implementation receives the :class:`QualifiedPseudoElement` object and must
+handle its state explicitly, or reject it.
+
+This follows `Selectors Level 4, Pseudo-classing Pseudo-elements
+<https://www.w3.org/TR/selectors-4/#pseudo-element-states>`_.
 
 
 Customizing the translation

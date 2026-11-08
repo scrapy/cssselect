@@ -1,6 +1,16 @@
 Changelog
 =========
 
+Next release
+------------
+
+Unreleased.
+
+*   Parse user-action pseudo-classes and their logical combinations after a
+    pseudo-element, preserving their order and specificity. Such selectors
+    expose a ``QualifiedPseudoElement`` through ``Selector.pseudo_element``;
+    existing pseudo-element representations and XPath behavior are unchanged.
+
 Version 1.6.0
 -------------
 

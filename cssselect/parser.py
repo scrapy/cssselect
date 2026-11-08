@@ -64,7 +64,9 @@ Tree: TypeAlias = Union[
     "SpecificityAdjustment",
     "CombinedSelector",
 ]
-PseudoElement: TypeAlias = Union["FunctionalPseudoElement", str]
+PseudoElement: TypeAlias = Union[
+    "FunctionalPseudoElement", "QualifiedPseudoElement", str
+]
 
 
 class Selector:
@@ -80,11 +82,9 @@ class Selector:
 
     def __init__(self, tree: Tree, pseudo_element: PseudoElement | None = None) -> None:
         self.parsed_tree = tree
-        if pseudo_element is not None and not isinstance(
-            pseudo_element, FunctionalPseudoElement
-        ):
+        if isinstance(pseudo_element, str):
             pseudo_element = ascii_lower(pseudo_element)
-        #: A :class:`FunctionalPseudoElement`,
+        #: A :class:`FunctionalPseudoElement` or :class:`QualifiedPseudoElement`,
         #: or the identifier for the pseudo-element as a string,
         #  or ``None``.
         #:
@@ -107,7 +107,9 @@ class Selector:
         self.pseudo_element = pseudo_element
 
     def __repr__(self) -> str:
-        if isinstance(self.pseudo_element, FunctionalPseudoElement):
+        if isinstance(
+            self.pseudo_element, (FunctionalPseudoElement, QualifiedPseudoElement)
+        ):
             pseudo_element = repr(self.pseudo_element)
         elif self.pseudo_element:
             pseudo_element = f"::{self.pseudo_element}"
@@ -117,7 +119,9 @@ class Selector:
 
     def canonical(self) -> str:
         """Return a CSS representation for this selector (a string)"""
-        if isinstance(self.pseudo_element, FunctionalPseudoElement):
+        if isinstance(
+            self.pseudo_element, (FunctionalPseudoElement, QualifiedPseudoElement)
+        ):
             pseudo_element = f"::{self.pseudo_element.canonical()}"
         elif self.pseudo_element:
             pseudo_element = f"::{_serialize_ident(self.pseudo_element)}"
@@ -137,6 +141,9 @@ class Selector:
 
         """
         a, b, c = self.parsed_tree.specificity()
+        if isinstance(self.pseudo_element, QualifiedPseudoElement):
+            a2, b2, c2 = self.pseudo_element.specificity()
+            return a + a2, b + b2, c + c2
         if self.pseudo_element:
             c += 1
         return a, b, c
@@ -195,6 +202,43 @@ class FunctionalPseudoElement:
     def canonical(self) -> str:
         args = "".join(token.css() for token in self.arguments)
         return f"{_serialize_ident(self.name)}({args})"
+
+
+class QualifiedPseudoElement:
+    """A pseudo-element followed by user-action pseudo-classes.
+
+    ``pseudo_element`` is its name or a :class:`FunctionalPseudoElement`.
+    ``state`` is the parsed tree of the following pseudo-classes, rooted at
+    an implicit universal selector. It applies to the pseudo-element itself,
+    not to the originating element in ``Selector.parsed_tree``.
+    """
+
+    def __init__(
+        self, pseudo_element: str | FunctionalPseudoElement, state: Tree
+    ) -> None:
+        self.pseudo_element = (
+            ascii_lower(pseudo_element)
+            if isinstance(pseudo_element, str)
+            else pseudo_element
+        )
+        self.state = state
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}[::{self.canonical()}]"
+
+    def canonical(self) -> str:
+        """Return the pseudo-element and its state without the leading ``::``."""
+        pseudo_element = (
+            _serialize_ident(self.pseudo_element)
+            if isinstance(self.pseudo_element, str)
+            else self.pseudo_element.canonical()
+        )
+        return pseudo_element + self.state.canonical()[1:]
+
+    def specificity(self) -> tuple[int, int, int]:
+        """Include the pseudo-element and the following pseudo-classes."""
+        a, b, c = self.state.specificity()
+        return a, b, c + 1
 
 
 class Function:
@@ -629,6 +673,7 @@ def parse_simple_selector(
     inside_negation: bool = False,
     inside_selector_list: bool = False,
     inside_relative_selector: bool = False,
+    inside_pseudo_element: bool = False,
 ) -> tuple[Tree, PseudoElement | None]:
     stream.skip_whitespace()
     selector_start = len(stream.used)
@@ -639,6 +684,8 @@ def parse_simple_selector(
         preceding -= 1
     at_selector_start = preceding < 0 or stream.used[preceding].is_delim(",")
     peek = stream.peek()
+    if inside_pseudo_element and peek != ("DELIM", ":"):
+        raise SelectorSyntaxError(f"Expected a pseudo-class, got {peek}")
     if peek.type == "IDENT" or peek == ("DELIM", "*"):
         if peek.type == "IDENT":
             namespace = stream.next().value
@@ -666,9 +713,21 @@ def parse_simple_selector(
         if peek.type in ("S", "EOF") or peek.is_delim(",", "+", ">", "~", ")"):
             break
         if pseudo_element:
+            if peek == ("DELIM", ":"):
+                state, _ = parse_simple_selector(
+                    stream,
+                    inside_negation=inside_negation,
+                    inside_selector_list=inside_selector_list,
+                    inside_relative_selector=inside_relative_selector,
+                    inside_pseudo_element=True,
+                )
+                assert not isinstance(pseudo_element, QualifiedPseudoElement)
+                return result, QualifiedPseudoElement(pseudo_element, state)
             raise SelectorSyntaxError(
                 f"Got pseudo-element ::{pseudo_element} not at the end of a selector"
             )
+        if inside_pseudo_element and peek != ("DELIM", ":"):
+            raise SelectorSyntaxError(f"Expected a pseudo-class, got {peek}")
         if peek.type == "HASH":
             result = Hash(result, cast("str", stream.next().value))
         elif peek == ("DELIM", "."):
@@ -689,6 +748,10 @@ def parse_simple_selector(
         elif peek == ("DELIM", ":"):
             stream.next()
             if stream.peek() == ("DELIM", ":"):
+                if inside_pseudo_element:
+                    raise SelectorSyntaxError(
+                        "Multiple pseudo-elements are not supported"
+                    )
                 stream.next()
                 pseudo_element = stream.next_ident()
                 if stream.peek() == ("DELIM", "("):
@@ -698,6 +761,16 @@ def parse_simple_selector(
                     )
                 continue
             ident = stream.next_ident()
+            if inside_pseudo_element:
+                allowed = (
+                    {"is", "where", "not"}
+                    if stream.peek() == ("DELIM", "(")
+                    else {"hover", "active", "focus", "focus-visible", "focus-within"}
+                )
+                if ascii_lower(ident) not in allowed:
+                    raise SelectorSyntaxError(
+                        f"Pseudo-class :{ident} is not supported after a pseudo-element"
+                    )
             if ident.lower() in ("first-line", "first-letter", "before", "after"):
                 # Special case: CSS 2.1 pseudo-elements can have a single ':'
                 # Any new pseudo-element must have two.
@@ -730,7 +803,9 @@ def parse_simple_selector(
                 if inside_negation:
                     raise SelectorSyntaxError("Got nested :not()")
                 argument, argument_pseudo_element = parse_simple_selector(
-                    stream, inside_negation=True
+                    stream,
+                    inside_negation=True,
+                    inside_pseudo_element=inside_pseudo_element,
                 )
                 while 1:
                     # Whitespace before the closing parenthesis is not a
@@ -744,6 +819,8 @@ def parse_simple_selector(
                     if peek == ("DELIM", ")"):
                         stream.next()
                         break
+                    if inside_pseudo_element:
+                        raise SelectorSyntaxError(f"Expected ')', got {peek}")
                     if peek.is_delim("+", ">", "~"):
                         argument_combinator = cast("str", stream.next().value)
                         stream.skip_whitespace()
@@ -762,10 +839,14 @@ def parse_simple_selector(
             elif ident.lower() == "has":
                 result = Relation(result, parse_relative_selector(stream))
             elif ident.lower() in ("matches", "is"):
-                selectors = parse_simple_selector_arguments(stream)
+                selectors = parse_simple_selector_arguments(
+                    stream, inside_pseudo_element=inside_pseudo_element
+                )
                 result = Matching(result, selectors)
             elif ident.lower() == "where":
-                selectors = parse_simple_selector_arguments(stream)
+                selectors = parse_simple_selector_arguments(
+                    stream, inside_pseudo_element=inside_pseudo_element
+                )
                 result = SpecificityAdjustment(result, selectors)
             else:
                 result = Function(result, ident, parse_arguments(stream))
@@ -834,11 +915,15 @@ def parse_relative_selector(stream: TokenStream) -> list[tuple[Token, Selector]]
     return arguments
 
 
-def parse_simple_selector_arguments(stream: TokenStream) -> list[Tree]:
+def parse_simple_selector_arguments(
+    stream: TokenStream, inside_pseudo_element: bool = False
+) -> list[Tree]:
     arguments = []
     while 1:
         result, pseudo_element = parse_simple_selector(
-            stream, inside_selector_list=True
+            stream,
+            inside_selector_list=True,
+            inside_pseudo_element=inside_pseudo_element,
         )
         if pseudo_element:
             raise SelectorSyntaxError(

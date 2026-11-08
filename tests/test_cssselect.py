@@ -593,7 +593,7 @@ class TestCssselect(unittest.TestCase):
 
         # Mis-placed pseudo-elements
         assert get_error("a:before:empty") == (
-            "Got pseudo-element ::before not at the end of a selector"
+            "Pseudo-class :empty is not supported after a pseudo-element"
         )
         assert get_error("li:before a") == (
             "Got pseudo-element ::before not at the end of a selector"
@@ -1224,7 +1224,7 @@ class TestCssselect(unittest.TestCase):
                             f"The functional pseudo-element ::{pseudo_element.name}() is unknown"
                         )
                     xpath = method(xpath, pseudo_element.arguments)
-                else:
+                elif isinstance(pseudo_element, str):
                     method_name = "xpath_{}_simple_pseudo_element".format(
                         pseudo_element.replace("-", "_")
                     )
@@ -1234,6 +1234,8 @@ class TestCssselect(unittest.TestCase):
                             f"The pseudo-element ::{pseudo_element} is unknown"
                         )
                     xpath = method(xpath)
+                else:
+                    raise ExpressionError("Pseudo-element states are not supported")
                 return xpath
 
             # functional pseudo-class:
