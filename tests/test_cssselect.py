@@ -1434,6 +1434,38 @@ class TestCssselect(unittest.TestCase):
         assert HTMLTranslator(xhtml=True).css_to_xpath("A") == ("descendant-or-self::A")
         assert HTMLTranslator().css_to_xpath("A") == ("descendant-or-self::a")
 
+    def test_html_checked_type_case(self) -> None:
+        document = etree.fromstring(
+            '<div><input id="checkbox" type="checkbox" checked=""/>'
+            '<input id="uppercase-checkbox" type="CHECKBOX" checked=""/>'
+            '<input id="mixed-checkbox" type="ChEcKbOx" checked=""/>'
+            '<input id="radio" type="radio" checked=""/>'
+            '<input id="uppercase-radio" type="RADIO" checked=""/>'
+            '<input id="mixed-radio" type="RaDiO" checked=""/>'
+            '<input id="unchecked" type="CHECKBOX"/>'
+            '<input id="unchecked-radio" type="RADIO"/>'
+            '<input id="text" type="TEXT" checked=""/>'
+            '<input id="missing-type" checked=""/>'
+            '<input id="non-ascii-type" type="RADİO" checked=""/>'
+            '<option id="selected" selected=""/>'
+            '<option id="unselected"/></div>'
+        )
+        for translator in (HTMLTranslator(), HTMLTranslator(xhtml=True)):
+            items = typing.cast(
+                "list[etree._Element]",
+                document.xpath(translator.css_to_xpath(":checked")),
+            )
+            assert [element.get("id") for element in items] == [
+                "checkbox",
+                "uppercase-checkbox",
+                "mixed-checkbox",
+                "radio",
+                "uppercase-radio",
+                "mixed-radio",
+                "selected",
+            ]
+        assert document.xpath(GenericTranslator().css_to_xpath(":checked")) == []
+
     def test_argument_types(self) -> None:
         class CustomTranslator(GenericTranslator):
             def __init__(self) -> None:
