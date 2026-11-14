@@ -851,8 +851,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:has(f g)") == "e[descendant::f/descendant::g]"
         assert xpath("e:has(> f > g)") == "e[./f/g]"
         assert xpath("e:has(~ f + g)") == (
-            "e[following-sibling::f/following-sibling::*"
-            "[(self::g) and (position() = 1)]]"
+            "e[following-sibling::f/following-sibling::*[1]/self::g]"
         )
         # A leading "+" applies to the first step of the argument, so that any
         # further step is walked from the adjacent sibling.
@@ -959,9 +958,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e f") == ("e/descendant::f")
         assert xpath("e *") == ("e/descendant-or-self::*/*")
         assert xpath("e > f") == ("e/f")
-        assert xpath("e + f") == (
-            "e/following-sibling::*[(self::f) and (position() = 1)]"
-        )
+        assert xpath("e + f") == ("e/following-sibling::*[1]/self::f")
         assert xpath("e ~ f") == ("e/following-sibling::f")
         assert xpath("e ~ f:nth-child(3)") == (
             "e/following-sibling::f[preceding-sibling::*[2] "
@@ -1002,9 +999,7 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e:is(ns|f)") == "e[self::ns:f]"
         assert xpath("*:not(ns|f)") == "*[not(self::ns:f)]"
         assert xpath("*:not(ns|f > f)") == "*[not((self::f) and parent::*[self::ns:f])]"
-        assert xpath("x + ns|f") == (
-            "x/following-sibling::*[(self::ns:f) and (position() = 1)]"
-        )
+        assert xpath("x + ns|f") == "x/following-sibling::*[1]/self::ns:f"
 
         # Invalid characters in XPath element names
         assert xpath(r"di\a0 v") == ("*[name() = 'di v']")  # di\xa0v
