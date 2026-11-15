@@ -560,6 +560,12 @@ class GenericTranslator:
         self, left: XPathExpr, right: XPathExpr
     ) -> XPathExpr:
         """right is a sibling after left, immediately or not"""
+        if not left.condition:
+            # Only walk from the first left element among its siblings, or
+            # from the first one of each context node (e.g. itself).
+            left.condition = (
+                f"position() = 1 or not(preceding-sibling::{left.element}[1])"
+            )
         return left.join("/following-sibling::", right)
 
     # The relative selector is kept in `condition` (instead of being folded

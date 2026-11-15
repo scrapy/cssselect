@@ -962,10 +962,22 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e + f") == (
             "e/following-sibling::*[(self::f) and (position() = 1)]"
         )
-        assert xpath("e ~ f") == ("e/following-sibling::f")
+        assert xpath("e ~ f") == (
+            "e[position() = 1 or not(preceding-sibling::e[1])]/following-sibling::f"
+        )
         assert xpath("e ~ f:nth-child(3)") == (
-            "e/following-sibling::f[preceding-sibling::*[2] "
+            "e[position() = 1 or not(preceding-sibling::e[1])]"
+            "/following-sibling::f[preceding-sibling::*[2] "
             "and not(preceding-sibling::*[3])]"
+        )
+        assert xpath("e ~ f ~ g") == (
+            "e[position() = 1 or not(preceding-sibling::e[1])]"
+            "/following-sibling::f[position() = 1 or not(preceding-sibling::f[1])]"
+            "/following-sibling::g"
+        )
+        assert xpath("e.a ~ f") == (
+            "e[@class and contains(@class, 'a') and contains("
+            "concat(' ', normalize-space(@class), ' '), ' a ')]/following-sibling::f"
         )
         assert xpath("div#container p") == ("div[@id = 'container']/descendant::p")
         assert xpath("e:where(foo)") == "e[self::foo]"
@@ -1697,6 +1709,21 @@ class TestCssselect(unittest.TestCase):
         assert pcss("div + div") == ["foobar-div"]
         assert pcss("a ~ a") == ["tag-anchor", "nofollow-anchor"]
         assert pcss('a[rel="tag"] ~ a') == ["nofollow-anchor"]
+        assert pcss("li ~ li ~ li") == [
+            "third-li",
+            "fourth-li",
+            "fifth-li",
+            "sixth-li",
+            "seventh-li",
+        ]
+        # From a context node with matching siblings before it
+        (fifth_li,) = typing.cast(
+            "list[etree._Element]", document.xpath("//*[@id = 'fifth-li']")
+        )
+        items = typing.cast(
+            "list[etree._Element]", fifth_li.xpath(css_to_xpath("li ~ li"))
+        )
+        assert [element.get("id") for element in items] == ["sixth-li", "seventh-li"]
         assert pcss("ol#first-ol li:last-child") == ["seventh-li"]
         assert pcss("ol#first-ol *:last-child") == ["li-div", "seventh-li"]
         assert pcss("#outer-div:first-child") == ["outer-div"]
