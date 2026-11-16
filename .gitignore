@@ -8,3 +8,4 @@
 .idea
 htmlcov/
 coverage.xml
+*.junit.xml
