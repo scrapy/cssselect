@@ -552,9 +552,7 @@ class GenericTranslator:
         self, left: XPathExpr, right: XPathExpr
     ) -> XPathExpr:
         """right is a sibling immediately after left"""
-        xpath = left.join("/following-sibling::", right)
-        xpath.add_name_test()
-        return xpath.add_condition("position() = 1")
+        return left.join("/following-sibling::*[1]/self::", right)
 
     def xpath_indirect_adjacent_combinator(
         self, left: XPathExpr, right: XPathExpr
