@@ -124,6 +124,12 @@ is_safe_name = re.compile("[a-zA-Z_][a-zA-Z0-9_.-]*").fullmatch
 # Test that the string is not empty and does not contain whitespace
 is_non_whitespace = re.compile(r"[^ \t\r\n\f]+").fullmatch
 
+# Characters not allowed in XML 1.0, which therefore cannot be part of an XPath
+# expression either.
+has_non_xml_char = re.compile(
+    "[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]"
+).search
+
 
 def _or_conditions(conditions: list[str]) -> str:
     """Join conditions with "or"."""
@@ -284,6 +290,8 @@ class GenericTranslator:
     @staticmethod
     def xpath_literal(s: str) -> str:
         s = str(s)
+        if has_non_xml_char(s):
+            raise ExpressionError(f"{s!r} contains a character not allowed in XML")
         if "'" not in s:
             s = f"'{s}'"
         elif '"' not in s:

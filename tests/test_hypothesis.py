@@ -4,12 +4,17 @@ import re
 import typing
 from typing import TYPE_CHECKING
 
-import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 from lxml import etree
 
-from cssselect import GenericTranslator, HTMLTranslator, SelectorError, parse
+from cssselect import (
+    ExpressionError,
+    GenericTranslator,
+    HTMLTranslator,
+    SelectorError,
+    parse,
+)
 from cssselect.parser import (
     Token,
     TokenStream,
@@ -191,10 +196,7 @@ def test_css_like(css: str) -> None:
             xpath = translator.css_to_xpath(css)
         except SelectorError:
             continue
-        # Escapes like "\b" can produce characters not allowed in XML, a known
-        # problem tested by test_escape_translates_non_xml().
-        if not any(c in NON_XML_CHARS for c in xpath):
-            etree.XPath(xpath)
+        etree.XPath(xpath)
     try:
         selectors = parse(css)
     except SelectorError:
@@ -205,7 +207,13 @@ def test_css_like(css: str) -> None:
 def check_escape_translates(context: str, char: str) -> None:
     css = context.format(f"\\{ord(char):x} ")
     for translator in (GenericTranslator(), HTMLTranslator()):
-        etree.XPath(translator.css_to_xpath(css))
+        try:
+            xpath = translator.css_to_xpath(css)
+        except ExpressionError:
+            # Characters not allowed in XML cannot be put in an XPath string.
+            assert char in NON_XML_CHARS
+            continue
+        etree.XPath(xpath)
 
 
 @given(
@@ -216,11 +224,6 @@ def test_escape_translates(context: str, char: str) -> None:
     check_escape_translates(context, char)
 
 
-@pytest.mark.xfail(
-    raises=ValueError,
-    strict=True,
-    reason="Characters not allowed in XML end up in the XPath expression",
-)
 @given(st.sampled_from(ESCAPE_CONTEXTS), st.sampled_from(NON_XML_CHARS))
 def test_escape_translates_non_xml(context: str, char: str) -> None:
     check_escape_translates(context, char)

@@ -1216,6 +1216,11 @@ class TestCssselect(unittest.TestCase):
         assert css_to_xpath(':contains("x\udfffy")') == (
             "descendant-or-self::*[contains(., 'x�y')]"
         )
+        # Other characters not allowed in XML cannot be put in an XPath string.
+        with pytest.raises(ExpressionError):
+            css_to_xpath('*[aval="x\x01y"]')
+        with pytest.raises(ExpressionError):
+            css_to_xpath(':contains("x\uffffy")')
         # A raw NUL in an identifier becomes a valid U+FFFD name character.
         assert str(next(tokenize("foo\x00bar"))) == "<IDENT 'foo�bar' at 0>"
 
