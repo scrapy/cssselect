@@ -74,6 +74,16 @@ class TestCssselect(unittest.TestCase):
             "<DELIM ')' at 41>",
             "<EOF at 42>",
         ]
+        # A "." starts a number only when a digit follows it.
+        assert [str(item) for item in tokenize("a.b .5.")] == [
+            "<IDENT 'a' at 0>",
+            "<DELIM '.' at 1>",
+            "<IDENT 'b' at 2>",
+            "<S ' ' at 3>",
+            "<NUMBER '.5' at 4>",
+            "<DELIM '.' at 6>",
+            "<EOF at 7>",
+        ]
 
     def test_parser(self) -> None:
         def repr_parse(css: str) -> list[str]:
