@@ -126,7 +126,7 @@ is_non_whitespace = re.compile(r"[^ \t\r\n\f]+").fullmatch
 
 # Characters not allowed in XML 1.0, which therefore cannot be part of an XPath
 # expression either.
-has_non_xml_char = re.compile(
+_has_non_xml_char = re.compile(
     "[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]"
 ).search
 
@@ -290,7 +290,7 @@ class GenericTranslator:
     @staticmethod
     def xpath_literal(s: str) -> str:
         s = str(s)
-        if has_non_xml_char(s):
+        if _has_non_xml_char(s):
             raise ExpressionError(f"{s!r} contains a character not allowed in XML")
         if "'" not in s:
             s = f"'{s}'"
