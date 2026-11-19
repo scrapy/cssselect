@@ -972,6 +972,9 @@ class TestCssselect(unittest.TestCase):
             "/following-sibling::f[position() = 1 or not(preceding-sibling::f[1])]"
             "/following-sibling::g"
         )
+        assert xpath("e + f ~ g") == (
+            "e/following-sibling::*[1]/self::f/following-sibling::g"
+        )
         assert xpath("e.a ~ f") == (
             "e[@class and contains(@class, 'a') and contains("
             "concat(' ', normalize-space(@class), ' '), ' a ')]/following-sibling::f"

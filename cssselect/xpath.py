@@ -62,7 +62,7 @@ class XPathExpr:
         self.condition = condition
         # A condition for the first step of `path`, kept aside until the
         # axis that step is reached through is known: (offset, condition).
-        self.first_step_condition: tuple[int, str] | None = None
+        self._first_step_condition: tuple[int, str] | None = None
 
     def __str__(self) -> str:
         path = str(self.path) + str(self.element)
@@ -99,12 +99,13 @@ class XPathExpr:
             )
         self.element = "*"
 
-    def apply_first_step_condition(self) -> Self:
+    def _apply_first_step_condition(self) -> Self:
         """Add any pending condition to the first step of the path."""
-        if self.first_step_condition is not None:
-            offset, condition = self.first_step_condition
+        if self._first_step_condition is not None:
+            # pylint: disable-next=unpacking-non-sequence
+            offset, condition = self._first_step_condition
             self.path = f"{self.path[:offset]}[{condition}]{self.path[offset:]}"
-            self.first_step_condition = None
+            self._first_step_condition = None
         return self
 
     def add_star_prefix(self) -> None:
@@ -296,7 +297,8 @@ class GenericTranslator:
         xpath = self.xpath(tree)
         assert isinstance(xpath, self.xpathexpr_cls)  # help debug a missing 'return'
         if (prefix or "") in _SIBLING_SAFE_PREFIXES:
-            xpath.apply_first_step_condition()
+            # pylint: disable-next=protected-access
+            xpath._apply_first_step_condition()
         if translate_pseudo_elements and selector.pseudo_element:
             xpath = self.xpath_pseudo_element(xpath, selector.pseudo_element)
         return (prefix or "") + str(xpath)
@@ -593,14 +595,17 @@ class GenericTranslator:
             # Only walk from the first left element among its siblings, or
             # from the first one of each context node (e.g. itself).
             condition = f"position() = 1 or not(preceding-sibling::{left.element}[1])"
-            if left.path:
-                # Reached through a child, descendant or following-sibling
-                # step of this expression.
-                left.condition = condition
-            else:
+            if not left.path:
                 # The first step: whether position() works depends on the
                 # prefix or :has() axis put in front of it later.
-                left.first_step_condition = (len(left.element), condition)
+                # pylint: disable-next=protected-access
+                left._first_step_condition = (len(left.element), condition)
+            elif not left.path.endswith("self::"):
+                # Reached through a child, descendant or following-sibling
+                # step of this expression. A self:: step (after +) gives at
+                # most one element per context node, so the test would not
+                # remove anything there.
+                left.condition = condition
         return left.join("/following-sibling::", right)
 
     # The relative selector is kept in `condition` (instead of being folded
@@ -609,11 +614,13 @@ class GenericTranslator:
 
     def xpath_relation_descendant_combinator(self, right: XPathExpr) -> str:
         """right is a child, grand-child or further descendant of the element"""
-        return f"descendant::{right.apply_first_step_condition()}"
+        # pylint: disable-next=protected-access
+        return f"descendant::{right._apply_first_step_condition()}"
 
     def xpath_relation_child_combinator(self, right: XPathExpr) -> str:
         """right is an immediate child of the element"""
-        return f"./{right.apply_first_step_condition()}"
+        # pylint: disable-next=protected-access
+        return f"./{right._apply_first_step_condition()}"
 
     def xpath_relation_direct_adjacent_combinator(self, right: XPathExpr) -> str:
         """right is a sibling immediately after the element"""
@@ -628,7 +635,8 @@ class GenericTranslator:
 
     def xpath_relation_indirect_adjacent_combinator(self, right: XPathExpr) -> str:
         """right is a sibling after the element, immediately or not"""
-        return f"following-sibling::{right.apply_first_step_condition()}"
+        # pylint: disable-next=protected-access
+        return f"following-sibling::{right._apply_first_step_condition()}"
 
     # Function: dispatch by function/pseudo-class name
 
