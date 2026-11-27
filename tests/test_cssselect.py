@@ -1219,6 +1219,14 @@ class TestCssselect(unittest.TestCase):
         # A raw NUL in an identifier becomes a valid U+FFFD name character.
         assert str(next(tokenize("foo\x00bar"))) == "<IDENT 'foo�bar' at 0>"
 
+    def test_non_xml_characters(self) -> None:
+        # Characters not allowed in XML cannot be put in an XPath string.
+        css_to_xpath = GenericTranslator().css_to_xpath
+        with pytest.raises(ExpressionError):
+            css_to_xpath('*[aval="x\x01y"]')
+        with pytest.raises(ExpressionError):
+            css_to_xpath(':contains("x\uffffy")')
+
     def test_xpath_pseudo_elements(self) -> None:
         class CustomTranslator(GenericTranslator):
             def xpath_pseudo_element(
