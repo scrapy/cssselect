@@ -1067,6 +1067,9 @@ _match_string_by_quote = {
     '"': _compile(r'([^\n\r\f\\"]|%(string_escape)s)*'),
 }
 
+# Characters that cannot start any token other than a DELIM.
+_delim_only_chars = ">~,[]():|*=^$!"
+
 # Each escape is decoded in a single left-to-right pass, so that the output
 # of one escape is never read as (part of) another.
 _sub_escape = re.compile(TokenMacros.unicode_escape + r"|\\(.)", re.IGNORECASE).sub
@@ -1100,6 +1103,8 @@ def _replace_string_control_char(match: re.Match[str]) -> str:
 
 
 def unescape_ident(value: str) -> str:
+    if "\\" not in value:
+        return value
     return _sub_escape(_replace_escape, value)
 
 
@@ -1143,8 +1148,20 @@ def tokenize(s: str) -> Iterator[Token]:
     pos = 0
     len_s = len(s)
     while pos < len_s:
-        match = _match_whitespace(s, pos=pos)
-        if match:
+        # Test the first character before the regular expressions: most
+        # DELIM tokens can be found from it alone, and "." starts a number
+        # only when a digit follows it (as in ".5").
+        char = s[pos]
+        if char in _delim_only_chars or (
+            char == "." and not "0" <= s[pos + 1 : pos + 2] <= "9"
+        ):
+            yield Token("DELIM", char, pos)
+            pos += 1
+            continue
+
+        if char in " \t\r\n\f":
+            match = _match_whitespace(s, pos=pos)
+            assert match
             yield Token("S", " ", pos)
             pos = match.end()
             continue
