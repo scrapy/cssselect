@@ -959,10 +959,35 @@ class TestCssselect(unittest.TestCase):
         assert xpath("e *") == ("e/descendant-or-self::*/*")
         assert xpath("e > f") == ("e/f")
         assert xpath("e + f") == ("e/following-sibling::*[1]/self::f")
-        assert xpath("e ~ f") == ("e/following-sibling::f")
+        assert xpath("e ~ f") == (
+            "e[position() = 1 or not(preceding-sibling::e[1])]/following-sibling::f"
+        )
         assert xpath("e ~ f:nth-child(3)") == (
-            "e/following-sibling::f[preceding-sibling::*[2] "
+            "e[position() = 1 or not(preceding-sibling::e[1])]"
+            "/following-sibling::f[preceding-sibling::*[2] "
             "and not(preceding-sibling::*[3])]"
+        )
+        assert xpath("e ~ f ~ g") == (
+            "e[position() = 1 or not(preceding-sibling::e[1])]"
+            "/following-sibling::f[position() = 1 or not(preceding-sibling::f[1])]"
+            "/following-sibling::g"
+        )
+        assert xpath("e + f ~ g") == (
+            "e/following-sibling::*[1]/self::f/following-sibling::g"
+        )
+        assert xpath("e.a ~ f") == (
+            "e[@class and contains(@class, 'a') and contains("
+            "concat(' ', normalize-space(@class), ' '), ' a ')]/following-sibling::f"
+        )
+        # The first step only gets the position() test when the prefix axis
+        # keeps sibling lists contiguous.
+        assert GenericTranslator().css_to_xpath("e ~ f ~ g", prefix="following::") == (
+            "following::e/following-sibling::f"
+            "[position() = 1 or not(preceding-sibling::f[1])]/following-sibling::g"
+        )
+        assert xpath("e:has(f ~ g)") == (
+            "e[descendant::f[position() = 1 or not(preceding-sibling::f[1])]"
+            "/following-sibling::g]"
         )
         assert xpath("div#container p") == ("div[@id = 'container']/descendant::p")
         assert xpath("e:where(foo)") == "e[self::foo]"
@@ -1700,6 +1725,21 @@ class TestCssselect(unittest.TestCase):
         assert pcss("div + div") == ["foobar-div"]
         assert pcss("a ~ a") == ["tag-anchor", "nofollow-anchor"]
         assert pcss('a[rel="tag"] ~ a') == ["nofollow-anchor"]
+        assert pcss("li ~ li ~ li") == [
+            "third-li",
+            "fourth-li",
+            "fifth-li",
+            "sixth-li",
+            "seventh-li",
+        ]
+        # From a context node with matching siblings before it
+        (fifth_li,) = typing.cast(
+            "list[etree._Element]", document.xpath("//*[@id = 'fifth-li']")
+        )
+        items = typing.cast(
+            "list[etree._Element]", fifth_li.xpath(css_to_xpath("li ~ li"))
+        )
+        assert [element.get("id") for element in items] == ["sixth-li", "seventh-li"]
         assert pcss("ol#first-ol li:last-child") == ["seventh-li"]
         assert pcss("ol#first-ol *:last-child") == ["li-div", "seventh-li"]
         assert pcss("#outer-div:first-child") == ["outer-div"]
@@ -1858,6 +1898,25 @@ class TestCssselect(unittest.TestCase):
                 assert select(f"*:not({css})", translator) == [
                     element for element in all_elements if element not in matching
                 ]
+
+    def test_select_indirect_adjacent_prefixes(self) -> None:
+        document = etree.fromstring(
+            "<r><li id='1'/><li id='2'><u><li id='a'/><li id='b'><x id='c'/></li>"
+            "<li id='d'/></u></li><li id='3'/><li id='4'/></r>"
+        )
+        (context,) = typing.cast("list[etree._Element]", document.xpath("//x"))
+
+        def select(prefix: str) -> list[str | None]:
+            xpath = GenericTranslator().css_to_xpath("li ~ li", prefix=prefix)
+            items = typing.cast("list[etree._Element]", context.xpath(xpath))
+            return [element.get("id") for element in items]
+
+        assert select("following::") == ["4"]
+        assert select("preceding::") == ["2", "b", "d", "3", "4"]
+        assert select("ancestor::") == ["d", "3", "4"]
+        assert select("ancestor-or-self::") == ["d", "3", "4"]
+        assert select("parent::") == ["d"]
+        assert select("descendant-or-self::") == []
 
     def test_select_long_selector_list(self) -> None:
         """A selector list is joined in a single ``or`` chain.
